@@ -90,6 +90,8 @@ export interface TurnSimulationResponse {
   mode: TurnFairnessMode; recommended: string | null; why: string[]; skipped: { name: string; reason: string; text: string; /** `text` as code + vars */ textCoded?: CodedText }[];
   /** `why` line by line as code + vars (same length and order) */
   whyCoded?: CodedText[];
+  /** LIVE TECHNICIAN SCHEDULE 14 — Queue Fairness Indicator (the engine's rotation pick vs the recommendation) */
+  orderChange?: { rotationPickId: string | null; rotationPickName: string | null; changedBy: string; text: string; textCoded: CodedText };
   ranking: { name: string; turnRank: number | null; eligible: boolean; reasons: string[]; effectiveTurns: number | null; readyMinutes: number | null }[]; productionStateChanged: false;
 }
 /** GET /tech/turn-queue — the Technician App (§94–96). `team` is only what the salon's visibility allows; never money. */

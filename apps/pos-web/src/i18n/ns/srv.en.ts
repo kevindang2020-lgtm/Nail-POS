@@ -337,4 +337,12 @@ export const SRV_EN: Record<string, string> = {
   'srv.SYNC.FAILED_AGO_MIN': 'Couldn\'t refresh — showing data from {n} min ago',
   'srv.SYNC.FAILED_AGO_H': 'Couldn\'t refresh — showing data from {n} h ago',
   'srv.SYNC.SYNCING': 'Syncing…',
+  'srv.FAIR_WHY.PREFERRED': '{name} selected because {name} is the guest\'s preferred technician (salon walk-in policy).',
+  'srv.FAIR_WHY.PREVIOUS': '{name} selected because {name} served this guest last time (salon walk-in policy).',
+  'srv.FAIR_ORDER.NONE': 'Fair rotation order: the recommendation is the next technician in the rotation.',
+  'srv.FAIR_ORDER.CUSTOMER_REQUEST': '{name} is ahead of {rotation} (next in rotation) because the guest asked for {name}. {rotation} keeps the turn position.',
+  'srv.FAIR_ORDER.PREFERRED_TECHNICIAN': '{name} is ahead of {rotation} (next in rotation) because {name} is the guest\'s preferred technician. {rotation} keeps the turn position.',
+  'srv.FAIR_ORDER.PREVIOUS_TECHNICIAN': '{name} is ahead of {rotation} (next in rotation) because {name} served this guest last time. {rotation} keeps the turn position.',
+  'srv.FAIR_ORDER.LANGUAGE_MATCH': '{name} is ahead of {rotation} (next in rotation) because {name} speaks the guest\'s language. {rotation} keeps the turn position.',
+  'srv.FAIR_ORDER.MAX_CONSECUTIVE': '{name} is ahead of {rotation} because {rotation} reached the limit of automatic assignments in a row. {rotation} keeps the turn position.',
 };

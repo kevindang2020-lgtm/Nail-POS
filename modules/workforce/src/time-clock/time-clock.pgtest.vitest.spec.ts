@@ -150,3 +150,28 @@ describe('manager corrections', () => {
     }
   });
 });
+
+describe('200-Technician 04 — opening-hour surge', () => {
+  const TECH_C = uuid('cd', 11), TECH_D = uuid('cd', 12), TECH_E = uuid('cd', 13);
+  it('lists who is scheduled today and not on the clock (availability core: time off excluded); the batch clock-in runs THE clock-in per technician and reports each', async () => {
+    await pg.query(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, status) values
+      ($1,$4,$5,'Cara','C','Cara C',true,'active'), ($2,$4,$5,'Dee','D','Dee D',true,'active'), ($3,$4,$5,'Eve','E','Eve E',true,'active')`, [TECH_C, TECH_D, TECH_E, TA, BA]);
+    const today = (await q(`select to_char((now() at time zone 'America/New_York')::date, 'YYYY-MM-DD') as d`))[0].d as string;
+    for (const t of [TECH_C, TECH_D])
+      await pg.query(`insert into technician_schedules (tenant_id, branch_id, technician_id, day_of_week, start_time, end_time, is_working) values ($1,$2,$3, extract(dow from $4::date)::int, '00:00', '23:59', true)`, [TA, BA, t, today]);
+    await pg.query(`insert into technician_time_off (tenant_id, branch_id, technician_id, starts_at, ends_at, status, reason) values ($1,$2,$3, now() - interval '2 days', now() + interval '2 days', 'approved', 'vacation')`, [TA, BA, TECH_D]);
+    const r = await svc.openingRush(ctxA);
+    expect(r.businessDate).toBe(today); expect(r.timeZone).toBe('America/New_York');
+    expect(r.notClockedIn.map((x) => [x.technicianName, x.startTime])).toEqual([['Cara C', '00:00']]);   // Dee is on approved time off, Eve has no schedule
+    const before = await count(`select count(*)::int as n from technician_shifts where tenant_id = $1`, [TA]);
+    const b = await svc.clockInBatch(ctxA, [TECH_C, TECH_E, uuid('cd', 99), TECH_C]);
+    expect(b.results.map((x) => [x.technicianId, x.outcome, x.code])).toEqual([[TECH_C, 'clocked_in', null], [TECH_E, 'clocked_in', null], [uuid('cd', 99), 'refused', 'TECHNICIAN_NOT_FOUND']]);
+    expect(b.summary).toEqual({ clockedIn: 2, alreadyClockedIn: 0, refused: 1 });
+    expect(await count(`select count(*)::int as n from technician_shifts where tenant_id = $1`, [TA])).toBe(before + 2);
+    expect((await svc.clockInBatch(ctxA, [TECH_C])).results[0].outcome).toBe('already_clocked_in');   // one open punch each
+    expect(await wf.getTechnicianState(TA, TECH_C)).toMatchObject({ clock: 'CLOCKED_IN' });
+    expect((await svc.openingRush(ctxA)).notClockedIn).toEqual([]);
+    expect((await svc.clockInBatch(ctxB, [TECH_C])).results[0]).toMatchObject({ outcome: 'refused', code: 'TECHNICIAN_NOT_FOUND' });   // another salon
+    await expect(svc.clockInBatch(ctxA, [])).rejects.toThrow(/at least one/);
+  });
+});

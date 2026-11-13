@@ -171,6 +171,8 @@ export interface ServingRepositoryPort {
   completeServiceDone?(ctx: ServingContext, id: string, opts: { lock: boolean; source: 'tech_app' | 'serving_mark_done' | 'serving_send' | 'pos'; technicianId?: string | null; notes?: string | null }): Promise<{ ticketId: string; duplicate: boolean; idempotencyKey: string; subtotalCents: number; locked: boolean } | { error: 'TICKET_NOT_FOUND' | 'INVALID_STATUS' | 'NOT_ASSIGNED'; message: string }>;
   /** One-active-service-per-technician read (migration 586). Undefined on the in-memory adapter. */
   technicianActiveSession?(ctx: ServingContext, technicianId: string): Promise<{ ticketId: string; status: string } | null>;
+  /** Extras Serving 04: minutes until each technician's next booked appointment today (Postgres adapter; undefined in memory). */
+  nextBookingMinutes?(ctx: ServingContext): Promise<Record<string, number>>;
 }
 
 const now = () => new Date().toISOString();

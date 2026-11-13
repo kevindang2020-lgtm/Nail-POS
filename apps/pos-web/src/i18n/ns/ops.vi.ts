@@ -2039,4 +2039,67 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "syschk.src.code.expired": "Hết hạn", // DRAFT — Kevin reviews
   "syschk.src.code.active": "Đang hoạt động", // DRAFT — Kevin reviews
   "syschk.src.code.grace": "Thời gian gia hạn", // DRAFT — Kevin reviews
+  "ops.serving.review.title": "Xem lại trước khi xác nhận", // DRAFT — Kevin reviews
+  "ops.serving.review.action.mark_ready": "Đánh dấu xong", // DRAFT — Kevin reviews
+  "ops.serving.review.action.assign_technician": "Chuyển sang thợ khác", // DRAFT — Kevin reviews
+  "ops.serving.review.action.add_service": "Thêm dịch vụ phụ", // DRAFT — Kevin reviews
+  "ops.serving.review.guest": "Khách", // DRAFT — Kevin reviews
+  "ops.serving.review.move": "Từ {from} → sang {to}", // DRAFT — Kevin reviews
+  "ops.serving.review.priceCatalog": "Giá {price} (giá niêm yết)", // DRAFT — Kevin reviews
+  "ops.serving.review.priceManual": "Giá nhập tay {price} (giá niêm yết {catalog})", // DRAFT — Kevin reviews
+  "ops.serving.review.affected": "Dịch vụ bị thay đổi", // DRAFT — Kevin reviews
+  "ops.serving.review.new": "mới", // DRAFT — Kevin reviews
+  "ops.serving.review.permYes": "Bạn được phép: {what}", // DRAFT — Kevin reviews
+  "ops.serving.review.permNo": "Vai trò của bạn không được phép: {what}", // DRAFT — Kevin reviews
+  "ops.serving.review.overrideYes": "bạn có quyền quản lý ghi đè", // DRAFT — Kevin reviews
+  "ops.serving.review.overrideNo": "không có quyền quản lý ghi đè", // DRAFT — Kevin reviews
+  "ops.serving.review.noConflicts": "Không có xung đột.", // DRAFT — Kevin reviews
+  "ops.serving.review.confirm": "Xác nhận", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TICKET_LOCKED_AT_SERVICE_DONE": "Phiếu này đã khóa ở Hoàn tất dịch vụ — hãy mở lại trước.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.ALREADY_DONE": "Khách này đã ở Hoàn tất dịch vụ.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.NOT_IN_SERVICE": "Dịch vụ chưa bắt đầu nên chưa thể đánh dấu xong.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.NOTES_REQUIRED": "Tiệm yêu cầu ghi chú dịch vụ trước khi đánh dấu xong.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.CANNOT_MARK_DONE": "Hiện chưa thể đánh dấu khách này xong.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.OPEN_SERVICE_LINES": "{n} dòng dịch vụ chưa đánh dấu xong (vẫn được phép).", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_FOUND": "Thợ này không thuộc tiệm.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.SAME_TECHNICIAN": "Khách đang ở với thợ này rồi.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_ACTIVE": "Thợ này không còn hoạt động.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_BRANCH_ACCESS_DENIED": "Thợ này không thuộc chi nhánh này.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_SKILLED": "Thợ này chưa được duyệt làm {service}.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_NOT_AVAILABLE": "Thợ này hiện không rảnh.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.TECHNICIAN_ALREADY_SERVING": "Thợ này đang phục vụ khách khác.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.SCHEDULE_CONFLICT": "Thợ này có lịch hẹn vào giờ này.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.BOOKING_SOON": "{name} có lịch hẹn sau {minutes} phút; việc này cần khoảng {needs} phút.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.MANAGER_OVERRIDE_REQUIRED": "Tiệm chỉ cho đổi dịch vụ khi đang làm nếu có quản lý ghi đè.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.MANUAL_PRICE": "Giá nhập tay {priceCents} thay cho giá niêm yết {catalogCents} (quản lý ghi đè).", // DRAFT — Kevin reviews
+  "ops.serving.review.c.PRICE_OVERRIDE_NOT_PERMITTED": "Giá nhập tay cần quản lý ghi đè, vai trò của bạn không có quyền này.", // DRAFT — Kevin reviews
+  "ops.serving.review.c.ALREADY_ON_TICKET": "{service} đã có trên phiếu này.", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.btn": "Kiểm tra KPI", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.title": "Kiểm tra độ chính xác KPI", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.scope": "Ngày làm việc {date} · múi giờ {tz} · doanh thu = các khoản thanh toán ở trạng thái tính doanh thu, theo ngày của chi nhánh · số trên màn hình có thể cũ tối đa {ttl} giây", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.summary": "{match} khớp · {stale} bộ nhớ đệm cũ · {mismatch} không khớp · {notChecked} chưa kiểm tra", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.kpi": "KPI", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.shown": "Trên màn hình", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.authority": "Tổng quan (nguồn chuẩn)", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.match": "Khớp", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.stale_cache": "Bộ nhớ đệm cũ hơn dữ liệu", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.mismatch": "Không khớp", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.s.not_checked": "Chưa kiểm tra", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.same_value": "cùng giá trị", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.cache_older_than_data": "làm mới để thấy giá trị mới", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.definition_differs": "hai cách tính không khớp nhau", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.r.no_second_source": "không có nguồn thứ hai để so sánh", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.todayRevenueCents": "Doanh thu hôm nay", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.averageTicketCents": "Trung bình mỗi hóa đơn", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.waitingGuests": "Khách đang chờ", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.servingNow": "Đang phục vụ", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.readyCheckout": "Sẵn sàng thanh toán", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.activeTechs": "Thợ đang làm việc", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.checkInsToday": "Lượt check-in hôm nay", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.onlineBookings": "Đặt lịch trực tuyến", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.customerSatisfactionScore": "Mức hài lòng của khách hàng", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.appointmentsToday": "Lịch hẹn hôm nay", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.monthlyCardVolumeCents": "Doanh số thẻ tháng này", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
+  "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
 };

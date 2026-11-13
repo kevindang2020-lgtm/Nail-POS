@@ -449,3 +449,27 @@ describe('Round 2 — panel candidates, auto-run result, analytics + usage', () 
     expect(screen.getByText(/Alerts this period: 5 \(3 cleared on their own\)/)).toBeTruthy();
   });
 });
+
+// LIVE TECHNICIAN SCHEDULE 14 — Queue Fairness Indicator: the engine's orderChange is worded on the recommendation (never re-derived)
+describe('POSAIQueueAssignmentScreen — queue fairness indicator', () => {
+  const withOrder = (orderChange: any) => {
+    const base = (defaults()['GET /pos/ai-queue-assignment/entries/q1/panel'] as Reply).body;
+    routes['GET /pos/ai-queue-assignment/entries/q1/panel'] = { body: { ...base, recommendation: { ...base.recommendation, fairTurn: { mode: 'traditional_weighted_rotation', assignmentMode: 'RECOMMEND_AND_CONFIRM', policyVersion: '3', recommendedTechnicianId: 't1', requested: false, why: [], skipped: [], skips: [], candidates: [], eligiblePool: ['t1'], orderChange } } } };
+  };
+  it('says who the rotation would pick and why the guest preference put someone else first', async () => {
+    withOrder({ rotationPickId: 't3', rotationPickName: 'Ana', changedBy: 'preferred_technician', text: 'x', textCoded: { code: 'FAIR_ORDER.PREFERRED_TECHNICIAN', vars: { name: 'Mia', rotation: 'Ana' } } });
+    renderScreen(); await pickJessica();
+    const el = await screen.findByTestId('aiq-fairness');
+    expect(el.getAttribute('data-changed-by')).toBe('preferred_technician');
+    expect(el.textContent).toBe("↕ Mia is ahead of Ana (next in rotation) because Mia is the guest's preferred technician. Ana keeps the turn position.");
+  });
+  it('plain rotation order says so; an engine without the field shows nothing', async () => {
+    withOrder({ rotationPickId: 't1', rotationPickName: 'Mia', changedBy: 'none', text: 'x', textCoded: { code: 'FAIR_ORDER.NONE' } });
+    const { unmount } = renderScreen(); await pickJessica();
+    expect((await screen.findByTestId('aiq-fairness')).textContent).toBe('⚖ Fair rotation order: the recommendation is the next technician in the rotation.');
+    unmount();
+    routes = defaults(); install();
+    renderScreen(); await pickJessica();
+    expect(screen.queryByTestId('aiq-fairness')).toBeNull();
+  });
+});

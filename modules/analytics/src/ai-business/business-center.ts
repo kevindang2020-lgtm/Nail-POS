@@ -23,6 +23,7 @@
 //            System.
 // Nothing here edits a sale, an appointment, a customer, a price or a schedule, and nothing sends a message.
 import { hasPermission } from '@aipowersalon/permissions';
+import type { ReportChangeResponse, ReportChangeItem } from '@aipowersalon/api-contracts/tenant';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone, canMoveToSql } from '@aipowersalon/database';
@@ -348,6 +349,35 @@ export class BusinessCenter {
       verification: { status: v.status, reason: v.reason ?? null, checkedAt: (v as Row).checkedAt ?? null },
       facts, opportunities: tips.map((t) => ({ kind: t.kind, basis: t.basis, route: t.route, status: 'proposed' as const, ownerReview: true })),
       changesAnything: false as const, rule: 'Figures are the report\'s stored canonical Sales Report numbers; nothing is estimated. Opportunities are suggestions to review.' };
+  }
+
+  /** AI Business Assistant 10 — What Changed Since Last Check: two validated reports compared. The older one's days are
+   *  re-read from the Sales Report now (THE read Verify Numbers uses): olderNow − olderInReport = data corrections on those
+   *  days; newerInReport − olderNow = the actual business change. Same days → all of it is correction. Read only. */
+  async reportCompare(ctx: AiBusinessContext, id: string, withId: string): Promise<ReportChangeResponse> {
+    this.need(ctx);
+    const checkedAt = new Date(this.now()).toISOString();
+    const a = await this.reportRow(ctx, id); const b = await this.reportRow(ctx, String(withId ?? ''));
+    const parse = (r: Row) => { const c = typeof r.content === 'string' ? JSON.parse(r.content) : r.content; return { id: String(r.id), status: String(r.status), period: c?.period ?? null, snap: c?.snapshot ?? null, createdAt: r.created_at }; };
+    const [x, y] = [parse(a), parse(b)];
+    // older = the snapshot taken first (else the report made first)
+    const t = (v: { snap: Row | null; createdAt: unknown }) => new Date(String(v.snap?.takenAt ?? (v.createdAt instanceof Date ? v.createdAt.toISOString() : v.createdAt))).getTime();
+    const [older, newer] = t(x) <= t(y) ? [x, y] : [y, x];
+    const side = (v: typeof x) => ({ id: v.id, period: v.period ? { from: String(v.period.from), to: String(v.period.to), ...(v.period.partial != null ? { partial: !!v.period.partial } : {}) } : null, snapshotTakenAt: v.snap?.takenAt ?? null });
+    const out = (status: ReportChangeResponse['status'], reason: ReportChangeResponse['reason'], items: ReportChangeItem[] = [], samePeriod = false): ReportChangeResponse => ({ status, reason, older: side(older), newer: side(newer), samePeriod, items, checkedAt });
+    if (x.id === y.id) return out('cannot_compare', 'same_report');
+    if (older.status !== 'completed' || newer.status !== 'completed') return out('cannot_compare', 'not_completed');
+    if (!older.snap || !newer.snap || !older.period?.from || !newer.period?.from) return out('cannot_compare', 'no_snapshot');
+    let now: Row;
+    try { now = (await this.d.sales.getSales({ tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions }, { from: older.period.from, to: older.period.to })).kpis as Row; }
+    catch (e) { if (e instanceof BusinessCenterError) throw e; return out('cannot_compare', 'no_permission'); }   // no financial permission → nothing to compare
+    const samePeriod = older.period.from === newer.period.from && older.period.to === newer.period.to;
+    const keys: ReportChangeItem['metric'][] = ['netSalesCents', 'grossSalesCents', 'ticketsCount', 'averageTicketCents', 'refundsCents', 'discountsCents'];
+    const items = keys.filter((k) => older.snap![k] != null && newer.snap![k] != null).map((k) => {
+      const olderInReport = N(older.snap![k]), olderNow = N(now[k]), newerInReport = N(newer.snap![k]);
+      return { metric: k, olderInReport, olderNow, newerInReport, dataCorrection: olderNow - olderInReport, businessChange: samePeriod ? null : newerInReport - olderNow };
+    });
+    return out('compared', null, items, samePeriod);
   }
 
   // ═════════════════════════════════════════════ ALERTS ═════════════════════════════════════════════

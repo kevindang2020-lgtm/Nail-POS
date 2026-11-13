@@ -319,3 +319,34 @@ describe('AI Business Reports 15 — Executive Summary & Growth Advisor (read-on
     expect(await code(bc.reportExecutive(ctx({ tenantId: X }), jid))).toBe('BC_REPORT_NOT_FOUND');
   });
 });
+
+// runs LAST: it files extra sales on yesterday / today, which the alert evaluations above must not see
+describe('AI Business Reports — what changed since last check', () => {
+  it('RP-05 (AI Business Assistant 10) what changed since the last check: corrections to the older report\'s days vs the actual business change; read only', async () => {
+    const net = (r: any) => r.headline.find((h: any) => h.key === 'net_sales').value as number;
+    // earlier tests (the automated-report sweep runs under a fake clock) leave daily_brief jobs made seconds ago; the double-tap
+    // guard would hand one back — age them past that window so this test makes its own reports
+    await q(`update ai_business_report_jobs set created_at = created_at - interval '1 hour' where tenant_id = $1`, [T]);
+    const ry: any = await bc.reportGenerate(ctx(), { reportType: 'daily_brief', preset: 'yesterday' });
+    const y0 = net(ry);
+    await paid(1000, 1);   // a late sale filed on yesterday — a data correction, not today's business
+    await paid(4000, 0);   // today's business
+    const tdy: any = await bc.reportGenerate(ctx(), { reportType: 'daily_brief', preset: 'today' });
+    const tnew: any = await bc.reportRegenerate(ctx(), tdy.id);
+    const jobs = (await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n;
+    const cmp = await bc.reportCompare(ctx(), tnew.id, ry.id);   // either order: the older snapshot is the baseline
+    expect(cmp).toMatchObject({ status: 'compared', reason: null, samePeriod: false, older: { id: ry.id }, newer: { id: tnew.id } });
+    expect(cmp.items.find((x) => x.metric === 'netSalesCents')).toEqual({ metric: 'netSalesCents', olderInReport: y0, olderNow: y0 + 1000, newerInReport: net(tnew), dataCorrection: 1000, businessChange: net(tnew) - (y0 + 1000) });
+    // same days on both reports → every difference is a correction, never business
+    const ry2: any = await bc.reportRegenerate(ctx(), ry.id);
+    const same = await bc.reportCompare(ctx(), ry2.id, ry.id);
+    expect(same).toMatchObject({ status: 'compared', samePeriod: true, older: { id: ry.id } });
+    expect(same.items.find((x) => x.metric === 'netSalesCents')).toMatchObject({ olderInReport: y0, olderNow: y0 + 1000, newerInReport: y0 + 1000, dataCorrection: 1000, businessChange: null });
+    expect(await bc.reportCompare(ctx(), ry.id, ry.id)).toMatchObject({ status: 'cannot_compare', reason: 'same_report' });
+    const nf: any = await bc.reportGenerate(ctx({ permissions: ['pos.ai_business.view', 'pos.reports.view'] }), { reportType: 'monthly_review' });
+    expect(await bc.reportCompare(ctx(), nf.id, ry.id)).toMatchObject({ status: 'cannot_compare', reason: 'no_snapshot' });
+    expect(await code(bc.reportCompare(ctx(), ry.id, id(999)))).toBe('BC_REPORT_NOT_FOUND');
+    expect(await code(bc.reportCompare(ctx({ tenantId: X, branchId: null }), ry.id, ry2.id))).toBe('BC_REPORT_NOT_FOUND');
+    expect((await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n).toBe(jobs + 2);   // only the two regenerations / generation above wrote
+  });
+});

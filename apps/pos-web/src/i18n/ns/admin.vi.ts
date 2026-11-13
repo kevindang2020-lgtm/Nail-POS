@@ -520,4 +520,19 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   "apx.kpi.urgentSub": "hết hạn trong 24 giờ",
   "apx.kpi.completed": "Đã hoàn tất",
   "apx.kpi.completedSub": "đã duyệt và thực hiện",
+  "admin.timeClock.rush.title": "Giờ mở cửa đông khách", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.backlog": "{waiting} khách đang chờ · {unassigned} chờ phân thợ · chờ khoảng {wait} phút", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.backlogUnknown": "Hàng chờ: —", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.onClock": "{n} thợ đang chấm công · bây giờ {now}", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.none": "Tất cả thợ có lịch hôm nay đã chấm công vào.", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.pick": "Chọn {name}", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.starts": "bắt đầu {time}", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.late": "Trễ", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.pickAll": "Chọn tất cả", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.confirm": "Chấm công vào cho {n} thợ ngay?", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.yes": "Đồng ý chấm công", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.clockIn": "Chấm công vào người đã chọn ({n})", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.result": "{a} đã chấm công vào · {b} đã chấm công trước đó · {c} bị từ chối", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.code.TECHNICIAN_NOT_FOUND": "không thuộc tiệm này", // DRAFT — Kevin reviews
+  "admin.timeClock.rush.code.REFUSED": "bị từ chối", // DRAFT — Kevin reviews
 };

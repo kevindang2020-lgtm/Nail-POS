@@ -19,6 +19,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTechAppointmentsApi } from '../api/posTechAppointmentsApi';
+import { codeLabel } from '../components/codeLabel';
 import { posTechAppointmentsScreenApi } from '../api/posTeamScreensApi';
 import { posLiveTechnicianScheduleApi } from '../api/posLiveTechnicianScheduleApi';
 import { bookingConflictText } from '../api/posBookingApi';
@@ -114,6 +115,13 @@ export function POSTechAppointmentsScreen() {
             onClick={() => { if (kk === 'online') setSource('online'); showDay(st); }} />)}
       </div>
 
+      {/* TECH APPOINTMENTS 08 — online bookings still waiting on the customer's SMS code: NOT appointments yet, never in the KPIs */}
+      {kp.data?.pendingVerification?.count ? <div className="fk-note" data-testid="pending-verification" role="status">
+        <b>{tx('tm.pv.title', { n: nf(kp.data.pendingVerification.count) })}</b> <span className="fk-hint">{tx('tm.pv.rule')}</span>
+        <ul className="tm-pv-list" style={{ margin: "4px 0 0", paddingLeft: 18 }}>{kp.data.pendingVerification.items.map((h: any) => <li key={h.holdId} data-testid="pv-item">
+          {hm12(h.start)}–{hm12(h.end)} · {h.technician ?? tx('tm.anyTech')}{h.phone ? ` · ${h.phone}` : ''} <span className={'fk-chip ' + (h.verification === 'locked' || h.verification === 'failed' ? 'bad' : 'warn')}>{codeLabel('tm.pv.state', h.verification)}</span></li>)}</ul>
+      </div> : null}
+
       <FitPanel testId="tech-cards" title={<>{tx('tm.techCards')}{s?.lanes ? <span className="fk-muted"> · {tx('pos.n_technicians', { n: String(s.lanes.total) })}</span> : null}</>}>
         <div className="mos-tools" data-testid="ta-lane-pager">
           <div className="fn-search mos-search"><input className="fk-search" type="search" value={laneSearch} onChange={(e) => setLaneSearch(e.target.value)} placeholder={tx('pos.find_technician_placeholder')} aria-label={tx('pos.find_technician')} /></div>
@@ -166,7 +174,7 @@ export function POSTechAppointmentsScreen() {
               <td>{a.services.join(', ') || '—'}<span className="fk-li-s">{a.online ? tx('tm.onlineBooked') : tx('tm.inSalonBooked')}</span></td>
               <td>{a.technician ?? (a.anyTechnician ? tx('tm.anyTech') : '—')}</td>
               <td title={exactTime(a)} data-testid="appt-when">{a.date} · {hm12(a.start)}<span className="fk-li-s">{tx('cg.min', { n: nf(a.minutes) })}</span></td>
-              <td><span className={'fk-chip ' + (TONE[a.status] ?? 'mut')}>{apptStatus(a.status)}</span>{a.conflict ? <span className="fk-chip bad" data-testid="conflict-chip">{tx('pos.conflict')}</span> : null}</td>
+              <td><span className={'fk-chip ' + (TONE[a.status] ?? 'mut')}>{apptStatus(a.status)}</span>{a.conflict ? <span className="fk-chip bad" data-testid="conflict-chip">{tx('pos.conflict')}</span> : null}{a.phoneVerification ? <span className="fk-li-s" data-testid="appt-phone-proof">{codeLabel('tm.pv.proof', a.phoneVerification)}</span> : null}</td>
               <td className="fn-acts" onClick={(e) => e.stopPropagation()}><button type="button" className="fk-btn ghost sm" onClick={() => openAppt(a.appointmentId)} data-testid="appt-details">{tx('pos.details')}</button></td>
             </tr>)}</tbody></table>}
         <div className="fk-hint">{sort === 'start' ? tx('tm.orderStart') : tx('tm.orderNewest')}</div>

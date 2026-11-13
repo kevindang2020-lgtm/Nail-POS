@@ -129,4 +129,11 @@ describe('POSTurnQueueScreen — fairness, reports, settings, simulate', () => {
     expect(await screen.findByText('Recommended: Mary')).toBeInTheDocument();
     expect(api.simulate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'lowest_turn_units', technicians: [expect.objectContaining({ name: 'Lisa', turns: 2, position: 1 }), expect.objectContaining({ name: 'Mary', turns: 1.5, position: 2 })] }));
   });
+  it('LIVE TECHNICIAN SCHEDULE 14: the simulator says when a guest request changed the rotation order', async () => {
+    api.simulate.mockResolvedValue({ mode: 'lowest_turn_units', recommended: 'Mary', why: [], skipped: [], ranking: [], productionStateChanged: false,
+      orderChange: { rotationPickId: 'sim-01', rotationPickName: 'Lisa', changedBy: 'customer_request', text: 'x', textCoded: { code: 'FAIR_ORDER.CUSTOMER_REQUEST', vars: { name: 'Mary', rotation: 'Lisa' } } } });
+    await openTab('Simulate');
+    fireEvent.click(screen.getByRole('button', { name: 'Run simulation' }));
+    expect((await screen.findByTestId('tq-sim-fairness')).textContent).toBe('Mary is ahead of Lisa (next in rotation) because the guest asked for Mary. Lisa keeps the turn position.');
+  });
 });

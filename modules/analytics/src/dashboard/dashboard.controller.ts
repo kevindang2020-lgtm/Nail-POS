@@ -9,6 +9,7 @@ import { DashboardService, type TenantContext } from './dashboard.service';
 import type { DashboardQuery } from './dashboard.repository';
 import { ListQueries } from '@aipowersalon/database';
 import { DashboardControllerListQueries } from './dashboard.list-queries';
+import type { LiveOpsKpiCheck } from '@aipowersalon/api-contracts/tenant';
 
 function tcFrom(req: any): TenantContext {
   const c = req?.ctx || {};
@@ -29,6 +30,8 @@ export class DashboardController {
     return this.svc.getState(tcFrom(req), opts(q));
   }
 
+  /** Live Operations 04 — KPI Accuracy & Reconciliation Checker (read only) */
+  @Get('kpi-check') @RequirePermission('pos.dashboard.view') kpiCheck(@Query() q: any, @Req() req: any): Promise<LiveOpsKpiCheck> { return this.svc.kpiCheck(tcFrom(req), { date: q?.date }); }
   @Get('kpis') @RequirePermission('pos.dashboard.view') kpis(@Query() q: any, @Req() req: any) { return this.svc.getKpis(tcFrom(req), opts(q)); }
   @Get('operations') @RequirePermission('pos.dashboard.view') operations(@Query() q: any, @Req() req: any) { return this.svc.getOperations(tcFrom(req), opts(q)); }
   @Get('appointments') @RequirePermission('pos.dashboard.view') appointments(@Query() q: any, @Req() req: any) { return this.svc.getAppointments(tcFrom(req), opts(q)); }

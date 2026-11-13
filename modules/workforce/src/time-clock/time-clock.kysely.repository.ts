@@ -20,10 +20,28 @@ const isoOf = (v: unknown): string | null => (v == null ? null : v instanceof Da
 const dateOf = (v: unknown): string => (v instanceof Date ? utcDate(v) : String(v ?? '').slice(0, 10));
 const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 import { buildMediaUrl } from '@aipowersalon/media';
+import { loadScheduleFacts } from '../availability/availability-port.adapter';
+import { isTechnicianAvailableAt, DAY_NAMES_LOCAL } from '../availability/availability-core';
+import { localDateTimeToEpochMs } from '@aipowersalon/date-time';
 
 export class KyselyTimeClockRepository implements TimeClockRepositoryPort {
   constructor(private readonly db: Kysely<DB>, private readonly outbox?: OutboxWriter) {}
   async timeZone(ctx: TimeClockContext): Promise<string> { return branchTimeZone(this.db, ctx.tenantId, ctx.branchId); }
+  /** 200-Technician 04: scheduled today = a working weekly day whose START the availability core accepts (not on approved time
+   *  off / blocked then) — the same facts and rule the booking eligibility uses; one technician at a time, at most 200. */
+  async scheduledStarts(ctx: TimeClockContext, dateStr: string, technicianIds: string[]): Promise<{ technicianId: string; startTime: string }[]> {
+    const out: { technicianId: string; startTime: string }[] = [];
+    const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay();
+    for (const technicianId of technicianIds.slice(0, 200)) {
+      const facts = await loadScheduleFacts(this.db, { tenantId: ctx.tenantId, branchId: ctx.branchId || null, technicianId, dateIso: dateStr });
+      const day = facts?.weekly[DAY_NAMES_LOCAL[dow]];
+      if (!facts || !day?.isWorking || !day.startTime) continue;
+      const at = localDateTimeToEpochMs(dateStr, day.startTime, facts.timezone);
+      if (!Number.isFinite(at) || !isTechnicianAvailableAt({ ...facts, liveBreaks: [] }, at, 1).available) continue;
+      out.push({ technicianId, startTime: day.startTime });
+    }
+    return out;
+  }
   /** Will the clock change reach the boards through the realtime projection? (outbox AND publisher on — 6f3b0ed) */
   emitsDomainEvents(): boolean { return projectionDeliversRealtime(this.outbox != null); }
   /** technician.clocked_in / clocked_out — declared since Constitution 8, recorded by nothing until now. */

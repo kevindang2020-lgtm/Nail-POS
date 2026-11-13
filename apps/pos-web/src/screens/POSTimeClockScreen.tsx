@@ -12,6 +12,54 @@ import { useCan } from '../components/usePermissions';
 import { useRealtime } from '../realtime/useRealtime';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/codeLabel';
+import { posOverviewApi } from '../api/posOverviewApi';
+import type { OpeningRushView, ClockInBatchResult } from '@aipowersalon/api-contracts/tenant';
+
+/** 200-Technician 04 — Opening-Hour Surge: the queue backlog and pending assignments (the Overview board's own counts), who is
+ *  scheduled today and not on the clock yet (server: THE availability facts), and a confirmed batch clock-in (THE clock-in per
+ *  technician). The roster's own per-row buttons below stay as they are. */
+function OpeningRushPanel({ version, canManage, onChanged }: { version: unknown; canManage: boolean; onChanged: () => void }) {
+  const [rush, setRush] = useState<OpeningRushView | null>(null); const [err, setErr] = useState<string | null>(null);
+  const [backlog, setBacklog] = useState<{ waiting: number; unassigned: number; wait: number } | null>(null);
+  const [pick, setPick] = useState<string[]>([]); const [confirm, setConfirm] = useState(false); const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<ClockInBatchResult | null>(null);
+  useEffect(() => {
+    posTimeClockApi.openingRush().then((r) => { setRush(r); setErr(null); }).catch((e: any) => setErr(e?.message || t('pos.action_failed')));
+    posOverviewApi.getOverview().then((o: any) => setBacklog(o?.kpis ? { waiting: Number(o.kpis.waitingGuests?.count ?? 0), unassigned: Number(o.walkInStatus?.checkedInNotAssigned ?? 0), wait: Number(o.walkInStatus?.estimatedWaitMinutes ?? 0) } : null)).catch(() => setBacklog(null));
+  }, [version]);
+  const list = rush?.notClockedIn ?? [];
+  const nameOf = (id: string) => list.find((x) => x.technicianId === id)?.technicianName ?? res?.results.find((x) => x.technicianId === id)?.technicianId ?? id;
+  const run = async () => {
+    setBusy(true); setConfirm(false);
+    try { const r = await posTimeClockApi.clockInBatch(pick); setRes(r); setPick([]); onChanged(); }
+    catch (e: any) { setErr(e?.message || t('pos.could_not_update_the_time_clock')); }
+    finally { setBusy(false); }
+  };
+  if (!rush && !err) return null;
+  return (
+    <section className="panel" data-testid="opening-rush" style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
+        <b>{t('admin.timeClock.rush.title')}</b>
+        <span data-testid="rush-backlog">{backlog ? t('admin.timeClock.rush.backlog', { waiting: String(backlog.waiting), unassigned: String(backlog.unassigned), wait: String(backlog.wait) }) : t('admin.timeClock.rush.backlogUnknown')}</span>
+        {rush ? <span className="sub" data-testid="rush-onclock">{t('admin.timeClock.rush.onClock', { n: String(rush.onTheClock), now: rush.nowLocal })}</span> : null}
+      </div>
+      {err ? <div className="err">{err}</div> : null}
+      {rush && list.length === 0 ? <div className="sub" data-testid="rush-none">{t('admin.timeClock.rush.none')}</div> : null}
+      {list.length ? <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0' }}>{list.map((x) => <li key={x.technicianId} data-testid="rush-row" data-late={x.late ? '1' : '0'}>
+        <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 36 }}>
+          {canManage ? <input type="checkbox" checked={pick.includes(x.technicianId)} onChange={() => setPick((p) => (p.includes(x.technicianId) ? p.filter((y) => y !== x.technicianId) : p.length >= 25 ? p : [...p, x.technicianId]))} aria-label={t('admin.timeClock.rush.pick', { name: x.technicianName ?? '' })} data-testid="rush-pick" /> : null}
+          {x.technicianName ?? '—'} · {t('admin.timeClock.rush.starts', { time: x.startTime })}{x.late ? <span className="fk-chip warn" style={{ marginLeft: 6 }}>{t('admin.timeClock.rush.late')}</span> : null}
+        </label></li>)}</ul> : null}
+      {canManage && list.length ? <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button type="button" className="btn ghost" onClick={() => setPick(list.slice(0, 25).map((x) => x.technicianId))} data-testid="rush-pick-all">{t('admin.timeClock.rush.pickAll')}</button>
+        {confirm ? <span data-testid="rush-confirm">{t('admin.timeClock.rush.confirm', { n: String(pick.length) })} <button type="button" className="btn" disabled={busy} onClick={() => void run()} data-testid="rush-yes">{t('admin.timeClock.rush.yes')}</button> <button type="button" className="btn ghost" onClick={() => setConfirm(false)}>{t('pos.cancel')}</button></span>
+          : <button type="button" className="btn" disabled={!pick.length || busy} onClick={() => setConfirm(true)} data-testid="rush-clock-in">{t('admin.timeClock.rush.clockIn', { n: String(pick.length) })}</button>}
+      </div> : null}
+      {res ? <div data-testid="rush-result" className="sub" style={{ marginTop: 6 }}>{t('admin.timeClock.rush.result', { a: String(res.summary.clockedIn), b: String(res.summary.alreadyClockedIn), c: String(res.summary.refused) })}
+        {res.results.filter((x) => x.outcome === 'refused').map((x) => <div key={x.technicianId} data-testid="rush-refused">{nameOf(x.technicianId)}: {codeLabel('admin.timeClock.rush.code', x.code ?? 'REFUSED')}</div>)}</div> : null}
+    </section>
+  );
+}
 
 type Punch = { id: string; technicianId: string; startTime: string | null; endTime: string | null; status: string };
 // the server's row (api-contracts TimeClockTechnicianRow) + the roster avatar; `on_break` since the Oct 12 merge (breaks, 580)
@@ -89,6 +137,7 @@ const badge = (state: Row['state']) => {
 };
 
 export function POSTimeClockScreen() {
+  const canDo = useCan();
   const [s, setS] = useState<State | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -208,6 +257,7 @@ export function POSTimeClockScreen() {
         <div className="kpi"><div className="l">{t('pos.hours_today')}</div><div className="v">{hrs(s.kpis.totalHoursToday)}</div></div>
       </div>
 
+      <OpeningRushPanel version={s} canManage={canDo('pos.technicians.manage')} onChanged={() => void load()} />
       {note ? <div className="err" style={{ marginTop: 12 }}>{note}</div> : null}
 
       <section className="panel" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>

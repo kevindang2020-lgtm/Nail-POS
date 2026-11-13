@@ -7,6 +7,7 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 export const DashboardControllerListQueries = {
   state: { filters: { shape: { type: 'text' }, date: { type: 'date' }, range: { type: 'text' } }, search: false },
   kpis: { filters: { date: { type: 'date' }, range: { type: 'text' } }, search: false },
+  kpiCheck: { filters: { date: { type: 'date' } }, search: false },   // Live Operations 04
   operations: { filters: { date: { type: 'date' }, range: { type: 'text' } }, search: false },
   appointments: { filters: { date: { type: 'date' }, range: { type: 'text' } }, search: false },
   queue: { filters: { date: { type: 'date' }, range: { type: 'text' } }, search: false },

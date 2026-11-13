@@ -6,7 +6,7 @@ import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import type { AlertIncidentListResponse, AlertIncidentDetail, AlertIncidentActionRequest, AlertIncidentActionResponse, AlertIncidentNoteRequest, AlertDeliverySettings, AlertDeliverySettingsResponse, AlertDeliveryUpdateRequest,
   BcScheduleListResponse, BcExecutiveSummaryResponse,
-  BranchScorecardResponse, BranchExplainResponse, BranchDataCheckResponse, BranchSnapshotDetail, BranchSnapshotListResponse, AssistantHistoryResponse, AssistantDataCheckResponse, AssistantHistoryDeleteResponse } from '@aipowersalon/api-contracts/tenant';
+  BranchScorecardResponse, BranchExplainResponse, BranchDataCheckResponse, BranchSnapshotDetail, BranchSnapshotListResponse, AssistantHistoryResponse, AssistantDataCheckResponse, AssistantHistoryDeleteResponse, ReportChangeResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Delete, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject, Optional } from '@nestjs/common';
@@ -54,6 +54,7 @@ const HISTORY = { filters: { state: { type: 'enum', values: BC_EVENT_STATES }, p
   search: { maxLength: 80 }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
 const HISTORY_Q = { search: { maxLength: 80 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
+const COMPARE_Q = { filters: { with: { type: 'uuid' } }, search: false } as const;   // AI Business Assistant 10
 const SNAPSHOTS_Q = { maxLimit: 10, defaultLimit: 10, params: ['page'] } as const;
 const INCIDENTS = { filters: { status: { type: 'enum', values: INCIDENT_STATUSES } }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
@@ -81,6 +82,9 @@ export class BusinessCenterController {
   // AI Business Reports 15: executive summary (the report's verified figures) + growth advisor proposals — read-only
   @Get('reports/:id/executive') @RequirePermission('pos.ai_business.view')
   reportExecutive(@Req() q: any, @Param('id') id: string): Promise<BcExecutiveSummaryResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportExecutive(c, id) as Promise<BcExecutiveSummaryResponse>); }
+  /** AI Business Assistant 10 — what changed since the last check: data corrections vs actual business change (read only) */
+  @Get('reports/:id/compare') @RequirePermission('pos.ai_business.view') @ListQuery(COMPARE_Q)
+  reportCompare(@Req() q: any, @Param('id') id: string, @Query() f: any): Promise<ReportChangeResponse> { const c = ctxFrom(q); authed(c); return run(() => this.c().reportCompare(c, id, String(f?.with ?? ''))); }
   @Get('reports/:id') @RequirePermission('pos.ai_business.view')
   report(@Req() q: any, @Param('id') id: string) { const c = ctxFrom(q); authed(c); return run(() => this.c().reportDetail(c, id)); }
   @Post('reports/generate') @RequirePermission('pos.ai_business.view')

@@ -243,3 +243,70 @@ describe('POSServingScreen — Requested-Technician Change Approvals (was unrend
     });
   });
 });
+
+// ── extras Serving 07 — Touch Safe Action Review: the server's review (guest, lines touched, permission, conflicts) is shown
+// before a move / an add-on and before a Mark Ready that the server flags; a clean Mark Ready stays one tap.
+describe('POSServingScreen — Serving 07 action review', () => {
+  const review = (over: any = {}) => ({ ticketId: 'sv1', action: 'mark_ready', guest: { customerName: 'Jessica Miller', ticketNumber: 'S1', isVip: false },
+    affected: [{ serviceLineId: 'l1', serviceName: 'Gel Manicure', technicianName: 'Mia', priceCents: 6500, isNew: false }], change: null,
+    permission: { key: 'pos.serving.mark_done', allowed: true }, conflicts: [], canProceed: true, needsConfirmation: false, ...over });
+  const rec = (rv: any) => {
+    const calls: { url: string; method: string; body?: any }[] = [];
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url); const method = init?.method || 'GET';
+      calls.push({ url: u, method, body: init?.body ? JSON.parse(init.body) : undefined });
+      const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
+      if (u.includes('/action-review')) return ok(rv);
+      if (u.includes('/change-requests/pending')) return ok([]);
+      if (u.includes('/pos/technicians/state')) return ok(sRoster);
+      if (u.includes('/revisions')) return ok({ ticketId: 'sv1', currentVersion: 0, revisions: [] });
+      if (u.match(/\/pos\/serving\/tickets\/[^/?]+$/) && method === 'GET') return ok({ ticketId: 'sv1', status: 'in_service', allowedActions: ['mark_ready'], customer: { fullName: 'Jessica Miller' }, services: [{ serviceLineId: 'l1', serviceName: 'Gel Manicure', priceCents: 6500, status: 'serving' }], subtotalCents: 6500 });
+      if (u.includes('/pos/serving/state')) return ok(richServing);
+      return ok({ ok: true });
+    }) as any;
+    return calls;
+  };
+  const markReadyQuick = async () => { await waitForLoaded(); const btn = screen.getAllByText('Mark Ready').map((n) => n.closest('button')).find((b) => b && b.getAttribute('aria-disabled') !== 'true'); fireEvent.click(btn!); };
+
+  it('a clean Mark Ready (server: no confirmation needed) posts at once after the read-only review', async () => {
+    const calls = rec(review());
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Mark Ready').some((n) => n.closest('button')?.getAttribute('aria-disabled') !== 'true')).toBe(true));
+    await markReadyQuick();
+    await waitFor(() => expect(calls.some((c) => c.url.includes('/mark-service-done') && c.method === 'POST')).toBe(true));
+    expect(calls.find((c) => c.url.includes('/action-review'))!.url).toContain('action=mark_ready');
+    expect(screen.queryByTestId('sv-review')).toBeNull();
+  });
+
+  it('a blocked Mark Ready shows the guest, lines, permission and the conflict; Confirm is off and nothing posts', async () => {
+    const calls = rec(review({ conflicts: [{ code: 'NOTES_REQUIRED', severity: 'block' }, { code: 'OPEN_SERVICE_LINES', severity: 'info', vars: { n: 1 } }], canProceed: false, needsConfirmation: true }));
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByText('Mark Ready').some((n) => n.closest('button')?.getAttribute('aria-disabled') !== 'true')).toBe(true));
+    await markReadyQuick();
+    const box = await screen.findByTestId('sv-review');
+    expect(box.getAttribute('data-can-proceed')).toBe('false');
+    expect(box.textContent).toContain('Jessica Miller');
+    expect(screen.getAllByTestId('sv-review-line').map((n) => n.textContent)).toEqual([expect.stringContaining('Gel Manicure')]);
+    expect(screen.getByTestId('sv-review-perm').textContent).toBe('You are allowed to: Mark Ready');
+    expect(screen.getByTestId('sv-review-conflict-NOTES_REQUIRED').textContent).toContain('Your salon requires a service note before Mark Ready.');
+    expect(screen.getByTestId('sv-review-conflict-OPEN_SERVICE_LINES').textContent).toBe('1 service line(s) are not marked done yet (allowed).');
+    expect(screen.getByTestId('sv-review-confirm')).toBeDisabled();
+    expect(calls.some((c) => c.url.includes('/mark-service-done'))).toBe(false);
+  });
+
+  it('moving to another technician always stops at the review (from → to, booking warning) and posts only on Confirm', async () => {
+    const calls = rec(review({ action: 'assign_technician', change: { fromTechnicianName: 'Mia', toTechnicianName: 'Leo Chen' }, permission: { key: 'pos.serving.assign_technician', allowed: true, overrideKey: 'pos.booking.override_conflict', overrideAllowed: false },
+      conflicts: [{ code: 'BOOKING_SOON', severity: 'warn', vars: { name: 'Leo Chen', minutes: 10, needs: 25 } }], needsConfirmation: true }));
+    render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
+    await waitForLoaded();
+    fireEvent.click(await screen.findByRole('button', { name: 'Move Tech' }));
+    fireEvent.change(screen.getByLabelText('Move to technician'), { target: { value: 't2' } });
+    await screen.findByTestId('sv-review');
+    expect(calls.find((c) => c.url.includes('/action-review'))!.url).toMatch(/action=assign_technician.*technicianId=t2/);
+    expect(screen.getByTestId('sv-review-change').textContent).toBe('From Mia → to Leo Chen');
+    expect(screen.getByTestId('sv-review-conflict-BOOKING_SOON').textContent).toContain('Leo Chen has a booking in 10 min; this needs about 25 min.');
+    expect(calls.some((c) => c.url.includes('/assign-technician'))).toBe(false);
+    fireEvent.click(screen.getByTestId('sv-review-confirm'));
+    await waitFor(() => expect(calls.find((c) => c.url.includes('/assign-technician'))?.body).toEqual({ technicianId: 't2' }));
+  });
+});

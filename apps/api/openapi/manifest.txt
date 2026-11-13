@@ -349,6 +349,7 @@ GET /pos/ai-business/center/branches/snapshots/{id}  realm=staff  auth=session  
 GET /pos/ai-business/center/reports  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/summary  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/center/reports/{id}  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-business/center/reports/{id}/compare  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/customers/growth  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/daily-brief  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/metrics  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -697,6 +698,7 @@ GET /pos/dashboard/appointments  realm=staff  auth=session  domain=analytics  pe
 GET /pos/dashboard/checkout  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/customers  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/insights  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/dashboard/kpi-check  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/kpis  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/operations  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/dashboard/payment-mix  realm=staff  auth=session  domain=analytics  perm=pos.dashboard.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -1109,6 +1111,7 @@ GET /pos/serving/state  realm=staff  auth=session  domain=checkout  perm=pos.ser
 GET /pos/serving/technicians  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/serving/tickets  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/serving/tickets/{ticketId}  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/serving/tickets/{ticketId}/action-review  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/serving/tickets/{ticketId}/revisions  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/audit-logs  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/audit-logs/page  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -1264,6 +1267,7 @@ GET /pos/tickets/{id}/tip-allocation  realm=staff  auth=session  domain=finance 
 GET /pos/tickets/{ticketId}/history  realm=staff  auth=session  domain=checkout  perm=pos.serving.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tickets/{ticketId}/payment-status  realm=staff  auth=session  domain=checkout  perm=checkout.view  resource=BRANCH/records
 GET /pos/time-clock/break-policy  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/time-clock/opening-rush  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/time-clock/state  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/turn-queue/board  realm=staff  auth=session  domain=workforce  perm=turn_queue.read  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/turn-queue/fairness  realm=staff  auth=session  domain=workforce  perm=turn_queue.history.read  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3251,6 +3255,7 @@ POST /pos/time-clock/break-end  realm=staff  auth=session  domain=workforce  per
 POST /pos/time-clock/break-interrupt  realm=staff  auth=session  domain=workforce  perm=pos.technicians.manage_status  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/time-clock/break-start  realm=staff  auth=session  domain=workforce  perm=pos.technicians.manage_status  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/time-clock/clock-in  realm=staff  auth=session  domain=workforce  perm=pos.technicians.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/time-clock/clock-in-batch  realm=staff  auth=session  domain=workforce  perm=pos.technicians.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/time-clock/clock-out  realm=staff  auth=session  domain=workforce  perm=pos.technicians.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/turn-queue/day/close  realm=staff  auth=session  domain=workforce  perm=turn_queue.adjust  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/turn-queue/guest-declined  realm=staff  auth=session  domain=workforce  perm=turn_queue.assign  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

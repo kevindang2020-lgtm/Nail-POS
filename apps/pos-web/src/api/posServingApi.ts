@@ -1,5 +1,5 @@
 // posServingApi.ts — tenant POS Serving API client (canonical). Same-origin; tenant/branch/role from session.
-import type { ServingFilters } from '@aipowersalon/api-contracts/tenant';   // the wire contract (Constitution 13 §15)
+import type { ServingFilters, ServingActionReview } from '@aipowersalon/api-contracts/tenant';   // the wire contract (Constitution 13 §15)
 // Supersedes the earlier two-method stub. Timer is server-truth; send-to-service-done is idempotent server-side.
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message); this.name = 'ApiError'; } }
 import { apiUrl } from './apiBase';   // BUILD_PLAN Phase 12: API_ORIGIN + /api/v1 + path
@@ -19,6 +19,8 @@ export const posServingApi = {
   technicians: () => http<any[]>('/technicians'),
   tickets: (f: ServingFilters = {}) => http<any>('/tickets' + qs(f)),
   ticket: (tid: string) => http<any>('/tickets/' + id(tid)),
+  /** Serving 07: what an impactful action would touch + every conflict its own gates raise — read only */
+  actionReview: (tid: string, p: { action: 'mark_ready' | 'assign_technician' | 'add_service'; technicianId?: string; serviceId?: string; priceCents?: number }) => { const q = new URLSearchParams(); Object.entries(p).forEach(([k, v]) => { if (v != null && v !== '') q.set(k, String(v)); }); return http<ServingActionReview>('/tickets/' + id(tid) + '/action-review?' + q.toString()); },
   revisions: (tid: string) => http<{ ticketId: string; currentVersion: number; revisions: any[] }>('/tickets/' + id(tid) + '/revisions'),
   start: (tid: string) => post(tid, 'start'),
   pause: (tid: string) => post(tid, 'pause'),

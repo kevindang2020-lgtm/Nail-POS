@@ -77,4 +77,28 @@ describe('Tech Appointments', () => {
     const h = await repo.history(ctx, { preset: 'today' });
     expect(h.items.map((x) => [x.changeType, x.oldValue, x.newValue, x.technician])).toEqual([['rescheduled', '09:30', '10:30', 'Kevin Dang']]);
   });
+  it('TECH APPOINTMENTS 08: online bookings waiting on the SMS code are listed as pending (not booked, not in the KPIs); each appointment says how its phone was proven', async () => {
+    const hold = (hid: string, startLocal: string, tech: string | null, over: { status?: string; released?: boolean; expiresIn?: string; tenant?: string; br?: string } = {}) =>
+      q(`insert into booking_holds (id, tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status, booking_session_id, channel, released_at)
+         values ($1,$2,$3,$4, ($5::date + $6::time) at time zone 'America/New_York', ($5::date + $6::time + interval '20 minutes') at time zone 'America/New_York', now() + $7::interval, $8, $9, 'online', $10)`,
+        [hid, over.tenant ?? T, over.br ?? B, tech, today, startLocal, over.expiresIn ?? '10 minutes', over.status ?? 'held', hid.replace(/ab(\d)$/, 'ac$1'), over.released ? new Date().toISOString() : null]);
+    const sess = (hid: string, status: string, tenant = T, br = B) => q(`insert into booking_verification_sessions (tenant_id, branch_id, booking_session_id, booking_hold_id, phone_hash, phone_mask, channel, status, expires_at, last_sent_at)
+         values ($1,$2,$3,$4,$6,'•••• 7788','online',$5, now() + interval '10 minutes', now())`, [tenant, br, hid.replace(/ab(\d)$/, 'ac$1'), hid, status, 'h-' + hid]);
+    await hold(id('ab1'), '15:00', KEVIN); await sess(id('ab1'), 'sent');             // waiting on the code → listed
+    await hold(id('ab2'), '15:30', null); await sess(id('ab2'), 'locked');            // too many wrong codes → listed (staff may override)
+    await hold(id('ab3'), '16:00', KEVIN); await sess(id('ab3'), 'verified');         // proven → not pending
+    await hold(id('ab4'), '16:30', KEVIN, { released: true }); await sess(id('ab4'), 'sent');   // abandoned → not pending
+    await hold(id('ab5'), '17:00', KEVIN, { expiresIn: '-1 minutes' }); await sess(id('ab5'), 'sent');   // hold expired → not pending
+    await hold(id('ab6'), '17:30', KEVIN);                                           // a slot hold with no SMS step → not pending
+    await hold(id('ab7'), '15:00', id('c9'), { tenant: T2, br: BX }); await sess(id('ab7'), 'sent', T2, BX);   // another salon
+    const r = await repo.kpis(ctx, { date: today });
+    expect(r.pendingVerification.items.map((x) => [x.start, x.technician, x.verification, x.phone])).toEqual([['15:00', 'Kevin Dang', 'sent', '•••• 7788'], ['15:30', null, 'locked', '•••• 7788']]);
+    expect(r.pendingVerification.count).toBe(2);
+    expect(r.kpis.today).toBe(5);   // never counted as appointments
+    expect((await repo.kpis({ ...ctx, permissions: [] }, { date: today })).pendingVerification.items[0]!.phone).toBeNull();
+    expect((await repo.kpis(ctx, { date: '2020-01-01' })).pendingVerification.count).toBe(0);
+    await q(`update pos_tech_appointments set phone_verification = 'staff_override' where id = $1`, [id('f1')]);
+    const items = (await repo.list(ctx, { q: 'Mai Le' })).items;
+    expect(items.map((x) => [x.technician, x.phoneVerification])).toEqual([['Kevin Dang', 'staff_override'], ['Vishal verma', null]]);
+  });
 });

@@ -10,6 +10,7 @@ import { REALTIME_STATUS, realtimeStatus } from '../realtime/realtime-client';
 import type { RealtimeStatus } from '../realtime/realtime-core';
 import { useNavigate } from 'react-router-dom';
 import { posDashboardApi } from '../api/posDashboardApi';
+import type { LiveOpsKpiCheck } from '@aipowersalon/api-contracts/tenant';
 import { useRealtime } from '../realtime/useRealtime';
 import { useAuth } from '../auth/AuthContext';
 import { useCan } from '../components/usePermissions';
@@ -169,6 +170,9 @@ export function POSDashboardScreen() {
   useEffect(() => { load(); }, [load]);
   useRealtime('dashboard', load);
 
+  // Live Operations 04: KPI Accuracy & Reconciliation Checker — the server compares; the screen only shows its verdicts
+  const [kc, setKc] = useState<LiveOpsKpiCheck | 'loading' | string | null>(null);
+  const runKpiCheck = useCallback(() => { setKc('loading'); posDashboardApi.kpiCheck().then((r) => setKc(r)).catch((e: any) => setKc(e?.message || tx('pos.action_failed'))); }, []);
   const pickRevRange = useCallback((r: RangeKey) => { setRevRange(r); posDashboardApi.getRevenueTrend(r).then((d) => setRevOverride(d as DashState['revenueTrend'])).catch(() => setRevOverride(null)); }, []);
   const pickSvcRange = useCallback((r: RangeKey) => { setSvcRange(r); posDashboardApi.getTopServices(r).then((d) => setSvcOverride(d as NonNullable<DashState['topServices']>)).catch(() => setSvcOverride(null)); }, []);
   const pickPayRange = useCallback((r: RangeKey) => { setPayRange(r); posDashboardApi.getPaymentMix(r).then((d) => setPayOverride(d as DashState['paymentMix'])).catch(() => setPayOverride(null)); }, []);
@@ -272,6 +276,7 @@ export function POSDashboardScreen() {
       <div className="ov-grid ov-3 lo-row1">
         <Card testId="lo-snapshot" title={tx('pos.today_s_operations_snapshot')} right={<span className="live" data-testid="live-ops-live" data-live={live} style={{ color: LIVE_TONE[live] }}>● {tx(`payment.board.live.${live}`)}{syncedAt ? <span className="sub" data-testid="live-ops-synced"> · {tx('ops.liveOps.updatedAt', { t: fmtTime(syncedAt) })}</span> : null}
           <button type="button" className="fk-link" onClick={load} aria-label={tx('ops.liveOps.refresh')} title={tx('ops.liveOps.refresh')} data-testid="live-ops-refresh">↻</button>
+          <button type="button" className="fk-link" onClick={runKpiCheck} data-testid="live-ops-kpi-check">{tx('ops.liveOps.kc.btn')}</button>
           {prio ? (prioHot > 0 ? <button type="button" className="fk-link" style={{ color: '#B23B3B', fontWeight: 700 }} onClick={() => setPrioOpen(true)} data-testid="live-ops-prio">{tx('ops.liveOps.prio.btn', { n: String(prioHot) })}</button>
             : <button type="button" className="fk-link" onClick={() => setPrioOpen(true)} data-testid="live-ops-prio">{tx('ops.liveOps.prio.clear')}</button>) : null}</span>}>
           {!s ? loading : (
@@ -398,6 +403,16 @@ export function POSDashboardScreen() {
             <button type="button" className="mini" disabled={!g.ok} title={g.ok ? undefined : tx('ops.qa.needsPermission', { p: g.missing.join(', ') })} onClick={() => { if (g.ok) nav(p.route); }} data-testid={'prio-open-' + p.kind}>{tx('ops.liveOps.prio.open')}</button>
           </li>); })}</ul>
         <p className="sub">{tx('ops.liveOps.prio.note')}</p>
+      </FitDialog> : null}
+      {kc ? <FitDialog title={tx('ops.liveOps.kc.title')} onClose={() => setKc(null)} testId="live-ops-kc-dialog">
+        {kc === 'loading' ? <div>{tx('pos.loading')}</div> : typeof kc === 'string' ? <div role="alert">{kc}</div> : <div data-testid="live-ops-kc-body">
+          <p className="sub" data-testid="live-ops-kc-scope">{tx('ops.liveOps.kc.scope', { date: kc.scope.businessDate || '—', tz: kc.scope.timeZone ?? '—', ttl: String(kc.cacheTtlSeconds) })}</p>
+          <p data-testid="live-ops-kc-summary">{tx('ops.liveOps.kc.summary', { match: String(kc.summary.match), stale: String(kc.summary.staleCache), mismatch: String(kc.summary.mismatch), notChecked: String(kc.summary.notChecked) })}</p>
+          <table className="fk-table"><thead><tr><th>{tx('ops.liveOps.kc.kpi')}</th><th>{tx('ops.liveOps.kc.shown')}</th><th>{tx('ops.liveOps.kc.authority')}</th><th>{tx('pos.status')}</th></tr></thead>
+            <tbody>{kc.rows.map((r) => { const v = (x: number | null) => (x == null ? '—' : r.unit === 'cents' ? fmtMoney(x) : String(x)); return <tr key={r.kpi} data-testid={'live-ops-kc-' + r.kpi} data-status={r.status}>
+              <td>{tx('ops.liveOps.kc.k.' + r.kpi)}</td><td>{v(r.shown)}{r.fresh !== r.shown ? <span className="sub"> → {v(r.fresh)}</span> : null}</td><td>{v(r.authorityValue)}</td>
+              <td style={{ color: r.status === 'match' ? '#1F7A3F' : r.status === 'mismatch' ? '#B23B3B' : r.status === 'stale_cache' ? '#9a6a12' : 'var(--muted)' }}>{tx('ops.liveOps.kc.s.' + r.status)}<span className="sub"> · {tx('ops.liveOps.kc.r.' + r.reason)}</span></td></tr>; })}</tbody></table>
+        </div>}
       </FitDialog> : null}
       {whyOpen && rt?.explain ? <FitDialog title={tx('ops.liveOps.trend.whyTitle')} onClose={() => setWhyOpen(false)} testId="lo-trend-why-dialog"><TrendWhyBody e={rt.explain} /></FitDialog> : null}
 

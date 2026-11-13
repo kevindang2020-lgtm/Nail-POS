@@ -42,8 +42,32 @@ export class TechAppointmentsScreenRepository {
         count(*) filter (where a.status in ('cancelled', 'canceled'))::int as cancelled, count(*) filter (where a.status = 'no_show')::int as no_show,
         count(*) filter (where lower(coalesce(a.source, '')) = any(${ONLINE}))::int as online, count(*) filter (where ${this.conflictSql(T)})::int as conflicts
       from pos_tech_appointments a where a.tenant_id = ${T} and a.appt_date = ${d.date}::date and ${this.br(ctx)}`.execute(this.db)).rows[0];
-    return { date: d.date, today: d.today, tz: d.tz, nowMinute: d.nowMinute, kpis: { today: N(r?.today), booked: N(r?.booked), checkedIn: N(r?.checked_in), inService: N(r?.in_service), completed: N(r?.completed),
+    return { date: d.date, today: d.today, tz: d.tz, nowMinute: d.nowMinute, pendingVerification: await this.pendingVerification(ctx, d.date, d.tz), kpis: { today: N(r?.today), booked: N(r?.booked), checkedIn: N(r?.checked_in), inService: N(r?.in_service), completed: N(r?.completed),
       cancelled: N(r?.cancelled), noShows: N(r?.no_show), online: N(r?.online), conflicts: N(r?.conflicts) } };
+  }
+
+  /** TECH APPOINTMENTS 08 — Pending Verification: online booking attempts for the selected salon day that are waiting on the
+   *  customer's SMS code. They are NOT appointments: a booking becomes a row in pos_tech_appointments only once the phone is
+   *  proven (or a staff override), so these are live slot holds (booking_holds, not released / converted / expired) whose
+   *  latest booking_verification_sessions row is pending · sent · locked · failed. Never counted in the nine KPIs, never
+   *  shown as booked. The phone is masked, and only for staff who may see customers. Read only. */
+  private async pendingVerification(ctx: TeamCtx, date: string, tz: string) {
+    const T = ctx.tenantId; const b = branchOf(ctx);
+    const rows = (await sql<{ hold_id: string; start_local: string; end_local: string; expires_at: unknown; technician_id: string | null; tech_name: string | null; status: string; phone_mask: string | null; channel: string | null; sent_at: unknown }>`
+      select h.id as hold_id, to_char(h.start_time at time zone ${tz}, 'HH24:MI') as start_local, to_char(h.end_time at time zone ${tz}, 'HH24:MI') as end_local, h.expires_at,
+        h.technician_id, te.full_name as tech_name, v.status, v.phone_mask, h.channel, v.last_sent_at as sent_at
+      from booking_holds h
+      join lateral (select vs.status, vs.phone_mask, vs.last_sent_at from booking_verification_sessions vs where vs.tenant_id = h.tenant_id
+          and (vs.booking_hold_id = h.id or (vs.booking_hold_id is null and h.booking_session_id is not null and vs.booking_session_id = h.booking_session_id))
+          order by vs.created_at desc limit 1) v on true
+      left join technicians te on te.id = h.technician_id and te.tenant_id = h.tenant_id
+      where h.tenant_id = ${T} and (${b}::uuid is null or h.branch_id = ${b}) and coalesce(h.kind, 'slot') = 'slot'
+        and h.status in ('held', 'active', 'pending', 'locked', 'sent', 'started') and h.released_at is null and h.converted_appointment_id is null and h.expires_at > now()
+        and (h.start_time at time zone ${tz})::date = ${date}::date and v.status in ('pending', 'sent', 'locked', 'failed')
+      order by h.start_time asc, h.id asc limit 50`.execute(this.db)).rows;
+    const customers = can(ctx, 'customers.view');
+    return { count: rows.length, items: rows.map((r) => ({ holdId: String(r.hold_id), start: r.start_local, end: r.end_local, technicianId: r.technician_id ? String(r.technician_id) : null, technician: r.tech_name ?? null,
+      verification: String(r.status) as 'pending' | 'sent' | 'locked' | 'failed', phone: customers ? r.phone_mask ?? null : null, channel: r.channel ?? null, codeSentAt: iso(r.sent_at), holdExpiresAt: iso(r.expires_at) })) };
   }
 
   /** All Technician Appointments: one search (customer · phone any format · technician · service · appointment id), the
@@ -66,7 +90,7 @@ export class TechAppointmentsScreenRepository {
     const from = sql`from pos_tech_appointments a left join technicians te on te.id = a.technician_id and te.tenant_id = a.tenant_id left join customers cu on cu.id = a.customer_id and cu.tenant_id = a.tenant_id`;
     const total = N((await sql<any>`select count(*)::int as n ${from} where a.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
     const order = sort === 'newest' ? sql`a.created_at desc, a.id desc` : sort === 'oldest' ? sql`a.created_at asc, a.id asc` : sql`a.appt_date asc, a.start_time::time asc, a.id asc`;
-    const rows = (await sql<any>`select a.id, a.appt_date, a.start_time, a.end_time, a.duration_minutes, a.status, a.source, a.services, a.customer_name, a.customer_phone, a.is_vip, a.version, a.created_at, a.technician_id, a.any_technician,
+    const rows = (await sql<any>`select a.id, a.appt_date, a.start_time, a.end_time, a.duration_minutes, a.status, a.source, a.services, a.customer_name, a.customer_phone, a.is_vip, a.version, a.created_at, a.technician_id, a.any_technician, a.phone_verification,
         te.full_name as tech_name, ${this.conflictSql(T)} as conflict,
         case when ${isId} and a.id::text = ${raw.toLowerCase()} then 'id' when ${phoneish} and regexp_replace(coalesce(a.customer_phone, cu.normalized_phone, ''), '\\D', '', 'g') like ${'%' + d + '%'} then 'phone'
           when coalesce(a.customer_name, '') ilike ${l} then 'customer' when coalesce(te.full_name, '') ilike ${l} then 'technician' when a.services::text ilike ${l} then 'service' else null end as matched_via
@@ -79,7 +103,9 @@ export class TechAppointmentsScreenRepository {
     return { appointmentId: String(r.id), date: ymd(r.appt_date), start: r.start_time ?? null, end: r.end_time ?? null, minutes: N(r.duration_minutes), status: String(r.status ?? ''), source: r.source ?? null,
       online: ONLINE.includes(String(r.source ?? '').toLowerCase()), services, customer: customers ? r.customer_name ?? null : null, phone: customers ? maskPhone(r.customer_phone) : null, vip: !!r.is_vip,
       technicianId: r.technician_id ? String(r.technician_id) : null, technician: r.tech_name ?? null, anyTechnician: !!r.any_technician, conflict: !!r.conflict, version: r.version == null ? null : N(r.version),
-      matchedVia: via, createdAt: iso(r.created_at) };
+      matchedVia: via, createdAt: iso(r.created_at),
+      /** TECH APPOINTMENTS 08: how the booking phone was proven (migration 521) — verified / recently_verified / staff_override; null = no booking proof recorded */
+      phoneVerification: r.phone_verification ?? null };
   }
 
   /** the Week board: per technician per day — appointments and booked minutes (cancelled / no-show excluded) */

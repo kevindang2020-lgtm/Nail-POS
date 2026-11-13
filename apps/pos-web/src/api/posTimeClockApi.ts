@@ -1,10 +1,13 @@
 // posTimeClockApi.ts — technician time clock (pos.technicians.view read, pos.technicians.manage write).
 import { api } from "./client";
-import type { TimeClockStateQuery, TimeClockBreakPolicyView as BreakPolicyView, TimeClockBreakPolicyValues as BreakPolicyValues, TimeClockBreakAdjustResult } from "@aipowersalon/api-contracts/tenant";
+import type { OpeningRushView, ClockInBatchResult, TimeClockStateQuery, TimeClockBreakPolicyView as BreakPolicyView, TimeClockBreakPolicyValues as BreakPolicyValues, TimeClockBreakAdjustResult } from "@aipowersalon/api-contracts/tenant";
 export const posTimeClockApi = {
   // 200-technician §2: one page of the roster (page / pageSize / search / state); no arguments = every row (legacy)
   state: (q: TimeClockStateQuery = {}) => api.get(`/pos/time-clock/state`, Object.fromEntries(Object.entries(q).filter(([, v]) => v != null && v !== ''))),
   clockIn: (technicianId: string) => api.post(`/pos/time-clock/clock-in`, { technicianId }),
+  // 200-Technician 04: opening rush — scheduled today, not on the clock; and the batch clock-in (THE clock-in per technician, ≤ 25)
+  openingRush: () => api.get<OpeningRushView>(`/pos/time-clock/opening-rush`),
+  clockInBatch: (technicianIds: string[]) => api.post<ClockInBatchResult>(`/pos/time-clock/clock-in-batch`, { technicianIds }),
   clockOut: (technicianId: string) => api.post(`/pos/time-clock/clock-out`, { technicianId }),
   // Breaks (merge Oct 12, WF 580): workforce clock ON_BREAK → queue BREAK; pos.technicians.manage_status. Lunch is a kind.
   breakStart: (technicianId: string, kind: 'break' | 'lunch' = 'break') => api.post(`/pos/time-clock/break-start`, { technicianId, kind }),

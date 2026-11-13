@@ -309,3 +309,25 @@ describe('POSDashboardScreen — smart priority strip', () => {
     expect(screen.queryByTestId('live-ops-prio')).toBeNull();
   });
 });
+
+describe('Live Operations 04 — KPI accuracy checker', () => {
+  it('Check KPIs shows the server verdict per KPI (on screen vs authority), the scope and the summary — nothing computed here', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    const check = { checkedAt: '2026-11-12T15:00:00Z', scope: { branchId: 'b1', timeZone: 'America/New_York', businessDate: '2026-11-12', revenueStatuses: ['approved'], revenueDateBasis: 'payment_created_branch_day' }, cacheTtlSeconds: 30,
+      rows: [{ kpi: 'todayRevenueCents', unit: 'cents', shown: 6000, fresh: 7500, authority: 'overview_board', authorityValue: 7500, status: 'stale_cache', reason: 'cache_older_than_data', definition: 'x' },
+        { kpi: 'servingNow', unit: 'count', shown: 2, fresh: 2, authority: 'overview_board', authorityValue: 3, status: 'mismatch', reason: 'definition_differs', definition: 'x' },
+        { kpi: 'appointmentsToday', unit: 'count', shown: 28, fresh: 28, authority: null, authorityValue: null, status: 'not_checked', reason: 'no_second_source', definition: 'x' }],
+      summary: { match: 0, staleCache: 1, mismatch: 1, notChecked: 1 } };
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (url: string) => { calls.push(String(url)); const body = String(url).includes('/kpi-check') ? check : String(url).includes('/inventory/alerts') ? { alerts: [] } : state; return { ok: true, status: 200, json: async () => body, headers: { get: () => null } } as any; }) as any;
+    render(<MemoryRouter><POSDashboardScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('live-ops-kpi-check'));
+    await screen.findByTestId('live-ops-kc-body');
+    expect(calls.some((u) => u.includes('/pos/dashboard/kpi-check'))).toBe(true);
+    expect(screen.getByTestId('live-ops-kc-summary').textContent).toBe('0 match · 1 older cache · 1 mismatch · 1 not checked');
+    expect(screen.getByTestId('live-ops-kc-scope').textContent).toContain('Salon day 2026-11-12 · time zone America/New_York');
+    expect(screen.getByTestId('live-ops-kc-todayRevenueCents').textContent).toBe("Today's revenue$60.00 → $75.00$75.00Cache older than data · refresh to see the new value");
+    expect(screen.getByTestId('live-ops-kc-servingNow').getAttribute('data-status')).toBe('mismatch');
+    expect(screen.getByTestId('live-ops-kc-appointmentsToday').textContent).toBe('Appointments today28—Not checked · no second source to compare');
+  });
+});

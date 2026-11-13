@@ -161,6 +161,20 @@ describe('Team Management read model', () => {
     await expect(repo.exportCsv(desk, {}, 'req-tm-2')).rejects.toMatchObject({ status: 403 });
     expect((await q(`select action from audit_events where request_id = 'req-tm-2'`)).rows.map((x: any) => x.action)).toEqual(['report.export.denied']);
   });
+  it('200-Technician 08 — bulk staff actions: only the SELECTED members are listed / exported (audited with the count, never the ids); another salon\'s ids are ignored; junk is dropped', async () => {
+    const sel: any = await repo.directory(mgr, { ids: [ANNA_U, KEVIN, T2_U, 'not-a-uuid'].join(','), pageSize: 50 });
+    expect(sel.items.map((x: any) => x.name).sort()).toEqual(['Anna Lee', 'Kevin Dang']);
+    expect(sel.totalItems).toBe(2);
+    expect((await repo.directory(mgr, { ids: 'junk,,', pageSize: 50 }) as any).totalItems).toBe(7);   // nothing valid selected → the normal list
+    const out = await repo.exportCsv(mgr, { lang: 'en', ids: [ANNA_U, KEVIN].join(',') }, 'req-tm-sel');
+    const rows = out.csv.replace(/^\uFEFF/, '').split('\r\n').slice(1).filter(Boolean);
+    expect(rows.length).toBe(2); expect(out.csv).toContain('Anna Lee'); expect(out.csv).not.toContain('Lan Vo');
+    const meta = (await q(`select action, metadata from audit_events where request_id = 'req-tm-sel' order by occurred_at, action`)).rows;
+    expect(meta.map((x: any) => x.action)).toEqual(['report.export.requested', 'report.export.succeeded']);
+    const m = typeof meta[1].metadata === 'string' ? JSON.parse(meta[1].metadata) : meta[1].metadata;
+    expect(m.filters.selectedCount).toBe(2); expect(m.rowCount).toBe(2); expect(JSON.stringify(m)).not.toContain(ANNA_U);
+    await expect(repo.exportCsv(desk, { ids: ANNA_U }, 'req-tm-sel2')).rejects.toMatchObject({ status: 403 });   // RBAC unchanged
+  });
   it('extras TEAM MANAGEMENT 09 — sync freshness: the newest record of each feed in scope; another branch or salon never moves it; a feed with nothing says so', async () => {
     const empty: any = await repo.dashboard(other, { preset: 'month' });
     expect(empty.syncFreshness).toMatchObject({ queueAt: null, timeClockAt: null, technicianAppAt: null });   // nothing written there yet: unknown, never "now"

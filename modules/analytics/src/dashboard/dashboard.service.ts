@@ -15,6 +15,9 @@ import {
 import type { DashboardRepo, DashboardScope, DashboardQuery } from './dashboard.repository';
 import type { TenantCache } from '@aipowersalon/cache';
 import { isStaffPrincipal } from '@aipowersalon/permissions';   // BUILD_PLAN Phase 9: the plane check, one place
+import type { LiveOpsKpiCheck } from '@aipowersalon/api-contracts/tenant';
+import type { OverviewRepo } from '../overview/overview.repository';
+import { reconcileKpis } from './dashboard-kpi-check';
 
 export interface TenantContext {
   tenantId: string;
@@ -34,7 +37,8 @@ export interface TenantContext {
 const DASHBOARD_CACHE_TTL_SECONDS = 30;
 
 export class DashboardService {
-  constructor(private readonly repo: DashboardRepo, private readonly cache?: TenantCache) {}
+  /** `overview` (Live Operations 04): the Overview board's repository — the authority the KPI checker verifies against */
+  constructor(private readonly repo: DashboardRepo, private readonly cache?: TenantCache, private readonly overview?: OverviewRepo | null) {}
 
   private scope(tc: TenantContext): DashboardScope {
     if (!isStaffPrincipal(tc)) throw new Error('forbidden_pos_dashboard');
@@ -49,6 +53,15 @@ export class DashboardService {
     // same branch with different branch grants never share a cached snapshot
     const key = 'dashboard:state:' + JSON.stringify(q ?? {}) + (scope.branchIds ? ':b=' + [...scope.branchIds].sort().join(',') : '');
     return this.cache.getOrSet({ tenantId: tc.tenantId, branchId: tc.branchId ?? undefined }, key, DASHBOARD_CACHE_TTL_SECONDS, () => this.repo.getAggregate(scope, q));
+  }
+
+  /** GET /pos/dashboard/kpi-check — Live Operations 04: each KPI as served (the cached aggregate), recomputed fresh, and the
+   *  Overview board's value for the same branch / salon day / payment rules (dashboard-kpi-check.ts). Read only. */
+  async kpiCheck(tc: TenantContext, q: DashboardQuery = {}): Promise<LiveOpsKpiCheck> {
+    const scope = this.scope(tc);
+    const [shown, fresh, authority] = await Promise.all([this.aggregate(tc, q), this.repo.getAggregate(scope, q), this.overview ? this.overview.getAggregate({ tenantId: scope.tenantId, branchId: scope.branchId }, { date: q.date }) : Promise.resolve(null)]);
+    const businessDate = authority?.context?.businessDate || fresh.revenueTrend?.explain?.to || q.date || '';
+    return reconcileKpis({ shown, fresh, authority, checkedAt: new Date().toISOString(), branchId: scope.branchId ?? null, businessDate, cacheTtlSeconds: DASHBOARD_CACHE_TTL_SECONDS });
   }
 
   /** GET /pos/dashboard/state — rich aggregate (screen default). */

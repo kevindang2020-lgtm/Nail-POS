@@ -11,6 +11,7 @@ import type { ServingFilters } from './serving.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { ServingControllerListQueries } from './serving.list-queries';
 import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';   // V-5 (Oct 27 2026)
+import type { ServingActionReview } from '@aipowersalon/api-contracts/tenant';
 
 function ctxFrom(req: any): ServingContext { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 function filtersFrom(q: any): ServingFilters { const n = (v: any) => (v === undefined || v === '' ? undefined : Number(v)); return { search: q.search, status: q.status, technicianId: q.technicianId, serviceCategory: q.serviceCategory, station: q.station, delayStatus: q.delayStatus, page: n(q.page), pageSize: n(q.pageSize) }; }
@@ -54,6 +55,8 @@ export class ServingController {
   // §58: an internal notice to one technician of this salon (technician_notifications)
   @Post('staff-alert') @RequirePermission('pos.serving.assign_technician') staffAlert(@Req() r: any, @Body(ValidatedBody(SV_STAFF_ALERT_BODY, { strict: true })) b: any) { return run(() => this.svc.staffAlert(ctxFrom(r), b ?? {})); }
   @Get('tickets/:ticketId') @RequirePermission('pos.serving.view') detail(@Req() r: any, @Param('ticketId') id: string) { return run(() => this.svc.detail(ctxFrom(r), id)); }
+  /** Serving 07 — Touch Safe Action Review: the guest, affected lines, permission and every conflict before confirming (read only) */
+  @Get('tickets/:ticketId/action-review') @RequirePermission('pos.serving.view') actionReview(@Req() r: any, @Param('ticketId') id: string, @Query() q: any): Promise<ServingActionReview> { return run(() => this.svc.actionReview(ctxFrom(r), id, { action: q?.action, technicianId: q?.technicianId, serviceId: q?.serviceId, priceCents: q?.priceCents })); }
   @Get('tickets/:ticketId/revisions') @RequirePermission('pos.serving.view') revisions(@Req() r: any, @Param('ticketId') id: string) { return run(() => this.svc.getRevisions(ctxFrom(r), id)); }
 
   @Post('tickets/:ticketId/start') @RequirePermission('pos.serving.start') start(@Req() r: any, @Param('ticketId') id: string) { return run(() => this.svc.start(ctxFrom(r), id)); }

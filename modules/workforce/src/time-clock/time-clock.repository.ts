@@ -12,6 +12,9 @@ export interface TimeClockRepositoryPort {
   /** `technicianId` (M4): only that technician's punches — one technician's row never reads the whole branch's day. */
   listTodayPunches(ctx: TimeClockContext, dateStr: string, technicianId?: string): Promise<ShiftPunch[]>;
   technicianExists(ctx: TimeClockContext, technicianId: string): Promise<boolean>;
+  /** 200-Technician 04: of these technicians, who is scheduled today (THE availability core over the weekly schedule, approved
+   *  time off and blocked time) and their start time 'HH:MM'. Undefined on the in-memory adapter (nobody listed). */
+  scheduledStarts?(ctx: TimeClockContext, dateStr: string, technicianIds: string[]): Promise<{ technicianId: string; startTime: string }[]>;
   /** The technician's OPEN punch (no end), whatever its date. */
   findOpenPunch(ctx: TimeClockContext, technicianId: string): Promise<ShiftPunch | null>;
   /** Insert an open punch. `created=false` + the existing open punch when the partial unique index (580) already
