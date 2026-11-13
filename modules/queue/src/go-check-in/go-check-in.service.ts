@@ -223,7 +223,7 @@ export class GoCheckInService {
     const branchId = choice.branchId;
     const token = newToken();
     const session = await this.repo.createSession({ tenantId: device.tenantId, branchId, deviceId: device.id, sessionTokenHash: sha256Hex(token) });
-    await this.repo.touchDevice(device.id);
+    await this.repo.touchDevice(device.id, device.tenantId);
     await this.log({ tenantId: device.tenantId, branchId, deviceId: device.id, sessionId: session.id }, 'session_started', 'Kiosk session started');
     const salon = await this.repo.resolveSalonBranch(device.tenantId, branchId);
     const { enabled: _d, ...rest } = settings;
@@ -287,7 +287,7 @@ export class GoCheckInService {
 
   async heartbeat(sessionId: string, token: string | undefined, body?: unknown): Promise<{ ok: true }> {
     const r = await this.resolveSession(sessionId, token);
-    if (r.device) await this.repo.touchDevice(r.device.id, deviceHealthFacts(body));   // a display reports its own heartbeat (§85)
+    if (r.device) await this.repo.touchDevice(r.device.id, r.device.tenantId, deviceHealthFacts(body));   // a display reports its own heartbeat (§85)
     return { ok: true };
   }
 

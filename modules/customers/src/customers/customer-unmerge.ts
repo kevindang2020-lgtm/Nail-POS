@@ -13,6 +13,9 @@
 // What it never does: move money, cancel / reschedule, send anything, delete a customer or touch the merge log (history stays).
 import { sql, type Kysely } from 'kysely';
 import { applyLoyaltyEntry, lockLoyaltyCustomer } from '../loyalty/loyalty-ledger.service';
+import { MERGE_TABLE_REF } from './customer-merge';
+import { canMoveToSql } from '@aipowersalon/database';
+import { CUSTOMER_MERGE_SNAPSHOT } from '../customer-lifecycles';
 
 export type UnmergeRefusal = 'CUSTOMER_UNMERGE_NOT_FOUND' | 'CUSTOMER_UNMERGE_ALREADY_UNDONE' | 'CUSTOMER_UNMERGE_SURVIVOR_CHANGED'
   | 'CUSTOMER_UNMERGE_SOURCE_CHANGED' | 'CUSTOMER_UNMERGE_ROWS_CHANGED' | 'CUSTOMER_UNMERGE_LOYALTY_CHANGED' | 'CUSTOMER_UNMERGE_UNSUPPORTED';
@@ -68,9 +71,9 @@ export async function assessUnmerge(db: Kysely<any>, snap: MergeSnapshotRow): Pr
   if (src.length !== sources.length) return refuse('CUSTOMER_UNMERGE_SOURCE_CHANGED', 'A merged profile was restored or changed since; this merge cannot be undone.', { changed: sources.filter((x) => !src.some((r) => r.id === x)) });
   const changed: Record<string, number> = {};
   for (const [t, fps] of Object.entries(s.fingerprints ?? {})) {
-    if (!RESTORABLE.has(t)) return refuse('CUSTOMER_UNMERGE_UNSUPPORTED', 'This merge snapshot names a table an unmerge cannot restore.', { table: t });
+    if (!RESTORABLE.has(t) || !MERGE_TABLE_REF[t]) return refuse('CUSTOMER_UNMERGE_UNSUPPORTED', 'This merge snapshot names a table an unmerge cannot restore.', { table: t });
     const ids = Object.keys(fps); if (!ids.length) continue;
-    const now = (await sql<{ id: string; h: string }>`select x.id, md5(row_to_json(x)::text) as h from ${sql.table(t)} x where x.tenant_id = ${T} and x.id = any(${ids}::uuid[]) and x.customer_id = ${snap.survivor_customer_id}`.execute(db)).rows;
+    const now = (await sql<{ id: string; h: string }>`select x.id, md5(row_to_json(x)::text) as h from ${MERGE_TABLE_REF[t]!} x where x.tenant_id = ${T} and x.id = any(${ids}::uuid[]) and x.customer_id = ${snap.survivor_customer_id}`.execute(db)).rows;
     const cur = new Map(now.map((r) => [r.id, r.h]));
     const n = ids.filter((id) => cur.get(id) !== fps[id]).length;
     if (n) changed[t] = n;
@@ -106,10 +109,10 @@ export async function unmergeCustomersTx(trx: Kysely<any>, actor: { tenantId: st
   // 2. exactly the moved rows go back to the profile they came from
   const restored: Record<string, number> = {};
   for (const [t, bySrc] of Object.entries(s.rowsBySource ?? {})) {
-    if (!RESTORABLE.has(t)) throw new CustomerUnmergeError('This merge snapshot names a table an unmerge cannot restore.', 'CUSTOMER_UNMERGE_UNSUPPORTED', { table: t });
+    if (!RESTORABLE.has(t) || !MERGE_TABLE_REF[t]) throw new CustomerUnmergeError('This merge snapshot names a table an unmerge cannot restore.', 'CUSTOMER_UNMERGE_UNSUPPORTED', { table: t });
     for (const [src, ids] of Object.entries(bySrc)) {
       if (!ids.length) continue;
-      const r: any = await sql`update ${sql.table(t)} set customer_id = ${src} where tenant_id = ${T} and customer_id = ${survivor} and id = any(${ids}::uuid[])`.execute(trx);
+      const r: any = await sql`update ${MERGE_TABLE_REF[t]!} set customer_id = ${src} where tenant_id = ${T} and customer_id = ${survivor} and id = any(${ids}::uuid[])`.execute(trx);
       restored[t] = (restored[t] ?? 0) + Number(r.numAffectedRows ?? 0);
     }
   }
@@ -141,6 +144,6 @@ export async function unmergeCustomersTx(trx: Kysely<any>, actor: { tenantId: st
   }
   // 5. the snapshot is closed (the guard trigger allows exactly this one change)
   await sql`update customer_merge_snapshots set status = 'undone', undone_at = now(), undone_by_user_id = ${actor.userId && /^[0-9a-f-]{36}$/i.test(actor.userId) ? actor.userId : null}, undo_reason = ${reason.slice(0, 500)}
-    where tenant_id = ${T} and id = ${snap.id}::uuid and status = 'active'`.execute(trx);
+    where tenant_id = ${T} and id = ${snap.id}::uuid and ${canMoveToSql(CUSTOMER_MERGE_SNAPSHOT, 'undone')}`.execute(trx);
   return { snapshotId: snap.id, survivorId: survivor, restoredCustomerIds: sources, restored, pointsRestored };
 }

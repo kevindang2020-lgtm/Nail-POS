@@ -131,3 +131,6 @@ export interface AiCalendarPendingQueue {
   asOf: string; timeZone: string; pendingCode: number; expiringSoon: number;
   items: { id: string; technicianId: string | null; technicianName: string | null; date: string; start: string; end: string; expiresAt: string; minutesLeft: number; channel: string | null; pendingCode: boolean; expiringSoon: boolean }[];
 }
+
+/** round 10 (AI Booking Assistant): the technicians the booking engine qualifies for a request — names only, bounded */
+export interface AiBookingQualifiedTechnicians { technicians: Pick<BookingTechnicianSummary, 'technicianId' | 'name'>[]; total: number; bounded: boolean; correlationId: string }

@@ -170,3 +170,12 @@ export const CUSTOMER_DUPLICATE_GROUP = defineStateMachine({
   transitions: { pending: DUP_ALL, in_review: DUP_ALL, deferred: DUP_ALL, failed: DUP_ALL, kept_separate: DUP_ALL, resolved: DUP_ALL },
   initial: ['pending', 'deferred', 'kept_separate'],
 });
+
+/** customer_merge_snapshots.status — round 10 (Customer 08): a completed merge's snapshot is active until it is undone,
+ *  once (the table's guard trigger allows exactly this change). */
+export const CUSTOMER_MERGE_SNAPSHOT = defineStateMachine({
+  name: 'customer_merge_snapshot', table: 'customer_merge_snapshots', column: 'status',
+  states: ['active', 'undone'],
+  transitions: { active: ['undone'] },
+  initial: ['active'],
+});

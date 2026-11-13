@@ -486,7 +486,7 @@ export class PhoneCenter {
   async monthly(ctx: PcContext) {
     const T = ctx.tenantId; const tz = await this.tz(ctx);
     const rows = (await sql<{ month: string; branch_id: string | null; branch_name: string | null; requests: number; verified: number; failed: number; shared: number; pending_sync: number; manual: number }>`
-      with s0 as (select s.*, np.effective_from as eff, np.verification_provider as vp from customer_phone_update_sessions s
+      with s0 as (select s.tenant_id, s.branch_id, s.customer_id, s.proposed_phone, s.state, s.created_at, s.updated_at, np.effective_from as eff, np.verification_provider as vp from customer_phone_update_sessions s
           left join customer_phones np on np.id = s.new_phone_id and np.tenant_id = s.tenant_id
           where s.tenant_id = ${T} and s.created_at >= (date_trunc('month', (now() at time zone ${tz})) - interval '11 months') at time zone ${tz}),
       ev as (

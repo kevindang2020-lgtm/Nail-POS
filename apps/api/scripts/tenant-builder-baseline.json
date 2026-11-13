@@ -54,7 +54,6 @@
     "go-check-in/go-check-in.kysely.repository.ts :: branches :: .selectFrom('branches').select(['name']).where('id', '=', branchId).executeTakeFirst().catch(() => null)",
     "go-check-in/go-check-in.kysely.repository.ts :: go_checkin_devices :: .selectFrom('go_checkin_devices').selectAll().where('checkin_slug', '=', slug).executeTakeFirst()",
     "go-check-in/go-check-in.kysely.repository.ts :: go_checkin_devices :: .selectFrom('go_checkin_devices').selectAll().where('device_token_hash', '=', hash).executeTakeFirst()",
-    "go-check-in/go-check-in.kysely.repository.ts :: go_checkin_devices :: .updateTable('go_checkin_devices').set({ last_seen_at: new Date() } as any).where('id', '=', id).execute()",
     "go-check-in/go-check-in.kysely.repository.ts :: go_checkin_sessions :: .selectFrom('go_checkin_sessions').selectAll().where('id', '=', id).executeTakeFirst()",
     "go-check-in/go-check-in.kysely.repository.ts :: go_checkin_sessions :: .updateTable('go_checkin_sessions').set({ last_seen_at: new Date() } as any).where('id', '=', id).execute()",
     "hardware-payment/hardware-payment.kysely.repository.ts :: hardware_card_volume :: .updateTable('hardware_card_volume').set({ card_volume_cents: Math.max(0, Math.trunc(cents)), source, imported_at: sql`n",

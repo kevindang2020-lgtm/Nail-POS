@@ -529,7 +529,7 @@ describe('extras GLOBAL LOYALTY REWARDS 14 (round 10) — rule-change simulator:
 
 describe('extras GLOBAL LOYALTY REWARDS 11 (round 10) — idempotency conflict center', () => {
   it('a re-sent purchase key is recorded as a replay (same purchase, no second intent); a reused key for a different purchase as a conflict; the log is append-only', async () => {
-    const { listIdempotencyEvents } = await import('./global-rewards.repository');
+    const { listIdempotencyEvents } = await import('./super-admin-idempotency.repository');
     const intents0 = (await q(`select count(*)::int n from token_purchase_intents where tenant_id = $1`, [TB]))[0].n;
     const a = await repo.createPurchase(owner(TB, BB), { tokens: 5, idempotencyKey: 'idem-center-key-001', provider: 'sandbox' });
     const b = await repo.createPurchase(owner(TB, BB), { tokens: 5, idempotencyKey: 'idem-center-key-001', provider: 'sandbox' });

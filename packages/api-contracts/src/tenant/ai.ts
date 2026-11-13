@@ -244,6 +244,8 @@ export interface AibAlternatives { key: string; date: string; serviceIds: string
 export interface AqLastHealth { run: AqHealthRun | null }
 export interface AibLastHealth { run: AibHealthRun | null }
 export interface AibDismissResult { dismissed: boolean; key: string }
+/** round 10 (AI Booking Assistant 14): a support report recorded for one request (staff attach their own screenshots) */
+export interface AibSupportReportResult { recorded: boolean; at: string; requestId: string }
 
 /** AI Analytics & Forecasting · Service demand (Extras · AI Analytics Forecasting 21): per service category, the units of
  *  service performed on paid tickets per branch day, forecast with the same validated engine as appointments and revenue. */

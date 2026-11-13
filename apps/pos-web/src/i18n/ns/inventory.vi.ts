@@ -485,6 +485,7 @@ export const INVENTORY_VI = {
   'inv.dup.none': 'Không thấy sản phẩm nào có thể trùng.', // DRAFT — Kevin reviews
   'inv.dup.title': '{n} sản phẩm có thể trùng — vui lòng xem lại', // DRAFT — Kevin reviews
   'inv.dup.saveAnyway': 'Chưa tạo gì. Nếu đây là sản phẩm khác, bấm Tạo lần nữa.', // DRAFT — Kevin reviews
+  'inv.dup.sku': '· SKU {sku}', // DRAFT — Kevin reviews
   'inv.dup.reason.sku_exact': 'trùng SKU (sẽ bị từ chối)', // DRAFT — Kevin reviews
   'inv.dup.reason.sku_near': 'SKU gần giống', // DRAFT — Kevin reviews
   'inv.dup.reason.barcode': 'trùng mã vạch (sẽ bị từ chối)', // DRAFT — Kevin reviews

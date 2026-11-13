@@ -35,7 +35,7 @@ export interface GoCheckInDataPort {
   setDeviceStatus(tenantId: string, id: string, status: DeviceRow['status']): Promise<void>;
   setDeviceBranches(tenantId: string, id: string, patch: { branchId?: string | null; allowedBranchIds?: string[]; welcomeMessage?: string | null }): Promise<void>;
   /** round 10 (Tablets 02): `facts` = the OS / battery the device reported (null = not reported; the last reading stays) */
-  touchDevice(id: string, facts?: { os: string | null; battery: { percent: number; charging: boolean | null } | null }): Promise<void>;
+  touchDevice(id: string, tenantId: string, facts?: { os: string | null; battery: { percent: number; charging: boolean | null } | null }): Promise<void>;
   // sessions
   createSession(i: CreateSessionInput): Promise<SessionRow>;
   sessionById(id: string): Promise<SessionRow | null>;
@@ -129,7 +129,7 @@ export class InMemoryGoCheckInRepository implements GoCheckInDataPort {
   async setDeviceToken(tenantId: string, id: string, hash: string, tokenExpiresAt?: Date | null) { const d = await this.deviceById(tenantId, id); if (d) { d.deviceTokenHash = hash; d.tokenExpiresAt = tokenExpiresAt ? tokenExpiresAt.toISOString() : null; } }
   async setDeviceStatus(tenantId: string, id: string, status: DeviceRow['status']) { const d = await this.deviceById(tenantId, id); if (d) d.status = status; }
   async setDeviceBranches(tenantId: string, id: string, patch: { branchId?: string | null; allowedBranchIds?: string[]; welcomeMessage?: string | null }) { const d = await this.deviceById(tenantId, id); if (d) { if (patch.branchId !== undefined) d.branchId = patch.branchId; if (patch.allowedBranchIds !== undefined) d.allowedBranchIds = patch.allowedBranchIds; if (patch.welcomeMessage !== undefined) d.welcomeMessage = patch.welcomeMessage; } }
-  async touchDevice(id: string) { const d = this.devices.find((x) => x.id === id); if (d) d.lastSeenAt = new Date().toISOString(); }
+  async touchDevice(id: string, tenantId: string) { const d = this.devices.find((x) => x.id === id && x.tenantId === tenantId); if (d) d.lastSeenAt = new Date().toISOString(); }
 
   async createSession(i: CreateSessionInput): Promise<SessionRow> {
     const now = new Date().toISOString();

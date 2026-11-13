@@ -5,6 +5,7 @@
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpCode, HttpException, Inject, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { ApprovalError, type ApprovalActor } from './approvals.core';
+import type { ApprovalRequestView } from '@aipowersalon/api-contracts/tenant';
 import { TenantApprovalsService } from './approvals.service';
 import { ListQueries } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';   // BUILD_PLAN Phase 13: one decision per Idempotency-Key
@@ -52,7 +53,7 @@ export class PosApprovalsController {
 
   /** round 10 (Approvals 01 point 2): mark a pending request urgent — it stays pending (never auto-approved); approvers are alerted */
   @Post(':id/escalate') @HttpCode(200) @RequirePermission('approvals.request') @Idempotent()
-  escalate(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(APPROVAL_ESCALATE_BODY, { strict: true })) b: any) { return approvalRun(() => this.svc.escalate(approvalActor(r), id, b)); }
+  escalate(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(APPROVAL_ESCALATE_BODY, { strict: true })) b: any): Promise<ApprovalRequestView> { return approvalRun(() => this.svc.escalate(approvalActor(r), id, b)); }
 }
 
 // The Owner App's surface: the queue, the decision and the rules (read). Changing a rule needs a step-up, which the Owner

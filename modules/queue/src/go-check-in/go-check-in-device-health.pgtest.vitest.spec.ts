@@ -27,12 +27,12 @@ describe('Go Check-In heartbeat — device health facts', () => {
     expect(deviceHealthFacts({ battery: { percent: 100, charging: 'maybe' } })).toEqual({ os: null, battery: { percent: 100, charging: null } });
   });
   it('stores what was reported; a beat without a reading keeps the last one; nothing reported → null', async () => {
-    await repo.touchDevice(dev);
+    await repo.touchDevice(dev, T);
     expect(await row()).toMatchObject({ os_version: null, battery_percent: null, battery_reported_at: null });
-    await repo.touchDevice(dev, deviceHealthFacts({ os: 'iPadOS 17.4', battery: { percent: 14, charging: false } }));
+    await repo.touchDevice(dev, T, deviceHealthFacts({ os: 'iPadOS 17.4', battery: { percent: 14, charging: false } }));
     const r = await row();
     expect(r).toMatchObject({ os_version: 'iPadOS 17.4', battery_percent: 14, battery_charging: false }); expect(r.battery_reported_at).toBeTruthy();
-    await repo.touchDevice(dev, deviceHealthFacts({}));
+    await repo.touchDevice(dev, T, deviceHealthFacts({}));
     expect((await row()).battery_percent).toBe(14);
     await expect(sql`update go_checkin_devices set battery_percent = 150 where id = ${dev}`.execute(db)).rejects.toThrow();
   });

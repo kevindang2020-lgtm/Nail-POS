@@ -485,6 +485,7 @@ export const INVENTORY_EN = {
   'inv.dup.none': 'No possible duplicate found.',
   'inv.dup.title': '{n} possible duplicate(s) — please review',
   'inv.dup.saveAnyway': 'Nothing was created. If this is a different product, press Create again.',
+  'inv.dup.sku': '· SKU {sku}',
   'inv.dup.reason.sku_exact': 'same SKU (will be refused)',
   'inv.dup.reason.sku_near': 'almost the same SKU',
   'inv.dup.reason.barcode': 'same barcode (will be refused)',

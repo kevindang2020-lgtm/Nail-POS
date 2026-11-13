@@ -63,7 +63,8 @@ export class ConsumerRunner {
         if (seen) {                                                                                   // §23
           // TECH QUEUE 15 (migration 940): count the duplicate delivery on the done marker — the handler is NOT run again
           await trx.updateTable('processed_events').set((eb) => ({ duplicate_deliveries: eb('duplicate_deliveries', '+', 1), last_duplicate_at: sql`now()` }))
-            .where('consumer_name', '=', consumer.name).where('event_id', '=', event.eventId).execute();
+            .where('consumer_name', '=', consumer.name).where('event_id', '=', event.eventId)
+            .where('tenant_id', event.tenantId ? '=' : 'is', event.tenantId ?? null).execute();   // the marker's own salon (null = platform event)
           return { status: 'duplicate' };
         }
         await withTimeout(consumer.handle(event, trx), consumer.timeoutMs ?? 30_000);                // §127
@@ -97,8 +98,11 @@ export class ConsumerRunner {
         const ids = raws.map((e) => String(e?.eventId ?? '')).filter(Boolean);
         const seen = new Set((ids.length ? await this.db.selectFrom('processed_events').select('event_id').where('consumer_name', '=', consumer.name).where('event_id', 'in', ids).execute() : []).map((r: any) => String(r.event_id)));
         // TECH QUEUE 15 (migration 940): already-processed events delivered again are counted, one statement for the batch
-        if (seen.size) await this.db.updateTable('processed_events').set((eb) => ({ duplicate_deliveries: eb('duplicate_deliveries', '+', 1), last_duplicate_at: sql`now()` }))
-          .where('consumer_name', '=', consumer.name).where('event_id', 'in', [...seen]).execute();
+        // grouped by the events' own salon so every update names its tenant (null = platform event)
+        const dupBy = new Map<string | null, string[]>();
+        for (const e of raws) { const id = String(e?.eventId ?? ''); if (seen.has(id)) { const t = e?.tenantId ? String(e.tenantId) : null; dupBy.set(t, [...(dupBy.get(t) ?? []), id]); } }
+        for (const [t, dupIds] of dupBy) await this.db.updateTable('processed_events').set((eb) => ({ duplicate_deliveries: eb('duplicate_deliveries', '+', 1), last_duplicate_at: sql`now()` }))
+          .where('consumer_name', '=', consumer.name).where('event_id', 'in', dupIds).where('tenant_id', t ? '=' : 'is', t).execute();
         const ok: DomainEvent<any>[] = [];
         for (const raw of raws) {
           if (seen.has(String(raw?.eventId))) { done.add(String(raw.eventId)); continue; }

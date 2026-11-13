@@ -71,20 +71,6 @@ export async function recordIdempotencyEvent(db: Exec, e: { tenantId: string; sc
   await sql`INSERT INTO rewards_idempotency_events (tenant_id, scope, outcome, request_key, resource_id, detail)
     VALUES (${e.tenantId}::uuid, ${e.scope}, ${e.outcome}, ${e.key.slice(0, 200)}, ${e.resourceId ?? null}::uuid, ${JSON.stringify(e.detail ?? {})}::jsonb)`.execute(db);
 }
-/** The Super Admin's read-only idempotency center: newest first, filter by outcome / scope, with how many times each key repeated. */
-export async function listIdempotencyEvents(db: Exec, q: { outcome?: string | null; scope?: string | null; page?: number; pageSize?: number }) {
-  const s = Math.max(1, Math.min(100, Math.floor(Number(q.pageSize) || 25))); const p = Math.max(1, Math.min(10_000, Math.floor(Number(q.page) || 1)));
-  const outcome = q.outcome === 'replay' || q.outcome === 'conflict' ? q.outcome : null; const scope = q.scope === 'token_purchase' || q.scope === 'redemption' ? q.scope : null;
-  const w = sql`${outcome ? sql`e.outcome = ${outcome}` : sql`true`} and ${scope ? sql`e.scope = ${scope}` : sql`true`}`;
-  const tot = (await sql<Row>`SELECT count(*) AS c, count(*) FILTER (WHERE e.outcome = 'conflict') AS k FROM rewards_idempotency_events e WHERE ${w}`.execute(db)).rows[0];
-  const rows = (await sql<Row>`SELECT e.id, e.tenant_id, t.display_name, e.scope, e.outcome, e.request_key, e.resource_id, e.detail, e.created_at,
-      (SELECT count(*) FROM rewards_idempotency_events x WHERE x.tenant_id = e.tenant_id AND x.scope = e.scope AND x.request_key = e.request_key) AS repeats
-    FROM rewards_idempotency_events e LEFT JOIN tenants t ON t.id = e.tenant_id WHERE ${w} ORDER BY e.created_at DESC, e.id DESC LIMIT ${s} OFFSET ${(p - 1) * s}`.execute(db)).rows;
-  const total = n(tot?.c);
-  return { total, conflicts: n(tot?.k), page: p, pageSize: s, pageCount: Math.max(1, Math.ceil(total / s)),
-    items: rows.map((r) => ({ id: String(r.id), tenantId: String(r.tenant_id), salon: r.display_name ?? null, scope: String(r.scope), outcome: String(r.outcome),
-      keyRef: '…' + String(r.request_key).slice(-8), resourceId: r.resource_id ? String(r.resource_id) : null, repeats: n(r.repeats), detail: (r.detail ?? {}) as Record<string, unknown>, at: iso(r.created_at) as string })) };
-}
 /** extras GLOBAL LOYALTY REWARDS 11: the wallet ledger's entry types (its CHECK list) — the only values the type filter accepts */
 const LEDGER_TYPES = ['purchase_funded', 'earn_allocation', 'earn_reversal', 'purchase_reversal', 'adjustment'] as const;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -529,9 +515,9 @@ export class GlobalRewardsRepository {
     const ok = histFilters(f, LEDGER_TYPES); const tz = await this.salonTz(tenantId);
     const W = sql`l.tenant_id = ${tenantId}::uuid ${ok.type ? sql`AND l.entry_type = ${ok.type}` : sql``} ${ok.branchId ? sql`AND l.branch_id = ${ok.branchId}::uuid` : sql``}
       ${ok.from ? sql`AND (l.created_at AT TIME ZONE ${tz})::date >= ${ok.from}::date` : sql``} ${ok.to ? sql`AND (l.created_at AT TIME ZONE ${tz})::date <= ${ok.to}::date` : sql``}`;
-    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_wallet_ledger l WHERE ${W}`.execute(this.db)).rows[0]?.c);
+    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_wallet_ledger l WHERE l.tenant_id = ${tenantId}::uuid AND ${W}`.execute(this.db)).rows[0]?.c);
     const r = await sql<Row>`SELECT l.id, l.entry_type, l.delta_cents, l.balance_after_cents, l.source_table, l.source_id, l.branch_id, l.reason, l.created_at FROM token_wallet_ledger l
-      WHERE ${W} ORDER BY l.created_at DESC, l.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
+      WHERE l.tenant_id = ${tenantId}::uuid AND ${W} ORDER BY l.created_at DESC, l.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
     return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map((x) => ({ id: String(x.id), entryType: x.entry_type, deltaCents: n(x.delta_cents),
       balanceAfterCents: n(x.balance_after_cents), sourceTable: x.source_table, sourceId: String(x.source_id), branchId: x.branch_id ?? null, reason: x.reason ?? null, at: iso(x.created_at) })),
       applied: { entryType: ok.type, branchId: ok.branchId, from: ok.from, to: ok.to, timeZone: tz } };
@@ -666,9 +652,9 @@ export class GlobalRewardsRepository {
       : ok.type === 'funded' ? sql`AND i.status = 'FUNDS_VERIFIED'`
       : ok.type === 'failed' ? sql`AND i.status IN ('FAILED', 'DECLINED', 'REVERSED', 'CHARGED_BACK', 'CANCELED')` : sql``;
     const W = sql`i.tenant_id = ${tenantId}::uuid ${st} ${ok.from ? sql`AND (i.created_at AT TIME ZONE ${tz})::date >= ${ok.from}::date` : sql``} ${ok.to ? sql`AND (i.created_at AT TIME ZONE ${tz})::date <= ${ok.to}::date` : sql``}`;
-    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_purchase_intents i WHERE ${W}`.execute(this.db)).rows[0]?.c);
+    const total = n((await sql<Row>`SELECT count(*) AS c FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid AND ${W}`.execute(this.db)).rows[0]?.c);
     const r = await sql<Row>`SELECT i.id, i.tenant_id, i.token_cents, i.amount_cents, i.fee_cents, i.status, i.provider, i.provider_ref, i.failure_code, i.initiated_by, i.created_at, i.confirmed_at, i.funded_at
-      FROM token_purchase_intents i WHERE ${W} ORDER BY i.created_at DESC, i.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
+      FROM token_purchase_intents i WHERE i.tenant_id = ${tenantId}::uuid AND ${W} ORDER BY i.created_at DESC, i.id DESC LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
     return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map(purchaseRow),
       applied: { status: ok.type, from: ok.from, to: ok.to, timeZone: tz } };
   }

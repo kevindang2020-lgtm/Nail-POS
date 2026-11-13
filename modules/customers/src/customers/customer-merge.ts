@@ -27,6 +27,27 @@ export const MERGE_REASSIGN_TABLES = ['tickets', 'pos_tech_appointments', 'revie
   'customer_wallet_ledger', 'loyalty_point_earnings', 'loyalty_redemptions', 'nail_showcase_photos',
   'nail_showcase_posts', 'nail_photo_consent', 'customer_preferences'] as const;
 
+/** one literal table reference per reassigned table (no identifier built from data — check:raw-sql-inputs) */
+export const MERGE_TABLE_REF: Record<string, ReturnType<typeof sql.table> | undefined> = {
+  tickets: sql.table('tickets'),
+  pos_tech_appointments: sql.table('pos_tech_appointments'),
+  reviews: sql.table('reviews'),
+  review_requests: sql.table('review_requests'),
+  gift_cards: sql.table('gift_cards'),
+  gift_card_recipients: sql.table('gift_card_recipients'),
+  customer_memberships: sql.table('customer_memberships'),
+  membership_payments: sql.table('membership_payments'),
+  membership_activity: sql.table('membership_activity'),
+  membership_audit: sql.table('membership_audit'),
+  customer_payment_methods: sql.table('customer_payment_methods'),
+  customer_wallet_ledger: sql.table('customer_wallet_ledger'),
+  loyalty_point_earnings: sql.table('loyalty_point_earnings'),
+  loyalty_redemptions: sql.table('loyalty_redemptions'),
+  nail_showcase_photos: sql.table('nail_showcase_photos'),
+  nail_showcase_posts: sql.table('nail_showcase_posts'),
+  nail_photo_consent: sql.table('nail_photo_consent'),
+  customer_preferences: sql.table('customer_preferences'),
+};
 const uuidOrNull = (v: unknown) => (/^[0-9a-f-]{36}$/i.test(String(v ?? '')) ? String(v) : null);
 
 export class CustomerMergeError extends Error { constructor(message: string, readonly code: string) { super(message); } }
@@ -51,9 +72,9 @@ export async function mergeCustomersTx(trx: Kysely<any>, actor: MergeActor, surv
   const rowsBySource: Record<string, Record<string, string[]>> = {};
   const moved: Record<string, number> = {};
   for (const t of MERGE_REASSIGN_TABLES) {
-    const owned = (await sql<{ id: string; customer_id: string }>`select id, customer_id from ${sql.table(t)} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx)).rows;
+    const owned = (await sql<{ id: string; customer_id: string }>`select id, customer_id from ${MERGE_TABLE_REF[t]!} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx)).rows;
     for (const o of owned) ((rowsBySource[t] ??= {})[o.customer_id] ??= []).push(o.id);
-    const r: any = await sql`update ${sql.table(t)} set customer_id = ${survivorId} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx);
+    const r: any = await sql`update ${MERGE_TABLE_REF[t]!} set customer_id = ${survivorId} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx);
     if (Number(r.numAffectedRows ?? 0)) moved[t] = Number(r.numAffectedRows);
   }
   const tagRows = (await sql<{ customer_id: string; tag: string; dup: boolean }>`select s.customer_id, s.tag,
@@ -105,7 +126,7 @@ export async function mergeCustomersTx(trx: Kysely<any>, actor: MergeActor, surv
   const fingerprints: Record<string, Record<string, string>> = {};
   for (const [t, bySrc] of Object.entries(rowsBySource)) {
     const ids = Object.values(bySrc).flat();
-    const fp = (await sql<{ id: string; h: string }>`select x.id, md5(row_to_json(x)::text) as h from ${sql.table(t)} x where x.tenant_id = ${T} and x.id = any(${ids}::uuid[])`.execute(trx)).rows;
+    const fp = (await sql<{ id: string; h: string }>`select x.id, md5(row_to_json(x)::text) as h from ${MERGE_TABLE_REF[t]!} x where x.tenant_id = ${T} and x.id = any(${ids}::uuid[])`.execute(trx)).rows;
     fingerprints[t] = Object.fromEntries(fp.map((r) => [r.id, r.h]));
   }
   const snapshot = {

@@ -71,12 +71,12 @@ export class KyselyGoCheckInRepository implements GoCheckInDataPort {
     if (patch.welcomeMessage !== undefined) set.welcome_message = patch.welcomeMessage;
     await this.db.updateTable('go_checkin_devices').set(set).where('id', '=', id).where('tenant_id', '=', tenantId).execute();
   }
-  async touchDevice(id: string, facts?: { os: string | null; battery: { percent: number; charging: boolean | null } | null }) {
+  async touchDevice(id: string, tenantId: string, facts?: { os: string | null; battery: { percent: number; charging: boolean | null } | null }) {
     await this.db.updateTable('go_checkin_devices').set({
       last_seen_at: new Date(),
       ...(facts?.os ? { os_version: facts.os } : {}),
       ...(facts?.battery ? { battery_percent: facts.battery.percent, battery_charging: facts.battery.charging, battery_reported_at: new Date() } : {}),
-    } as any).where('id', '=', id).execute();
+    } as any).where('id', '=', id).where('tenant_id', '=', tenantId).execute();
   }
 
   async createSession(i: CreateSessionInput): Promise<SessionRow> {

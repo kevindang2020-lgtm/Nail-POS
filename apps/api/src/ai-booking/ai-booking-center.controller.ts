@@ -9,7 +9,7 @@ import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { branchOrNull } from '@aipowersalon/tenant-context';
-import type { AibActivityPage, AibOverview, AibRequestDetail, AibRecoveryList, AibHealthRun, AibLastHealth, AibDismissResult, AibAlternatives } from '@aipowersalon/api-contracts/tenant';
+import type { AibActivityPage, AibOverview, AibRequestDetail, AibRecoveryList, AibHealthRun, AibLastHealth, AibDismissResult, AibAlternatives, AibSupportReportResult } from '@aipowersalon/api-contracts/tenant';
 import { AiBookingCenter, AiBookingCenterError, type BkCtx, type BkApprovalsPort } from './ai-booking-center';
 import { BookingService } from '@aipowersalon/booking';
 import { AIB_RECOVERY_DISMISS_BODY, AIB_RECOVERY_APPROVAL_BODY } from './request-schemas';
@@ -50,7 +50,7 @@ export class AiBookingCenterController {
 
   /** round 10 (AI Booking 14): audit the Support report download (the POS downloads only after this answers) */
   @Idempotent() @Post('requests/:requestId/support-report') @RequirePermission('ai_booking.view')
-  recordSupportReport(@Req() r: any, @Param('requestId') id: string): Promise<{ recorded: boolean; at: string } & Pick<AibRequestDetail, 'requestId'>> { return run(() => this.center.recordSupportReport(ctxOf(r), id)); }
+  recordSupportReport(@Req() r: any, @Param('requestId') id: string): Promise<AibSupportReportResult> { return run(() => this.center.recordSupportReport(ctxOf(r), id)); }
 
   @Get('recovery') @RequirePermission('ai_booking.view')
   recovery(@Req() r: any): Promise<AibRecoveryList> { return run(() => this.center.recovery(ctxOf(r))); }

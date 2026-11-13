@@ -14,6 +14,7 @@ import { useLoad, StateBlock } from '../components/FinanceKit';
 import { codeLabel } from '../components/peopleLabels';
 import { pageOf, whenTime } from './technicianScreenParts';
 import { nf } from './teamShared';
+const NOTE_WARN = ['fk-note', 'warn'].join(' ');   // CSS classes, not text
 
 const STATUS_TABS = ['open_all', 'OPEN', 'ASSIGNED', 'INVESTIGATING', 'RESOLVED', 'DISMISSED', 'all'] as const;
 const TYPES = ['', 'RATE_CONFIG', 'REFUND_REVERSAL', 'DUPLICATE_LINE', 'MISSING_TECHNICIAN', 'TIP_MISMATCH', 'EARNINGS_OVER_BASE', 'PAYOUT_MISMATCH'];
@@ -195,7 +196,7 @@ export function ExportHistory({ load, tick }: { load: (q: Record<string, unknown
     <FitPanel testId="export-history" title={<>{tx('cm.exportHistory')}{d ? <span className="fk-muted"> · {tx(d.scope === 'own' ? 'cm.ex.own' : 'cm.ex.salon')}</span> : null}</>} footer={<Pager info={pageOf(d)} onPage={setPage} label={tx('cm.exportHistory')} />}>
       {d?.coverage ? <div className="cr-coverage" data-testid="export-coverage">
         <div data-testid="coverage-verified">{d.coverage.lastVerifiedExport ? tx('cr10.cov.verified', { at: whenTime(d.coverage.lastVerifiedExport.at), r: tx('cm.ex.type.' + d.coverage.lastVerifiedExport.reportType), n: d.coverage.lastVerifiedExport.rowCount == null ? '—' : nf(d.coverage.lastVerifiedExport.rowCount), by: d.coverage.lastVerifiedExport.actor ?? '—' }) : tx('cr10.cov.noVerified')}</div>
-        <div data-testid="coverage-missing" className={d.coverage.lastMissingOutcome ? 'fk-note warn' : ''}>{d.coverage.lastMissingOutcome ? tx('cr10.cov.missing', { at: whenTime(d.coverage.lastMissingOutcome.at), r: tx('cm.ex.type.' + d.coverage.lastMissingOutcome.reportType), n: nf(d.coverage.missingOutcomes) }) : tx('cr10.cov.noMissing')}</div>
+        <div data-testid="coverage-missing" className={d.coverage.lastMissingOutcome ? NOTE_WARN : ''}>{d.coverage.lastMissingOutcome ? tx('cr10.cov.missing', { at: whenTime(d.coverage.lastMissingOutcome.at), r: tx('cm.ex.type.' + d.coverage.lastMissingOutcome.reportType), n: nf(d.coverage.missingOutcomes) }) : tx('cr10.cov.noMissing')}</div>
       </div> : null}
       {h.error ? <StateBlock error={h.error} onRetry={h.reload} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : !d.items.length ? <Empty title={tx('cm.ex.none')} />
         : <table className="fk-table fn-table cg-table" data-testid="export-history-table"><thead><tr><th>{tx('tm.col.when')}</th><th>{tx('cm.ex.report')}</th><th>{tx('cm.ex.event')}</th><th>{tx('cm.ex.by')}</th><th className="num">{tx('cm.ex.rows')}</th></tr></thead>

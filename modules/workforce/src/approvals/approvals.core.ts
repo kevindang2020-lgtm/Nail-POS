@@ -190,7 +190,7 @@ export const BASELINE_GUARDRAILS: ApprovalGuardrails = { refund: { alwaysEnabled
 const GUARD_NUM = ['maxThresholdCents', 'maxCashThresholdCents', 'maxApproverLimitCents', 'maxExpiresAfterHours'] as const;
 /** Read the platform value defensively: unknown kinds / keys and anything that is not a whole non-negative number or `true` are ignored. */
 export function parseGuardrails(v: unknown): ApprovalGuardrails {
-  const src = typeof v === 'string' ? (() => { try { return JSON.parse(v) as unknown; } catch { return null; } })() : v;
+  const src = v;   // platform_settings.value is jsonb (valueType 'json'): an object arrives parsed; anything else adds no guardrail (the code baseline still applies)
   const out: ApprovalGuardrails = {};
   if (!src || typeof src !== 'object' || Array.isArray(src)) return out;
   for (const [k, g] of Object.entries(src as Record<string, unknown>)) {

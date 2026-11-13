@@ -310,7 +310,7 @@ export function ProductFormDialog({ product, onClose, onSaved }: { product?: any
           {dups && dupSeenFor === dupKey ? (dups.length === 0 ? <div className="fk-li-s" data-testid="pf-dups-none">{tx('inv.dup.none')}</div> : (
             <div data-testid="pf-dups" role="status" style={{ border: "1px solid #E8C48A", background: "#FFF7E8", borderRadius: 8, padding: 8, margin: "6px 0", fontSize: 12 }}>
               <b>{tx('inv.dup.title', { n: String(dups.length) })}</b>
-              {dups.map((c) => <div key={c.productId} data-testid={`pf-dup-${c.productId}`}>{c.name}{c.sku ? ` · SKU ${c.sku}` : ''} — {c.reasons.map((r) => codeLabel(`inv.dup.reason.${r}`, r) + (r === 'supplier_sku' && c.supplierSku ? ` ${c.supplierSku}${c.supplierName ? ` (${c.supplierName})` : ''}` : '')).join(', ')}</div>)}
+              {dups.map((c) => <div key={c.productId} data-testid={`pf-dup-${c.productId}`}>{c.name}{c.sku ? ' ' + tx('inv.dup.sku', { sku: c.sku }) : ''} — {c.reasons.map((r) => codeLabel(`inv.dup.reason.${r}`, r) + (r === 'supplier_sku' && c.supplierSku ? ` ${c.supplierSku}${c.supplierName ? ` (${c.supplierName})` : ''}` : '')).join(', ')}</div>)}
               {!edit ? <div className="fk-li-s">{tx('inv.dup.saveAnyway')}</div> : null}
             </div>)) : null}
           <div className="inv-row2">
