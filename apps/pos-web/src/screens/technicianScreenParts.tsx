@@ -152,6 +152,10 @@ export function QualifiedFinder({ today, onClose }: { today: string; onClose: ()
               <td className="fn-acts"><button type="button" className="fk-btn sm primary" data-testid="finder-select" onClick={() => nav(`/booking/new?technicianId=${encodeURIComponent(o.technicianId)}&date=${date}&time=${encodeURIComponent(o.time)}&serviceId=${encodeURIComponent(ids[0])}`)}>{tx('tc.select')}</button></td></tr>)}</tbody></table>}
         {r.hasMore ? <button type="button" className="fk-btn ghost" onClick={() => setOffset(offset + 10)}>{tx('tc.more')}</button> : null}
         <div className="fk-hint">{tx('tc.finderRule')}</div>
+        {/* round 10 (LIVE TECHNICIAN SCHEDULE 05) — Multi-Tech Conflict View: with two or more services, preview the start times
+            when a DIFFERENT qualified technician is free for EACH service at the same time (the engine's own availability per
+            service, combined here; nothing is held or booked) */}
+        {picked.length >= 2 ? <MultiTechSync date={date} services={picked} /> : null}
         {/* Extras (Live Technician Schedule row 10): why is a technician NOT listed? The same read-only check the conflict
             warning uses — it cites the technician's actual service mapping (technician_services) by service name, plus
             shift / break / time off / booked time for the chosen start. Nothing is saved or booked. */}
@@ -161,6 +165,41 @@ export function QualifiedFinder({ today, onClose }: { today: string; onClose: ()
       </>}
     </FitDialog>
   );
+}
+
+/** round 10 (LIVE TECHNICIAN SCHEDULE 05): start times when every picked service has its OWN free qualified technician at once.
+ *  Each service's availability comes from the booking engine (qualification, shift, breaks, holds, buffer — its rules, not
+ *  ours); this only finds the shared start times and gives each service a different technician (first free one in roster order). */
+export function syncStarts(per: Array<Array<{ technicianId: string; name: string; slots: string[] }>>, max = 10): Array<{ time: string; techs: Array<{ technicianId: string; name: string }> }> {
+  const times = [...new Set(per.flatMap((techs) => techs.flatMap((t) => t.slots)))].sort();
+  const out: Array<{ time: string; techs: Array<{ technicianId: string; name: string }> }> = [];
+  for (const time of times) {
+    const free = per.map((techs) => techs.filter((t) => t.slots.includes(time)));
+    if (free.some((f) => !f.length)) continue;
+    // assign distinct technicians — the service with the fewest choices first (small sets: a few services, a page of technicians)
+    const order = free.map((f, i) => i).sort((a, b) => free[a].length - free[b].length);
+    const used = new Set<string>(); const pick: Array<{ technicianId: string; name: string } | null> = free.map(() => null);
+    const place = (k: number): boolean => { if (k === order.length) return true; const i = order[k];
+      for (const t of free[i]) { if (used.has(t.technicianId)) continue; used.add(t.technicianId); pick[i] = { technicianId: t.technicianId, name: t.name }; if (place(k + 1)) return true; used.delete(t.technicianId); }
+      return false; };
+    if (place(0)) out.push({ time, techs: pick as Array<{ technicianId: string; name: string }> });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+function MultiTechSync({ date, services }: { date: string; services: { serviceId: string; name: string; durationMinutes: number }[] }) {
+  const key = services.map((x) => x.serviceId).join(',');
+  const av = useLoad(() => Promise.all(services.map((x) => posBookingApi.availability({ date, serviceIds: [x.serviceId] }))), [key, date]);
+  const per = (av.data ?? []).map((r: any) => (Array.isArray(r) ? r : []).map((t: any) => ({ technicianId: String(t.technicianId), name: String(t.name ?? ''), slots: Array.isArray(t.slots) ? t.slots.map(String) : [] })));
+  const rows = av.data ? syncStarts(per) : [];
+  return <section data-testid="finder-sync">
+    <h3 className="fk-h3">{tx('tc.sync.title')}</h3>
+    <p className="fk-hint">{tx('tc.sync.sub', { n: nf(services.length) })}</p>
+    {av.error ? <StateBlock error={av.error} onRetry={av.reload} /> : !av.data ? <div className="fk-loading">{tx('pos.loading')}</div>
+      : !rows.length ? <div className="fk-hint" data-testid="finder-sync-none">{tx('tc.sync.none')}</div>
+      : <table className="fk-table fn-table cg-table"><thead><tr><th>{tx('tc.col.earliest')}</th>{services.map((x) => <th key={x.serviceId}>{x.name}</th>)}</tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.time} data-testid="finder-sync-row"><td><b>{hm12(r.time)}</b></td>{r.techs.map((t, i) => <td key={services[i].serviceId}>{t.name}</td>)}</tr>)}</tbody></table>}
+  </section>;
 }
 
 /** Service Mapping Assistant — never qualifies everyone; a manager ticks genuine qualifications and saves one technician. */

@@ -78,6 +78,9 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
   const [cal, setCal] = useState(false);
   const [list, setList] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  // round 10 (Customer Profile Assistant 05): the last good read stays on screen (in this tab's memory only — never stored)
+  // when a refresh fails, marked with its time; a NEW query (other filters / page) that fails shows the error alone
+  const [listAt, setListAt] = useState<string | null>(null); const [sumAt, setSumAt] = useState<string | null>(null); const listKey = useRef('');
   const [health, setHealth] = useState<any | 'loading' | null>(null);
   const custom = useRef(p.errText); custom.current = p.errText;
   const errText = (e: unknown) => toErr(e, custom.current);
@@ -86,9 +89,9 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
   // growing pause before the error + Retry shows; a 4xx (permission, validation) is never retried. The cards keep their
   // skeletons meanwhile, and the summary and the list fail independently (one never hides the other). A newer load wins.
   const sumSeq = useRef(0); const listSeq = useRef(0);
-  const loadSum = useCallback(() => { const n = ++sumSeq.current; setSumErr(null); withRetry(summary).then((v) => { if (n === sumSeq.current) setSum(v); }).catch((e) => { if (n === sumSeq.current) setSumErr(toErr(e, custom.current)); }); }, [summary]);
+  const loadSum = useCallback(() => { const n = ++sumSeq.current; setSumErr(null); withRetry(summary).then((v) => { if (n === sumSeq.current) { setSum(v); setSumAt(new Date().toISOString()); } }).catch((e) => { if (n === sumSeq.current) setSumErr(toErr(e, custom.current)); }); }, [summary]);
   useEffect(() => { loadSum(); }, [loadSum, tick]);
-  const load = useCallback(() => { const n = ++listSeq.current; setErr(null); withRetry(() => fetchList({ ...f, ...period })).then((v) => { if (n === listSeq.current) setList(v); }).catch((e) => { if (n === listSeq.current) setErr(toErr(e, custom.current)); }); }, [f, period, fetchList]);
+  const load = useCallback(() => { const n = ++listSeq.current; setErr(null); const key = JSON.stringify({ ...f, ...period }); withRetry(() => fetchList({ ...f, ...period })).then((v) => { if (n === listSeq.current) { setList(v); setListAt(new Date().toISOString()); listKey.current = key; } }).catch((e) => { if (n === listSeq.current) { if (listKey.current !== key) { setList(null); setListAt(null); } setErr(toErr(e, custom.current)); } }); }, [f, period, fetchList]);
   useEffect(() => { load(); }, [load, tick]);
   const set = (x: Record<string, any>, keepPage = false) => setF((y) => ({ ...y, ...x, page: keepPage ? (x.page ?? y.page) : 1 }));
   const setPer = (x: { preset?: string; from?: string; to?: string }) => { setPeriod(x); setF((y) => ({ ...y, page: 1 })); };
@@ -104,6 +107,7 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
       </div>
       {p.note ? <p className="sub" style={{ marginTop: 8 }}>{p.note}</p> : null}
       {sumErr ? <ErrorRetry message={sumErr} onRetry={loadSum} /> : null}
+      {sumErr && sum && sumAt ? <p className="sub" data-testid="as-sum-stale">{t('asx.staleSum', { at: asWhen(sumAt) })}</p> : null}
       <div className="rvw-kpis" data-testid="as-kpis" style={{ marginTop: 10 }}>
         {p.kpis.map((k) => <KpiCard key={k.key} testId={`as-kpi-${k.key}`} label={k.label} value={sum ? k.value(sum) : '—'} loading={!sum && !sumErr} tone={sum ? k.tone?.(sum) : undefined} />)}
       </div>
@@ -125,7 +129,9 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
         </div>
         {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? deviceToday()}
           onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
-        {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{t('asx.loading')}</div> : rows.length === 0 ? <Empty title={p.emptyText(filtered, sum)} /> : (
+        {err ? <ErrorRetry message={err} onRetry={load} /> : null}
+        {err && list && listAt ? <p className="sub" data-testid="as-list-stale">{t('asx.staleList', { at: asWhen(listAt) })}</p> : null}
+        {err && !list ? null : !list ? <div className="state">{t('asx.loading')}</div> : rows.length === 0 ? <Empty title={p.emptyText(filtered, sum)} /> : (
           <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>{p.columns.map((c) => <th key={c.key}>{c.label}</th>)}</tr></thead>
             <tbody>{rows.map((r) => <tr key={p.rowKey(r)} data-testid="as-row">{p.columns.map((c) => <td key={c.key}>{c.render(r)}</td>)}</tr>)}</tbody></table></div>)}
         <div className="rvw-pager">

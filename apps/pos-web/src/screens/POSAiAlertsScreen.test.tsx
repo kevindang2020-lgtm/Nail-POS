@@ -91,6 +91,11 @@ describe('POSAiAlertsScreen', () => {
     fireEvent.click(screen.getByTestId('bzx-h-why'));
     expect(await screen.findByTestId('bzx-bridge')).toHaveTextContent('Ticket volume');
     expect(screen.getByTestId('bzx-explain')).toHaveTextContent('not proof of cause');
+    // round 10 (AI BUSINESS ALERTS 13): one click to the authoritative views, for the alert's own period
+    expect(screen.getByTestId('bzx-src-sales').getAttribute('href')).toBe('/tenant/reports/sales?from=2026-11-03&to=2026-11-03');
+    expect(screen.getByTestId('bzx-src-staff').getAttribute('href')).toBe('/tenant/team/performance');
+    expect(screen.getByTestId('bzx-src-customers').getAttribute('href')).toBe('/tenant/customers');
+    expect(screen.queryByTestId('bzx-src-booking')).toBeNull();   // the booking links belong to the appointment funnel
   });
   it('history filters go to the server', async () => {
     wrap();

@@ -408,7 +408,16 @@ async function finish(){
 }
 
 // heartbeat to keep the session warm + device "last seen" fresh
-setInterval(()=>{ if(SESSION&&TOKEN) api('POST', `/session/${SESSION}/heartbeat`, null, true).catch(()=>{}); }, 60000);
+// round 10 (Tablets 02): the heartbeat also carries what this device's browser exposes — its OS (user agent) and its battery
+// (Battery Status API; iPad Safari has none, so an iPad reports no battery) — never a guessed value
+async function deviceFacts(){
+  const o = {}; const ua = navigator.userAgent || ''; let m;
+  if ((m = /Android (\d+(?:\.\d+)*)/.exec(ua))) o.os = 'Android ' + m[1];
+  else if ((m = /(iPad|iPhone|iPod).*? OS (\d+(?:_\d+)*)/.exec(ua))) o.os = (m[1] === 'iPad' ? 'iPadOS ' : 'iOS ') + m[2].replace(/_/g, '.');
+  try { if (navigator.getBattery) { const b = await navigator.getBattery(); if (Number.isFinite(b.level) && b.level >= 0 && b.level <= 1) o.battery = { percent: Math.round(b.level * 100), charging: !!b.charging }; } } catch (e) { /* no battery reading here */ }
+  return o;
+}
+setInterval(()=>{ if(SESSION&&TOKEN) deviceFacts().then((f)=>api('POST', `/session/${SESSION}/heartbeat`, f, true)).catch(()=>{}); }, 60000);
 
 async function boot(){
   if(!SLUG){ render(`<h1>Setup needed</h1><p class="sub">This kiosk has no check-in code. Add <code>?slug=YOUR_SLUG</code> to the URL.</p>`); return; }

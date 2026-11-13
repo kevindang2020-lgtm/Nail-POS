@@ -40,6 +40,14 @@ describe('booking → realtime', () => {
     expect(JSON.stringify(emitted)).not.toContain('bring polish');   // notes never ride events
   });
 
+  it('round 10 (AI Booking 08): confirming publishes appointment_updated with status confirmed (POS board + AI Calendar refresh)', async () => {
+    const { svc, emitted } = harness();
+    const row = await svc.create(ctx, { customerName: 'C D', date: '2026-07-28', startTime: '12:00', serviceIds: ['svc_mani'] } as any);
+    emitted.length = 0;
+    await svc.confirm(ctx, row.appointmentId);
+    expect(emitted.map((e) => [e.event, e.payload.resourceId, e.payload.data?.status])).toEqual([['appointment_updated', row.appointmentId, 'confirmed']]);
+  });
+
   it('a broken realtime bus never fails the booking itself', async () => {
     const svc = new BookingService(new InMemoryBookingRepository() as any, undefined, undefined, undefined,
       { toTenant: () => { throw new Error('bus down'); } } as any);

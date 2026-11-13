@@ -224,6 +224,32 @@ describe('shared read-only Check … System', () => {
     expect(count(r, 'addon_duplicate_charge')).toMatchObject({ state: 'WARNING', count: 1 });           // Paraffin ×2 on A
     expect(count(await svc.run('catalog', { tenantId: T, branchId: B2 }), 'addon_duplicate_charge')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('round 10: ADD-ONS 03/05 — orphaned links, a duplicate active offering, a nail add-on on a hair service, a live add-on on a voided ticket; inactive / other salon never', async () => {
+    const BA = id(4601), BAX = id(4602), CAT = id(4603), HAIR = id(4604), NAILS = id(4605), GONE = id(4606), SX = id(4607), CATX = id(4608), TV = id(4609), TOK = id(4610);
+    await q(sql`insert into branches (id, tenant_id, name) values (${BA}, ${T}, 'Add-on integrity'), (${BAX}, ${X}, 'Other add-on integrity')`);
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name) values (${CAT}, ${T}, ${BA}, 'All'), (${CATX}, ${X}, ${BAX}, 'All')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values
+      (${HAIR}, ${T}, ${BA}, ${CAT}, 'Women haircut', 45, 5000), (${NAILS}, ${T}, ${BA}, ${CAT}, 'Gel manicure', 45, 4000), (${SX}, ${X}, ${BAX}, ${CATX}, 'Haircut', 30, 3000)`);
+    const ao = (tenant: string, branch: string, svcId: string, key: string, name: string, active = true) => q(sql`insert into service_add_ons (tenant_id, branch_id, service_id, add_on_key, name, price_cents, is_active)
+      values (${tenant}, ${branch}, ${svcId}, ${key}, ${name}, 500, ${active})`);
+    await ao(T, BA, HAIR, 'french', 'French tips');                       // nail add-on on a hair service
+    await ao(T, BA, NAILS, 'chrome', 'Chrome'); await ao(T, BA, NAILS, 'chrome2', ' chrome ');   // the same add-on twice on one service
+    await ao(T, BA, NAILS, 'art', 'Nail art'); await ao(T, BA, NAILS, 'art-old', 'Nail art', false);   // an inactive copy is not a duplicate
+    await ao(T, BA, GONE, 'ghost', 'Paraffin');                           // its service no longer exists
+    await ao(X, BAX, SX, 'french', 'French tips'); await ao(X, BAX, GONE, 'ghost', 'Paraffin');   // the other salon: never counted
+    // a voided ticket whose add-on line is still live, and a paid ticket that is fine
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents) values (${TV}, ${T}, ${BA}, ${id(21)}, 'voided', 0, 0, 0, 0), (${TOK}, ${T}, ${BA}, ${id(21)}, 'paid', 0, 0, 0, 0)`);
+    for (const [tk, kind, name, removed] of [[TV, 'service', 'Gel manicure', true], [TV, 'add_on', 'Chrome', false], [TOK, 'service', 'Gel manicure', false], [TOK, 'add_on', 'Chrome', false]] as const)
+      await q(sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, line_kind, is_add_on, removed_at)
+        values (${T}, ${BA}, ${tk}, ${NAILS}, ${name}, 500, 10, 500, ${kind}, ${kind === 'add_on'}, ${removed ? sql`now()` : null})`);
+    const r = await svc.run('catalog', { tenantId: T, branchId: BA });
+    expect(count(r, 'addon_orphan_service')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'addon_duplicate_active_offering')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'addon_category_mismatch')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'addon_live_on_voided_ticket')).toMatchObject({ state: 'WARNING', count: 1 });
+    const other = await svc.run('catalog', { tenantId: T, branchId: B2 });
+    for (const k of ['addon_orphan_service', 'addon_duplicate_active_offering', 'addon_category_mismatch', 'addon_live_on_voided_ticket']) expect(count(other, k).count).toBe(0);
+  });
   it('extras: SERVICE PRICING 05 — checkout wiring: a paid subtotal above its lines, a discount above its lines, tax with no taxable line; unpaid, removed and other salons never', async () => {
     const B9 = id(620), BX9 = id(621);
     await q(sql`insert into branches (id, tenant_id, name) values (${B9}, ${T}, 'Pricing wiring'), (${BX9}, ${X}, 'Other wiring')`);

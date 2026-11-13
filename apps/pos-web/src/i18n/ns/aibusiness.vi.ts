@@ -699,4 +699,9 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.cmp.cannot.no_snapshot": "Một báo cáo không có số liệu Báo cáo doanh số đã xác minh để so sánh.", // DRAFT — Kevin reviews
   "bzx.cmp.cannot.no_permission": "Vai trò của bạn không xem được số liệu Báo cáo doanh số.", // DRAFT — Kevin reviews
   "bzx.cmp.cannot.same_report": "Hãy chọn báo cáo khác.", // DRAFT — Kevin reviews
+  "bzx.src.sales": "Doanh thu kỳ này", // DRAFT — Kevin reviews
+  "bzx.src.booking": "Lịch hẹn ngày đó", // DRAFT — Kevin reviews
+  "bzx.src.history": "Lịch sử lịch hẹn", // DRAFT — Kevin reviews
+  "bzx.src.staff": "Hiệu suất nhân viên", // DRAFT — Kevin reviews
+  "bzx.src.customers": "Khách hàng", // DRAFT — Kevin reviews
 };

@@ -20,6 +20,31 @@ export function currentScreen(): { width: number; height: number; pixelRatio: nu
   return { width: Math.min(10000, Math.max(100, w)), height: Math.min(10000, Math.max(100, h)), pixelRatio: Math.min(8, Math.max(0.5, Math.round(pr * 100) / 100)) };
 }
 
+/** round 10 (Tablets 02): what this device's browser exposes about itself — never guessed. Absent fields = not available. */
+export type DeviceHealthFacts = { os?: string; battery?: { percent: number; charging: boolean } };
+type NavLike = { userAgent?: string; userAgentData?: { platform?: string }; getBattery?: () => Promise<{ level: number; charging: boolean }> };
+/** the OS name + version from the browser's own user-agent data (e.g. "Android 13", "iPadOS 17.4", "Windows 10"), or undefined */
+export function osFromUserAgent(ua: string, platform?: string): string | undefined {
+  const a = /Android (\d+(?:\.\d+)*)/.exec(ua); if (a) return `Android ${a[1]}`;
+  const i = /(iPad|iPhone|iPod).*? OS (\d+(?:_\d+)*)/.exec(ua); if (i) return `${i[1] === 'iPad' ? 'iPadOS' : 'iOS'} ${i[2].replace(/_/g, '.')}`;
+  const w = /Windows NT (\d+\.\d+)/.exec(ua); if (w) return w[1] === '10.0' ? 'Windows 10/11' : `Windows NT ${w[1]}`;
+  const m = /Mac OS X (\d+(?:[_.]\d+)*)/.exec(ua); if (m) return `macOS ${m[1].replace(/_/g, '.')}`;
+  if (/CrOS/.test(ua)) return 'ChromeOS';
+  if (/Linux/.test(ua)) return 'Linux';
+  return platform && /^[\x20-\x7e]{1,40}$/.test(platform) ? platform : undefined;
+}
+export async function readDeviceFacts(nav: NavLike | undefined = typeof navigator !== 'undefined' ? (navigator as unknown as NavLike) : undefined): Promise<DeviceHealthFacts> {
+  if (!nav) return {};
+  const out: DeviceHealthFacts = {};
+  const os = osFromUserAgent(String(nav.userAgent ?? ''), nav.userAgentData?.platform);
+  if (os) out.os = os.slice(0, 64);
+  try {
+    const b = typeof nav.getBattery === 'function' ? await nav.getBattery() : null;
+    if (b && Number.isFinite(b.level) && b.level >= 0 && b.level <= 1) out.battery = { percent: Math.round(b.level * 100), charging: !!b.charging };
+  } catch { /* the Battery Status API is not available here — the battery is simply not reported */ }
+  return out;
+}
+
 /** G7: `adPolicy` = the advertising policy of the playlist this display is actually playing (its acknowledgment) */
 export function useHeartbeat(creds: Creds | null, mode: DisplayReportedMode | null, onAck: (ack: DisplayHeartbeatAck) => void, adPolicy: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null = null): void {
   const modeRef = useRef(mode);
@@ -39,7 +64,9 @@ export function useHeartbeat(creds: Creds | null, mode: DisplayReportedMode | nu
       if (!m) return;   // nothing on screen yet
       lastSent.current = m;
       const screen = currentScreen();
-      sendHeartbeat(creds, { mode: m, appVersion: DISPLAY_APP_VERSION, screen, profile: displayProfileFor(screen.width, screen.height), ...(policyRef.current ? { adPolicy: policyRef.current } : {}) })
+      const policy = policyRef.current;
+      readDeviceFacts()
+        .then((facts) => sendHeartbeat(creds, { mode: m, appVersion: DISPLAY_APP_VERSION, screen, profile: displayProfileFor(screen.width, screen.height), ...(policy ? { adPolicy: policy } : {}), ...facts }))
         .then((a) => { if (live) ackRef.current(a); })
         .catch(() => { /* offline: the POS will show it as offline — nothing to do here */ });
     };

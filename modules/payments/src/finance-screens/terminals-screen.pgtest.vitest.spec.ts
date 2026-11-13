@@ -210,3 +210,31 @@ describe('Payment Terminals — processor filter and Device Audit History', () =
     expect((await repo.auditHistory(ctx, { period: yesterday, q: '' }, pageReq({}))).total).toBe(0);
   });
 });
+
+describe('round 10 (Split Payments 11) — register / merchant mismatch warning', () => {
+  it('a terminal linked to another location\'s register or merchant account is flagged, without that location\'s details; a matching one is not', async () => {
+    const B3 = id('b9');
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Second','active',$3) on conflict do nothing`, [B3, T, TZ]);
+    await q(`insert into pos_stations (id, tenant_id, branch_id, name) values ($1,$2,$3,'Second Desk Secret')`, [id('s8'), T, B3]);
+    const mOk = (await q(`insert into payment_merchant_accounts (tenant_id, branch_id, processor) values ($1,$2,'clover') returning id`, [T, B])).rows[0].id;
+    const mElse = (await q(`insert into payment_merchant_accounts (tenant_id, branch_id, processor) values ($1,$2,'clover') returning id`, [T, B3])).rows[0].id;
+    await term('term_000007', T, B, 'Wrong Register', { station: id('s8'), seen: ago(1), ping: ago(1), pingOk: true, pairedMinsAgo: 2 });
+    await term('term_000008', T, B, 'Wrong Merchant', { station: id('s1'), seen: ago(1), ping: ago(1), pingOk: true, pairedMinsAgo: 3 });
+    await term('term_000009', T, B, 'Right Merchant', { station: id('s2'), seen: ago(1), ping: ago(1), pingOk: true, pairedMinsAgo: 4 });
+    await term('term_000010', T, B, 'Unknown Merchant', { seen: ago(1), ping: ago(1), pingOk: true, pairedMinsAgo: 5 });
+    await q(`update pos_payment_terminals set merchant_account_id = $2 where id = $1`, ['term_000008', String(mElse)]);
+    await q(`update pos_payment_terminals set merchant_account_id = $2 where id = $1`, ['term_000009', String(mOk)]);
+    await q(`update pos_payment_terminals set merchant_account_id = $2 where id = $1`, ['term_000010', id('ee')]);   // not this salon's account
+    const list = await repo.physicalList(ctx, { q: '', sort: 'created_desc' }, pageReq({ page: 1, pageSize: 50 }));
+    const by = Object.fromEntries(list.items.map((t) => [t.id, t]));
+    expect(by.term_000007.attention).toEqual(['register_other_location']);
+    expect(by.term_000007.registerName).toBeNull();   // the other location's register name is not shown
+    expect(JSON.stringify(list)).not.toContain('Second Desk Secret');
+    expect(by.term_000008.attention).toEqual(['merchant_other_location']);
+    expect(by.term_000009.attention).toEqual([]);
+    expect(by.term_000009.group).toBe('online');
+    expect(by.term_000010.attention).toEqual(['merchant_other_location']);
+    const s = await repo.summary(ctx);
+    expect(s.physical.reasons).toMatchObject({ register_other_location: 1, merchant_other_location: 2 });
+  });
+});

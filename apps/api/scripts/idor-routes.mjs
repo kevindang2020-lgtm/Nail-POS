@@ -88,6 +88,7 @@ export const SEGMENT_FIXTURES = [
   ['/pos/ai-queue-assignment/recommendations/{id}', F('queue_assignment_recommendations')],
   // A7 (Nov 4 2026): a request id is a correlation id inside ai_booking_conversion_events; the query is salon-scoped (another salon's id answers 404)
   ['/pos/ai-booking/requests/{requestId}', F('ai_booking_conversion_events', 'correlation_id')],
+  ['/pos/ai-booking/requests/{requestId}/support-report', F('ai_booking_conversion_events', 'correlation_id')],
   ['/pos/ai-booking/recovery/{caseKey}/dismiss', X('caseKey is a derived key (type:id); the dismissal is stored under the caller\'s salon only and reveals nothing')],
   ['/pos/ai-review-reputation/{id}', F('reviews')],
   ['/pos/ai-scheduling-optimizer/recommendations/{id}', F('schedule_optimization_recommendations')],

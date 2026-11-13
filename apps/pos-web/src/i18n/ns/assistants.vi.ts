@@ -130,4 +130,6 @@ export const ASSISTANTS_VI: Record<string, string> = {
   "cpx.ev.dup": "Khách có thể trùng: phần rà soát trùng, kiểm tra lần cuối {at}.", // DRAFT — Kevin reviews
   "cpx.ev.dupNever": "Khách có thể trùng: phần rà soát trùng chưa chạy.", // DRAFT — Kevin reviews
   "cpx.ev.prefs": "Sở thích, dịch vụ yêu thích và ghi chú hiển thị trên hồ sơ từng khách từ dữ liệu gốc; trang này không lưu bản sao.", // DRAFT — Kevin reviews
+  "asx.staleSum": "Đang hiện số liệu tốt gần nhất, lúc {at}.", // DRAFT — Kevin reviews
+  "asx.staleList": "Đang hiện danh sách tốt gần nhất, lúc {at} — có thể đã thay đổi.", // DRAFT — Kevin reviews
 };

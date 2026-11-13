@@ -309,6 +309,17 @@ describe('Add-Ons', () => {
     expect((await repo.addOnUsage(ctx2, { q: '8565551234', page: 1, pageSize: 10 })).totalItems).toBe(0);
   });
 
+  it('round 10 (ADD-ONS 02): the four cards agree with the canonical rows — total / active offerings = the list\'s own counts, definitions = distinct add-ons, services = active services offering one; another salon counts nothing', async () => {
+    const all = async (extra: Record<string, unknown> = {}) => { const out: any[] = []; for (let p = 1; ; p++) { const r = await repo.addOns(ctx, { ...extra, page: p, pageSize: 50 }); out.push(...r.items); if (p >= r.totalPages) return { items: out, total: r.totalItems }; } };
+    const k = await repo.addOnSummary(ctx);
+    const every = await all(); const active = await all({ status: 'active' });
+    expect(k.offerings).toBe(every.total); expect(every.items).toHaveLength(every.total);
+    expect(k.activeOfferings).toBe(active.total);
+    expect(k.definitions).toBe(new Set(every.items.map((x) => x.key)).size);
+    expect(k.servicesOffering).toBe(new Set(active.items.filter((x) => x.serviceStatus === 'active').map((x) => x.serviceId)).size);
+    const k2 = await repo.addOnSummary(ctx2);
+    expect(k2.offerings).toBe((await repo.addOns(ctx2, { page: 1, pageSize: 50 })).totalItems);
+  });
   it('create needs chosen services and refuses a duplicate name; edits are scoped (one offering vs the definition); archive is soft', async () => {
     await expect(repo.createAddOn(ctx, { name: 'Chrome', priceCents: 1500, durationMinutes: 10 })).rejects.toThrow(/Choose the services/);
     await expect(repo.createAddOn(ctx, { name: 'french TIPS', priceCents: 1000, durationMinutes: 10, serviceIds: [M4432] })).rejects.toThrow(/already exists/);

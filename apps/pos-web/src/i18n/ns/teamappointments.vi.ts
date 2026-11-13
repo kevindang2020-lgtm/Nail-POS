@@ -168,4 +168,7 @@ export const TEAMAPPOINTMENTS_VI = {
   'tm.pv.proof.verified': 'Đã xác minh số qua SMS', // DRAFT — Kevin reviews
   'tm.pv.proof.recently_verified': 'Số đã xác minh gần đây', // DRAFT — Kevin reviews
   'tm.pv.proof.staff_override': 'Nhân viên đã xác nhận số', // DRAFT — Kevin reviews
+  'tm.gq.fits': '{n} trên {t} dịch vụ vừa — dài nhất: {s} ({m} phút) · sau {b} phút đệm giữa các lịch', // DRAFT — Kevin reviews
+  'tm.gq.none': 'Không dịch vụ nào vừa: còn {u} phút sau {b} phút đệm', // DRAFT — Kevin reviews
+  'tm.gq.note': 'Thời gian đệm theo cài đặt đặt lịch của tiệm. Thợ có được làm dịch vụ đó hay không sẽ được kiểm tra khi đặt giờ.', // DRAFT — Kevin reviews
 };

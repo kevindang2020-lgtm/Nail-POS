@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SystemCheckButton } from '../components/SystemCheck';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { outcomeUnknown } from '../components/outcomeUnknown';
 import { createIntentKeys } from '@aipowersalon/api-client';
 import { posInventoryAlertsApi } from '../api/posInventoryAlertsApi';
 import { fmtNumber, fmtInZone } from '../i18n/format';
@@ -261,7 +262,7 @@ export function RecordUseDialog({ productId, canOnBehalf, onClose, onDone }: { p
   const [techId, setTechId] = useState<string>(''); useEffect(() => { if (!techId && me) setTechId(me.id); }, [me, techId]);
   const [qty, setQty] = useState('0.5'); const [at, setAt] = useState(''); const [noteText, setNoteText] = useState(''); const [reason, setReason] = useState('');
   const [review, setReview] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
-  const keys = useRef(createIntentKeys());
+  const keys = useRef(createIntentKeys()); const [unsure, setUnsure] = useState(false);   // round 10 (Inventory 10)
   const onBehalf = !!techId && techId !== me?.id;
   const whole = chosen && ['piece', 'pieces', 'pair', 'pairs', 'pack', 'packs', 'box', 'boxes', 'each', 'unit', 'units', 'kit', 'kits', 'roll', 'rolls'].includes(String(chosen.unit).toLowerCase());
   const qOk = /^\d{1,6}(\.\d{1,2})?$/.test(qty.trim()) && Number(qty) > 0 && (!whole || Number.isInteger(Number(qty)));
@@ -274,14 +275,17 @@ export function RecordUseDialog({ productId, canOnBehalf, onClose, onDone }: { p
     if (!chosen) return;
     const body = { productId: chosen.id, quantity: qty.trim(), technicianId: onBehalf ? techId : undefined, onBehalfReason: onBehalf ? reason.trim() : undefined, occurredAt: at ? new Date(at).toISOString() : undefined, note: noteText.trim() || undefined, source: 'front_desk' as const };
     const intent = `use:${chosen.id}`; setBusy(true); setErr(null);
-    try { const r = await posInventoryAlertsApi.record(body as Parameters<typeof posInventoryAlertsApi.record>[0], keys.current.keyFor(intent, body)); keys.current.done(intent); onDone(r); }
-    catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); setReview(false); } finally { setBusy(false); }
+    try { const r = await posInventoryAlertsApi.record(body as Parameters<typeof posInventoryAlertsApi.record>[0], keys.current.keyFor(intent, body)); keys.current.done(intent); setUnsure(false); onDone(r); }
+    // round 10 (Inventory 10): an unknown outcome stays on the review step with the SAME key — "Retry" is safe (the server answers
+    // a replay from the first record, the dialog then says "already recorded"); a refusal goes back to editing
+    catch (e) { const unknown = outcomeUnknown(e); setUnsure(unknown); setErr(errorTextOf(e, tx('pos.something_went_wrong'))); if (!unknown) setReview(false); } finally { setBusy(false); }
   };
   return (
     <FitDialog wide title={tx('sa.recordUse')} subtitle={tx('sa.rec.sub')} onClose={onClose} busy={busy} testId="record-dialog"
       footer={<><button type="button" className="fk-btn" onClick={review ? () => setReview(false) : onClose} disabled={busy}>{review ? tx('rv.back') : tx('pos.cancel')}</button>
-        {review ? <button type="button" className="fk-btn primary" onClick={submit} disabled={busy} data-testid="confirm-use">{busy ? tx('pos.loading') : tx('sa.rec.confirm')}</button>
+        {review ? <button type="button" className="fk-btn primary" onClick={submit} disabled={busy} data-testid="confirm-use">{busy ? tx('pos.loading') : unsure ? tx('inv.retrySafeBtn') : tx('sa.rec.confirm')}</button>
           : <button type="button" className="fk-btn primary" onClick={() => setReview(true)} disabled={!valid} data-testid="review-use">{tx('sa.rec.review')}</button>}</>}>
+      {unsure ? <div className="fk-note warn" role="status" data-testid="use-unsure"><span>{tx('inv.retrySafe')}</span></div> : null}
       {review && chosen ? <div className="sa-review" data-testid="use-review">
         <dl className="rv-pos"><div><dt>{tx('sa.rec.before')}</dt><dd>{chosen.stock}</dd></div><div className="warn"><dt>{tx('sa.rec.use')}</dt><dd>−{qty}</dd></div><div className="total"><dt>{tx('sa.rec.after')}</dt><dd data-testid="stock-after">{(after / 100).toFixed(2).replace(/\.?0+$/, '')}</dd></div><div><dt>{tx('sa.col.technician')}</dt><dd className="sa-dd-s">{techs.find((x) => x.id === techId)?.name ?? '—'}</dd></div></dl>
         {after < 0 ? <div className="fk-note bad"><span>{tx('sa.rec.negative')}</span></div> : null}

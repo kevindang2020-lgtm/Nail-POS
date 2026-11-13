@@ -67,4 +67,14 @@ describe('AiBookingService — delegates + bounds', () => {
     const svc = new AiBookingService(booking as any, undefined, { record: vi.fn() } as any);
     await expect(svc.searchAvailability(ctx, {})).rejects.toThrow(/engine down/);
   });
+
+  it('round 10 (AI Booking 03): qualified technicians come from the engine\'s ONE eligibility authority (services + working), bounded', async () => {
+    const booking = { technicianPage: vi.fn(async () => ({ technicians: [{ technicianId: 't1', name: 'Anna', rosterNumber: 1 }, { technicianId: 't2', name: 'Bao', rosterNumber: 2 }], total: 30, page: 1, pageSize: 24 })) };
+    const svc = new AiBookingService(booking as any, undefined, { record: vi.fn() } as any);
+    const r = await svc.qualifiedTechnicians(ctx, { serviceIds: ['s1', 's2'], date: '2026-11-14' });
+    expect(booking.technicianPage).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'ten_A', branchId: 'br_1' }), expect.objectContaining({ serviceIds: ['s1', 's2'], date: '2026-11-14', working: true, status: 'active', page: 1 }));
+    expect(r.technicians).toEqual([{ technicianId: 't1', name: 'Anna' }, { technicianId: 't2', name: 'Bao' }]);   // no roster/contact extras
+    expect(r).toMatchObject({ total: 30, bounded: true, correlationId: 'c1' });
+  });
 });
+

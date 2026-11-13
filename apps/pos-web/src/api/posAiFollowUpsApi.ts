@@ -26,6 +26,11 @@ export interface FuDetail {
   /** extras (AI Follow Ups 05): the same customer reached in the last 7 days elsewhere (absent from an older server) */
   recentContacts?: { source: 'ai_follow_up' | 'end_of_day'; at: string | null; channel: string; outcome: string | null; by: string | null; ref: string }[];
   activity: { type: string; from: string | null; to: string | null; note: string | null; actor: string | null; at: string | null }[];
+  /** round 10 (AI Follow Ups 04): attempted vs reached, submitted vs accepted vs delivered, last verified outcome (absent from an older server) */
+  lastContact?: { attempted: number; reached: number; lastAttempt: { at: string | null; channel: string; outcome: string; attestation: boolean } | null; lastReached: { at: string | null; channel: string; attestation: boolean } | null;
+    texts: { total: number; submitted: number; providerAccepted: number; delivered: number; failed: number; unknown: number }; lastVerified: { at: string | null; channel: string; outcome: string } | null };
+  /** round 10 (AI Follow Ups 09): ONE chronological list, oldest first (absent from an older server) */
+  timeline?: { at: string; kind: 'call' | 'handoff' | 'task' | 'attempt' | 'booking'; type: string; detail: string | null; actor: string | null }[];
   permissions: { canWork: boolean; canManage: boolean; canText: boolean; canBook: boolean };
 }
 export interface FuPrepared { state: string; blocked: string[]; warnings: string[]; notices: string[]; token: string | null; proposed: Record<string, unknown> | null; duplicateOf?: string | null }
@@ -47,6 +52,10 @@ export const posAiFollowUpsApi = {
   attempt: (id: string, b: { channel: string; outcome: string; note?: string | null; nextAttemptLocal?: string | null; idempotencyKey: string }) => api.post<{ duplicate: boolean }>(`${B}/tasks/${id}/attempts`, b),
   prepareText: (id: string, b: { body: string; overrideReason?: string | null }) => api.post<FuPrepared>(`${B}/tasks/${id}/text/prepare`, b),
   confirmText: (id: string, b: { body: string; token: string; idempotencyKey: string; overrideReason?: string | null }) => api.post<{ duplicate: boolean; state: string; ok: boolean; errorCode: string | null; message: string | null }>(`${B}/tasks/${id}/text/confirm`, b),
+  /** round 10 (AI Follow Ups 02 / 06) */
+  alertSettings: () => api.get<{ enabled: boolean; graceMinutes: number; scope: 'branch' | 'tenant' | 'default'; updatedAt: string | null }>(`${B}/alert-settings`),
+  saveAlertSettings: (b: { enabled: boolean; graceMinutes: number }) => api.post<{ enabled: boolean; graceMinutes: number; scope: 'branch' | 'tenant' | 'default'; updatedAt: string | null }>(`${B}/alert-settings`, b),
+  handover: (b: { toUserId: string; note: string }) => api.post<{ moved: number; toUserId: string; followUpIds: string[] }>(`${B}/tasks/handover`, b),
   health: () => api.post<{ overall: string; checks: FuCheck[]; ranAt: string; cached: boolean }>(`${B}/health`, {}),
   /** A13 Nov 6 */
   importSources: () => api.post<{ createdFromMissedCalls: number; createdFromCopilot: number }>(`${B}/import-sources`, {}),

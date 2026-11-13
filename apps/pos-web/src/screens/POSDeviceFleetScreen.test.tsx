@@ -157,6 +157,40 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     expect(screen.getByTestId('dfx-ver-policy')).toHaveTextContent('no upgrade is required');
     expect(screen.queryByText(/unsupported/i)).toBeNull();
   });
+  it('round 10 (Tablets 02): a display shows its OS and battery as reported — low battery reason, charging, when read, stale marked; unreported says so', async () => {
+    m.devices.mockResolvedValue(listOf([
+      dev({ id: 't1', source: 'display', class: 'tablet', name: 'Tab A', type: 'tablet', reason: 'BATTERY_LOW', facts: { appVersion: '2.10.0', osVersion: 'Android 13', batteryPercent: 9, batteryCharging: false, batteryReportedAt: '2026-11-13T10:00:00Z', batteryStale: false } }),
+      dev({ id: 't2', source: 'display', class: 'tablet', name: 'Tab B', type: 'tablet', facts: { appVersion: '2.10.0', osVersion: null, batteryPercent: null, batteryCharging: null, batteryReportedAt: null, batteryStale: false } }),
+      dev({ id: 't3', source: 'display', class: 'tablet', name: 'Tab C', type: 'tablet', facts: { batteryPercent: 80, batteryCharging: true, batteryReportedAt: '2026-11-12T10:00:00Z', batteryStale: true } }),
+    ]));
+    r('tablets');
+    const rows = await screen.findAllByTestId('dfx-row');
+    expect(rows[0]).toHaveTextContent('Battery low and not charging — plug it in');
+    fireEvent.click(within(rows[0]).getByTestId('dfx-view'));
+    let d = await screen.findByTestId('dfx-detail');
+    expect(d).toHaveTextContent('Android 13');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent(/^9% · not charging · read /);
+    expect(within(d).queryByText('false')).toBeNull();   // booleans are words, never "false"
+    fireEvent.click(within(d).getByText('Close'));
+    fireEvent.click(within(rows[1]).getByTestId('dfx-view'));
+    d = await screen.findByTestId('dfx-detail');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('this device does not report its battery');
+    fireEvent.click(within(d).getByText('Close'));
+    fireEvent.click(within(rows[2]).getByTestId('dfx-view'));
+    d = await screen.findByTestId('dfx-detail');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('80% · charging');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('old reading — not the current level');
+  });
+  it('round 10 (Tablets 10): says whose devices these are; the location filter lists the server\'s locations with counts and asks the server', async () => {
+    m.devices.mockResolvedValue({ ...listOf([dev({ id: 't1', source: 'display', class: 'tablet', name: 'Tab A', type: 'tablet', branch: 'Main', branchId: 'b1' })]),
+      scope: { branchId: null, branchName: null }, branches: [{ branchId: 'b1', name: 'Main', devices: 3 }, { branchId: 'b2', name: 'Second', devices: 1 }, { branchId: null, name: null, devices: 2 }] });
+    r('tablets');
+    expect(await screen.findByTestId('dfx-scope')).toHaveTextContent('Showing devices of every location of the salon. · 2 not assigned to a location');
+    const sel = screen.getByTestId('dfx-branch');
+    expect([...sel.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['All locations in this list', 'Main (3)', 'Second (1)']);
+    fireEvent.change(sel, { target: { value: 'b2' } });
+    await waitFor(() => expect(m.devices).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', page: 1 })));
+  });
   it('a register (not a display) has no version line', async () => {
     r('reception-pos');
     await screen.findAllByTestId('dfx-row');

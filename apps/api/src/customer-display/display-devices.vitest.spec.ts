@@ -129,7 +129,12 @@ describe('the display pairs itself (§8–§12)', () => {
 describe('the heartbeat (§85–§86)', () => {
   it('validates every field — a public client is never trusted as sent', () => {
     // G7 (Nov 5 2026): a heartbeat without an ad-policy acknowledgment parses to adPolicy null (the display did not report one)
-    expect(parseHeartbeat(HB)).toEqual({ mode: 'advertisement', appVersion: '0.1.0+t', width: 1920, height: 1080, pixelRatio: 1, profile: 'CUSTOMER_DISPLAY_23_LANDSCAPE', adPolicy: null });
+    expect(parseHeartbeat(HB)).toEqual({ mode: 'advertisement', appVersion: '0.1.0+t', width: 1920, height: 1080, pixelRatio: 1, profile: 'CUSTOMER_DISPLAY_23_LANDSCAPE', adPolicy: null, os: null, battery: null });
+    // round 10 (Tablets 02): the OS and battery the browser exposes — kept when well-formed, dropped (never fatal, never guessed) otherwise
+    expect(parseHeartbeat({ ...HB, os: 'Android 13', battery: { percent: 42.4, charging: false } })).toMatchObject({ os: 'Android 13', battery: { percent: 42, charging: false } });
+    expect(parseHeartbeat({ ...HB, os: 'x'.repeat(65), battery: { percent: 140, charging: true } })).toMatchObject({ os: null, battery: null });
+    expect(parseHeartbeat({ ...HB, os: 'iPadOS\u0007', battery: { percent: 'lots' } })).toMatchObject({ os: null, battery: null });
+    expect(parseHeartbeat({ ...HB, battery: { percent: 0, charging: 'yes' } })).toMatchObject({ battery: { percent: 0, charging: null } });
     for (const bad of [{ ...HB, mode: 'party' }, { ...HB, appVersion: '' }, { ...HB, appVersion: 'x'.repeat(41) }, { ...HB, appVersion: 'v\u0007' },
       { ...HB, screen: { width: 50, height: 1080, pixelRatio: 1 } }, { ...HB, screen: { width: 1920.5, height: 1080, pixelRatio: 1 } }, { ...HB, screen: { width: 1920, height: 1080, pixelRatio: 9 } }, { ...HB, profile: 'TV' }, null]) {
       expect(() => parseHeartbeat(bad)).toThrow(DisplayDeviceError);

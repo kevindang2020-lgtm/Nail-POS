@@ -35,7 +35,8 @@ vi.mock('../api/posAiBusinessSetupApi', () => ({
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => undefined }));
 vi.mock('../api/posAiCalendarApi', () => ({ posAiCalendarApi: {
   summary: () => Promise.resolve({ date: '2026-07-04', today: '2026-07-04', timeZone: 'America/New_York', branchScope: 'branch', appointments: 1, aiCreated: 1, aiLinkedToCall: 1, cancelled: 0, noShow: 0, pendingVerification: 0,
-    openSlots: { value: 30, engineValue: 38, serviceMinutes: 45, reconciliation: ['POS Booking engine total: 38'], definition: 'Bookable start times' },
+    openSlots: { value: 30, engineValue: 38, serviceMinutes: 45, reconciliation: ['POS Booking engine total: 38'], definition: 'Bookable start times',
+      byTechnician: [{ technicianId: 't1', name: 'Ann', openStarts: 22, qualifiedServices: 6 }, { technicianId: 't2', name: 'Bo', openStarts: 8, qualifiedServices: 0 }] },
     technicians: { value: 1, activeRoster: 2, clockedIn: null, freeNow: null }, definitions: { appointments: 'a', aiCreated: 'b', openSlots: 'c', technicians: 'd' } }),
   day: () => Promise.resolve({ date: '2026-07-04', hours: { open: '09:00', close: '19:00' }, techPaging: { page: 1, pageSize: 12, total: 1, totalPages: 1, label: '1–1 of 1' },
     technicians: [{ id: 't1', name: 'Bella', workingToday: true, windows: [{ start: '09:00', end: '19:00' }] }],
@@ -100,6 +101,11 @@ describe('POSAICalendarScreen', () => {
     expect(screen.getByTestId('aic-kpi-slots')).toHaveTextContent('30');    // hold- and past-aware, with the engine total in the hint
     expect(screen.getByText('Open in POS Booking')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\\u20[0-9a-f]{2}/);
+    // round 10 (AI Calendar 03): the definitions list open start times per technician with their mapped services
+    fireEvent.click(screen.getByTestId('aic-defs-btn'));
+    const rows = screen.getAllByTestId('aic-slots-tech');
+    expect(rows[0]).toHaveTextContent('Ann: 22 open start times · mapped to 6 active service(s)');
+    expect(rows[1]).toHaveTextContent('no services mapped — cannot be booked for a specific service');
   });
   it('Pending verification lists live holds soonest to expire first, with waiting-for-code and minutes left', async () => {
     render(<MemoryRouter><POSAICalendarScreen /></MemoryRouter>);

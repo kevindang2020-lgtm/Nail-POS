@@ -229,4 +229,7 @@ export const TEAMTECHNICIANS_VI = {
   'tc.apptStatus.cancelled': 'Đã hủy',
   'tc.apptStatus.no_show': 'Không đến',
   'tc.finderWhy': 'Tại sao một thợ không có trong danh sách? Kiểm tra từng người', // DRAFT — Kevin reviews
+  'tc.sync.title': 'Nhiều thợ cùng lúc', // DRAFT — Kevin reviews
+  'tc.sync.sub': 'Các giờ bắt đầu mà mỗi dịch vụ trong {n} dịch vụ có một thợ riêng, đủ điều kiện và đang rảnh cùng lúc — theo hệ thống đặt lịch cho từng dịch vụ. Không giữ chỗ hay đặt lịch.', // DRAFT — Kevin reviews
+  'tc.sync.none': 'Ngày này không có giờ nào mà mỗi dịch vụ có một thợ rảnh khác nhau. Hãy thử ngày khác hoặc ít dịch vụ cùng lúc hơn.', // DRAFT — Kevin reviews
 };

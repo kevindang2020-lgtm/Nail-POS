@@ -60,6 +60,9 @@ function usePickProducts(open: boolean) {
   return rows;
 }
 
+/** round 10 (Inventory 01): the KPI definitions the screen knows how to say (in both languages) */
+const INV_DEF_KEYS = ['products', 'bottles', 'open', 'unopened', 'lowStock', 'outOfStock', 'needReorder', 'expiringSoon', 'pendingReports', 'inventoryValue', 'retailValue'];
+
 export function TenantInventoryScreen() {
   const nav = useNavigate(); const can = useCan();
   const [params, setParams] = useSearchParams();
@@ -113,6 +116,9 @@ export function TenantInventoryScreen() {
         {metrics.error ? <StateBlock error={metrics.error} onRetry={metrics.reload} /> : !m ? Array.from({ length: 9 }, (_, i) => <KpiCard key={i} label="…" loading value="" />)
           : kpis.map((k) => <KpiCard key={k.id} testId={'kpi-' + k.id} label={k.label} value={k.value} sub={k.sub} tone={k.tone} onClick={k.onClick} />)}
       </div>
+      {/* round 10 (Inventory 01): how each card is counted — the server's own definitions, one line per card it defines */}
+      {m?.definitions ? <details className="fk-muted" data-testid="kpi-definitions"><summary>{tx('inv.def.title')}</summary>
+        <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{Object.keys(m.definitions).filter((k) => INV_DEF_KEYS.includes(k) && (k !== 'inventoryValue' && k !== 'retailValue' || m.inventoryValueCents != null)).map((k) => <li key={k} data-testid={'kpi-def-' + k}>{tx('inv.def.' + k, { d: fmtNumber(m.expiryHorizonDays) })}</li>)}</ul></details> : null}
       {m?.stockDrift ? <div className="fk-note warn" role="status" data-testid="drift-note"><span>{tx('inv.driftBanner', { n: fmtNumber(m.stockDrift) })}</span></div> : null}
       <div className="inv2-ai" data-module-id="inv-ai"><AiAssistantPanel packageCode="ai_inventory_assistant" cta={tx('pos.suggest_reorders')} action="reorder" buildPrompt={() => tx('pos.nail_salon_inventory_v0_items_needing_14tm', { v0: m ? tx('pos.lowstock_low_outofstock_out_of_stock', { lowStock: String(m.lowStock), outOfStock: String(m.outOfStock) }) : '', v1: tx('pos.none_currently') })} /></div>
       <div className="inv2-tabs" ref={listTop}>
@@ -739,6 +745,12 @@ function CreateTransferModal({ products, onClose, onSaved }: { products: InvProd
             </div>
           ))}
           <button className="btn sm ghost" onClick={addLine} style={{ marginTop: 4 }}>{tx('pos.add_line')}</button>
+          {/* round 10 (Inventory 09): before → after at THIS location for each line, and where it goes — from the on-hand the
+              server listed; the server still moves only what it has (a short line is reported after) */}
+          {lines.some((l) => l.productId && (parseInt(l.quantity, 10) || 0) > 0) ? <div className="fk-hint" data-testid="transfer-preview">
+            {lines.filter((l) => l.productId && (parseInt(l.quantity, 10) || 0) > 0).map((l, i) => { const p = products.find((x) => x.id === l.productId); if (!p) return null; const qn = parseInt(l.quantity, 10) || 0; const after = p.onHand - qn;
+              return <div key={l.productId + i} data-testid="transfer-preview-line" className={after < 0 ? 'tp-warn' : undefined}>{tx('inv.tr.preview', { name: p.name + (p.color_number ? ` #${p.color_number}` : ''), before: fmtNumber(p.onHand), after: fmtNumber(Math.max(0, after)), to: branches.find((b) => b.id === toBranchId)?.name ?? '—' })}{after < 0 ? ` · ${tx('inv.tr.previewShort', { n: fmtNumber(p.onHand) })}` : ''}</div>; })}
+          </div> : null}
           <label className="if" style={{ marginTop: 10 }}><span>{tx('pos.notes')}</span><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={tx('pos.optional_3')} /></label>
         </div>
         <div className="im-f"><button className="btn ghost" onClick={onClose}>{tx('pos.cancel')}</button><button className="btn primary" onClick={submit} disabled={saving || branches.length === 0}>{saving ? tx('pos.transferring') : tx('pos.transfer_stock')}</button></div>

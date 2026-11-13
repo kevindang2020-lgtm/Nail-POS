@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { posCustomerSearchApi, type CustomerSearchQuery } from '../api/posCustomerSearchApi';
 import { posCustomersApi } from '../api/posCustomersApi';
+import { posCustomerNotesApi } from '../api/posCustomerNotesApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from './FitKit';
 import { RangeCalendar, isForbidden } from './FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
@@ -142,7 +143,22 @@ export function CustomerQuickView({ customer, onClose, onFullView }: { customer:
   const visits: any[] = d?.recentVisits ?? [];
   const VP = 10; const pages = Math.max(1, Math.ceil(visits.length / VP));
   const n = d?.notes ?? {};
-  const field = (label: string, value: React.ReactNode) => <div className="cpx-f"><dt>{label}</dt><dd>{value ?? '—'}</dd></div>;
+  // round 10 (Customer Profile Assistant 03): per-preference provenance — where each note came from and when it was last
+  // written, read from Customer Notes (the ONE place notes and their source labels live; nothing is kept here). Only for a
+  // role that may read notes; a failed read shows nothing extra (the notes themselves still show).
+  const [prov, setProv] = useState<Record<string, { source: string; origin: string; setBy: string | null; setAt: string | null; at: string | null }> | null>(null);
+  const canNotes = can('pos.customers.notes.view');
+  useEffect(() => {
+    if (tab !== 'notes' || !canNotes || prov) return;
+    let live = true;
+    posCustomerNotesApi.detail(customer.id).then((r) => { if (!live) return; const out: Record<string, { source: string; origin: string; setBy: string | null; setAt: string | null; at: string | null }> = {};
+      for (const e of r?.entries ?? []) if (e.category !== 'visit' && !out[e.category]) out[e.category] = { source: e.provenance?.source ?? 'not_stated', origin: e.provenance?.origin ?? 'none', setBy: e.provenance?.setBy ?? null, setAt: e.provenance?.setAt ?? null, at: e.at ?? null };
+      setProv(out); }).catch(() => { if (live) setProv({}); });
+    return () => { live = false; };
+  }, [tab, canNotes, customer.id, prov]);
+  const provLine = (cat: string) => { const p = prov?.[cat]; if (!p) return null;
+    return <div className="fk-li-s" data-testid={'cpx-prov-' + cat}>{t('cnx.src.' + p.source)}{p.origin === 'labelled' ? ` · ${t('cnx.src.by', { who: p.setBy ?? '—', at: p.setAt ? fmtInZone(p.setAt, { month: 'short', day: 'numeric', year: 'numeric' }) : '—' })}` : ''}{p.at ? ` · ${tt('cpf.prov.updated', { at: fmtInZone(p.at, { month: 'short', day: 'numeric', year: 'numeric' }) })}` : ''}</div>; };
+  const field = (label: string, value: React.ReactNode, cat?: string) => <div className="cpx-f"><dt>{label}</dt><dd>{value ?? '—'}{cat && value ? provLine(cat) : null}</dd></div>;
   return (
     <FitDialog side wide testId="cpx-quick" title={d?.displayName || customer.name || tt('cpf.unnamed')}
       subtitle={d ? `${d.status ? tt('cpf.status.' + d.status) : ''}${d.loyaltyTier ? ` · ${d.loyaltyTier}` : ''}${d.isVip ? ` · ${tt('cpf.vip')}` : ''}` : undefined} onClose={onClose}
@@ -183,9 +199,9 @@ export function CustomerQuickView({ customer, onClose, onFullView }: { customer:
             <button className="btn ghost" data-testid="cpx-history" onClick={() => nav('/tenant/customers/appointment-history')}>{tt('cpf.act.history')}</button>
           </> : null}
           {tab === 'notes' ? <div className="cpx-two">
-            <dl className="cpx-dl">{field(tt('cpf.f.warnings'), n.warnings || null)}{field(tt('cpf.f.allergies'), n.allergyNotes || null)}</dl>
-            <dl className="cpx-dl">{field(tt('cpf.f.prefTech'), n.preferredTechnician || null)}{field(tt('cpf.f.prefStyle'), n.preferredStyle || null)}
-              {field(tt('cpf.f.prefService'), n.servicePreferences || null)}{field(tt('cpf.f.salonNotes'), n.salonNotes || null)}</dl>
+            <dl className="cpx-dl">{field(tt('cpf.f.warnings'), n.warnings || null, 'warning')}{field(tt('cpf.f.allergies'), n.allergyNotes || null, 'allergy')}</dl>
+            <dl className="cpx-dl">{field(tt('cpf.f.prefTech'), n.preferredTechnician || null, 'technician_preference')}{field(tt('cpf.f.prefStyle'), n.preferredStyle || null)}
+              {field(tt('cpf.f.prefService'), n.servicePreferences || null, 'service_preference')}{field(tt('cpf.f.salonNotes'), n.salonNotes || null, 'general')}</dl>
             <button className="btn ghost cpx-wide" data-testid="cpx-edit-notes" onClick={() => nav('/tenant/customers/notes')}>{tt('cpf.act.editNotes')}</button>
           </div> : null}
         </div>

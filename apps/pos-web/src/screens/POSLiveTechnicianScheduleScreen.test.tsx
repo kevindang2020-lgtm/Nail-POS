@@ -76,6 +76,17 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     await waitFor(() => expect(screen.queryByTestId('dlg-full-day')).toBeNull());
     expect(screen.getByTestId('selected-card')).toHaveTextContent('Trần Mỹ Linh');
   });
+  it('round 10 (LIVE TECHNICIAN SCHEDULE 03): the full day lists each gap with what fits after the booking buffer, from the server', async () => {
+    live.detail.mockResolvedValue({ ...COL, bookedHours: 1, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null, nextAppointment: COL.appointments[0],
+      gapQuality: [{ slotId: 's1', startTime: '09:00', endTime: '10:00', minutes: 60, bufferMinutes: 5, usableMinutes: 55, servicesFit: 2, servicesTotal: 3, longestFit: { name: 'Gel manicure', minutes: 45 } },
+        { slotId: 's2', startTime: '17:40', endTime: '18:00', minutes: 20, bufferMinutes: 10, usableMinutes: 10, servicesFit: 0, servicesTotal: 3, longestFit: null }] });
+    render(<MemoryRouter><POSLiveTechnicianScheduleScreen /></MemoryRouter>);
+    fireEvent.change(await screen.findByTestId('search'), { target: { value: 'Anna' } });
+    fireEvent.click(await screen.findByTestId('hit-tech'));
+    const rows = await screen.findAllByTestId('gap-quality-row');
+    expect(rows[0]).toHaveTextContent('2 of 3 services fit — longest: Gel manicure (45 min) · after a 5 min booking buffer');
+    expect(rows[1]).toHaveTextContent('No service fits: 10 min left after the 10 min booking buffer');
+  });
   it('the overlay actions: Start Break and Block Time go to the existing routes', async () => {
     live.startBreak.mockResolvedValue({}); live.blockTime.mockResolvedValue({});
     mount(); await openLinh();
@@ -84,6 +95,19 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     fireEvent.change(screen.getByTestId('block-start'), { target: { value: '15:00' } }); fireEvent.change(screen.getByTestId('block-end'), { target: { value: '16:00' } });
     fireEvent.click(screen.getByTestId('block-save'));
     await waitFor(() => expect(live.blockTime).toHaveBeenCalledWith('t1', { date: DAY, startTime: '15:00', endTime: '16:00', reason: 'temporary_unavailable' }));
+  });
+  it('round 10 (LIVE TECHNICIAN SCHEDULE 07): a break 15 min before the next appointment is previewed and needs a second tap; Cancel sends nothing', async () => {
+    live.startBreak.mockResolvedValue({});
+    live.detail.mockResolvedValue({ ...COL, bookedHours: 1, salesTodayCents: null, tipsTodayCents: null, commissionPreviewCents: null, nextAppointment: { ...COL.appointments[0], startTime: '14:00', customerName: 'Ava Kim' }, nextInMinutes: 15 });
+    mount(); await openLinh();
+    fireEvent.click(await screen.findByTestId('start-break'));
+    expect(await screen.findByTestId('break-preview')).toHaveTextContent('Ava Kim is booked at 2:00 PM — in 15 min');
+    expect(live.startBreak).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('break-preview-cancel'));
+    expect(screen.queryByTestId('break-preview')).toBeNull();
+    fireEvent.click(screen.getByTestId('start-break'));
+    fireEvent.click(await screen.findByTestId('break-preview-go'));
+    await waitFor(() => expect(live.startBreak).toHaveBeenCalledWith('t1', { managerOverride: false }));
   });
   it('weekly hours: the impact on booked appointments is shown before saving; save needs the acknowledgement and sends the whole week with its version', async () => {
     ls.shiftImpact.mockResolvedValue({ affected: 1, days: 120, items: [{ appointmentId: 'a9', date: '2026-11-06', start: '16:00', customer: 'Mai Le', reason: 'outside_shift' }] });

@@ -2103,4 +2103,45 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
   "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
+  "ptl.k.callback": "Phản hồi từ bộ xử lý thanh toán", // DRAFT — Kevin reviews
+  "ptl.cb.processed": "Đã xử lý", // DRAFT — Kevin reviews
+  "ptl.cb.not_processed": "Chưa xử lý", // DRAFT — Kevin reviews
+  "ptl.cb.signature_failed": "Chữ ký không hợp lệ — đã bỏ qua", // DRAFT — Kevin reviews
+  "dfx.reason.BATTERY_LOW": "Pin yếu và không sạc — hãy cắm sạc", // DRAFT — Kevin reviews
+  "dfx.fact.osVersion": "Hệ điều hành", // DRAFT — Kevin reviews
+  "dfx.fact.battery": "Pin", // DRAFT — Kevin reviews
+  "dfx.battery.unreported": "— (thiết bị này không báo pin)", // DRAFT — Kevin reviews
+  "dfx.battery.charging": "đang sạc", // DRAFT — Kevin reviews
+  "dfx.battery.notCharging": "không sạc", // DRAFT — Kevin reviews
+  "dfx.battery.read": "đọc lúc {at}", // DRAFT — Kevin reviews
+  "dfx.battery.stale": "số đọc cũ — không phải mức pin hiện tại", // DRAFT — Kevin reviews
+  "dsp.replace.button": "Thay thế", // DRAFT — Kevin reviews
+  "dsp.replace.go": "Thu hồi và ghép nối máy mới", // DRAFT — Kevin reviews
+  "dsp.replace.confirm": "Thay thế {name}? Màn hình cũ ngừng hoạt động ngay (quyền truy cập bị thu hồi). Sau đó ghép nối màn hình mới bằng mã nó hiển thị — không sao chép gì từ thiết bị cũ.", // DRAFT — Kevin reviews
+  "dsp.replace.revoked": "Đã thu hồi {name} — ghép nối màn hình mới bên dưới.", // DRAFT — Kevin reviews
+  "dsp.replace.note": "Đang thay thế {name}: tên và quầy đã được điền sẵn. Nhập mã mà màn hình MỚI hiển thị — nó nhận quyền truy cập mới riêng; không sao chép gì từ thiết bị cũ.", // DRAFT — Kevin reviews
+  "dfx.ev.customer_display_reconnected": "Đã kết nối lại sau khi mất kết nối", // DRAFT — Kevin reviews
+  "dfx.ev.customer_display_app_updated": "Đã cập nhật ứng dụng", // DRAFT — Kevin reviews
+  "dfx.f.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "dfx.branch.all": "Mọi chi nhánh trong danh sách", // DRAFT — Kevin reviews
+  "dfx.branch.opt": "{name} ({n})", // DRAFT — Kevin reviews
+  "dfx.scope.one": "Đang hiện thiết bị của {name} (và thiết bị chưa gắn chi nhánh).", // DRAFT — Kevin reviews
+  "dfx.scope.all": "Đang hiện thiết bị của mọi chi nhánh trong tiệm.", // DRAFT — Kevin reviews
+  "dfx.scope.noBranch": "{n} chưa gán chi nhánh", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_orphan_service": "Mọi dịch vụ thêm đều gắn với một dịch vụ còn tồn tại", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_orphan_service.fix": "Xóa liên kết dịch vụ thêm có dịch vụ đã bị xóa, hoặc thêm dịch vụ thêm vào một dịch vụ còn tồn tại.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_duplicate_active_offering": "Không dịch vụ nào có cùng một dịch vụ thêm hai lần", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_duplicate_active_offering.fix": "Tắt một trong hai bản trên dịch vụ đó.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_category_mismatch": "Không có dịch vụ thêm cho móng nằm trên dịch vụ tóc", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_category_mismatch.fix": "Xem các dịch vụ thêm được đánh dấu trong danh sách và chuyển sang đúng dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_live_on_voided_ticket": "Không dịch vụ thêm đã bán nào còn trên hóa đơn đã hủy", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_live_on_voided_ticket.fix": "Mở hóa đơn đã hủy và kiểm tra dòng dịch vụ thêm đã được đảo ngược.", // DRAFT — Kevin reviews
+  "ops.sched.match.btn": "Xem trước ghép cặp công bằng cho các khoảng trống", // DRAFT — Kevin reviews
+  "ops.sched.match.off": "Công cụ phân thợ công bằng của Hàng chờ khách không có ở đây, nên không có ghép cặp để xem.", // DRAFT — Kevin reviews
+  "ops.sched.match.none": "Hiện công cụ công bằng chưa có ghép cặp cho khách đang chờ.", // DRAFT — Kevin reviews
+  "ops.sched.match.row": "{g} → {tech} (đã chờ {m} phút)", // DRAFT — Kevin reviews
+  "ops.sched.match.fillsGap": "lấp một khoảng trống", // DRAFT — Kevin reviews
+  "ops.sched.match.note": "Bản xem trước theo vòng xoay công bằng của Hàng chờ khách — chưa phân thợ. Phân thợ trong Hàng chờ khách.", // DRAFT — Kevin reviews
+  "tpk.skill": "Kỹ năng", // DRAFT — Kevin reviews
+  "tpk.allSkills": "Mọi kỹ năng", // DRAFT — Kevin reviews
 };

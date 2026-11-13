@@ -7,6 +7,7 @@ import { RequiresAiPackage } from '@aipowersalon/ai';
 import { ValidationError as BookingValidationError } from '@aipowersalon/booking';
 import { TenantAuthGuard, ValidatedBody, ResourceScope } from '@aipowersalon/permissions/guards';
 import { AiBookingService } from './ai-booking.service';
+import type { BookingTechnicianSummary } from '@aipowersalon/api-contracts/tenant';
 import { AiBookingMutationService } from './ai-booking-mutation.service';
 import { AiBookingConversionService, type FunnelStage } from './ai-booking-conversion.service';
 import { resolveTrustedContext, AiBookingError, type ServerDerivedCtx } from './ai-booking-context';
@@ -45,6 +46,13 @@ export class AiBookingController {
   @Post('recommendations') recommend(@Req() r: any, @Body(ValidatedBody(AIB_SEARCH_BODY, { strict: true })) b: any) {
     const ctx = trusted(r, b?.source, b?.correlationId);
     return this.svc.recommendOptions(ctx, { date: b?.date, serviceIds: b?.serviceIds, technicianId: b?.technicianId });
+  }
+
+  /** round 10 (AI Booking 03): technicians approved for every chosen service and working that day — the booking engine's
+   *  ONE eligibility authority (read-only; pos.booking.view checked by BookingService). */
+  @Post('technicians/qualified') qualified(@Req() r: any, @Body(ValidatedBody(AIB_SEARCH_BODY, { strict: true })) b: any): Promise<{ technicians: Pick<BookingTechnicianSummary, 'technicianId' | 'name'>[]; total: number; bounded: boolean; correlationId: string }> {
+    const ctx = trusted(r, b?.source, b?.correlationId);
+    return this.svc.qualifiedTechnicians(ctx, { serviceIds: b?.serviceIds ?? undefined, date: b?.date ?? undefined });
   }
 
   // ── Mutations (Stage 2): confirm-gated, idempotent, source-stamped, delegated to the authoritative BookingService ──

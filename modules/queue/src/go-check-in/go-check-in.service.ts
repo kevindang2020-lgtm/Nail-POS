@@ -285,9 +285,9 @@ export class GoCheckInService {
     return { device, display, session, settings };
   }
 
-  async heartbeat(sessionId: string, token: string | undefined): Promise<{ ok: true }> {
+  async heartbeat(sessionId: string, token: string | undefined, body?: unknown): Promise<{ ok: true }> {
     const r = await this.resolveSession(sessionId, token);
-    if (r.device) await this.repo.touchDevice(r.device.id);   // a display reports its own heartbeat (§85)
+    if (r.device) await this.repo.touchDevice(r.device.id, deviceHealthFacts(body));   // a display reports its own heartbeat (§85)
     return { ok: true };
   }
 
@@ -696,4 +696,15 @@ export class GoCheckInService {
   async displayLanguages(_tenantId: string): Promise<string[]> {
     return ['en'];
   }
+}
+
+/** round 10 (Tablets 02): the OS / battery a kiosk's browser reported with its heartbeat — kept only when well-formed (never
+ *  fatal, never guessed); null fields are simply not recorded. */
+export function deviceHealthFacts(body: unknown): { os: string | null; battery: { percent: number; charging: boolean | null } | null } {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const osRaw = typeof b.os === 'string' ? b.os.trim() : '';
+  const os = /^[\x20-\x7e]{1,64}$/.test(osRaw) ? osRaw : null;
+  const bt = b.battery && typeof b.battery === 'object' ? b.battery as Record<string, unknown> : null;
+  const pct = bt ? Number(bt.percent) : NaN;
+  return { os, battery: bt && Number.isFinite(pct) && pct >= 0 && pct <= 100 ? { percent: Math.round(pct), charging: typeof bt.charging === 'boolean' ? bt.charging : null } : null };
 }

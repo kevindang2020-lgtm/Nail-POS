@@ -72,6 +72,10 @@ export interface BusinessSetupHealthRun { id: string; overall: string; checks: u
 /** A13 Nov 6: AI Follow-Ups — more sources, recommended assignee, health history */
 export interface FollowUpImportResult { createdFromMissedCalls: number; createdFromCopilot: number }
 export interface FollowUpRecommendedAssignee { userId: string; name: string; role: string; openTasks: number; reason: string }
+/** round 10 (AI Follow Ups 02): the location's overdue-callback manager alert — on/off and minutes of grace after the due time */
+export interface FollowUpAlertSettings { enabled: boolean; graceMinutes: number; scope: 'branch' | 'tenant' | 'default'; updatedAt: string | null }
+/** round 10 (AI Follow Ups 06): a shift handover — how many of my open follow-ups moved, and to whom */
+export interface FollowUpHandoverResult { moved: number; toUserId: string; followUpIds: string[] }
 export interface FollowUpHealthHistory { items: { overall: string; at: string | null; by: string | null; failed: number }[]; page: number; pageSize: number; totalItems: number; totalPages: number }
 export interface BusinessSetupHealthResult { overall: string; checkedAt: string; runId: string | null; checks: unknown[]; note: string }
 

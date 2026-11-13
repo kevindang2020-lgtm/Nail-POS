@@ -168,4 +168,7 @@ export const TEAMAPPOINTMENTS_EN = {
   'tm.pv.proof.verified': 'Phone verified by SMS',
   'tm.pv.proof.recently_verified': 'Phone verified recently',
   'tm.pv.proof.staff_override': 'Phone confirmed by staff',
+  'tm.gq.fits': '{n} of {t} services fit — longest: {s} ({m} min) · after a {b} min booking buffer',
+  'tm.gq.none': 'No service fits: {u} min left after the {b} min booking buffer',
+  'tm.gq.note': 'Buffer = the salon’s booking setting. Whether this technician may do a service is checked when the time is booked.',
 };

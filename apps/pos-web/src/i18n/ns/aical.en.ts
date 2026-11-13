@@ -288,4 +288,6 @@ export const AICAL_EN: Record<string, string> = {
   "aical.pv.code.expired": "expired",
   "aical.pv.code.locked": "locked after too many tries",
   "aical.pv.code.canceled": "cancelled",
+  "aical.byTech": "{name}: {n} open start times · mapped to {s} active service(s)",
+  "aical.byTechUnmapped": "no services mapped — cannot be booked for a specific service",
 };

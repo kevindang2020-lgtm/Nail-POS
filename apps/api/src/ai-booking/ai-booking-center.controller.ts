@@ -48,6 +48,10 @@ export class AiBookingCenterController {
   @Get('requests/:requestId') @RequirePermission('ai_booking.view')
   detail(@Req() r: any, @Param('requestId') id: string): Promise<AibRequestDetail> { return run(() => this.center.detail(ctxOf(r), id)); }
 
+  /** round 10 (AI Booking 14): audit the Support report download (the POS downloads only after this answers) */
+  @Idempotent() @Post('requests/:requestId/support-report') @RequirePermission('ai_booking.view')
+  recordSupportReport(@Req() r: any, @Param('requestId') id: string): Promise<{ recorded: boolean; at: string } & Pick<AibRequestDetail, 'requestId'>> { return run(() => this.center.recordSupportReport(ctxOf(r), id)); }
+
   @Get('recovery') @RequirePermission('ai_booking.view')
   recovery(@Req() r: any): Promise<AibRecoveryList> { return run(() => this.center.recovery(ctxOf(r))); }
 

@@ -744,7 +744,11 @@ export class BookingService {
   async confirm(ctx: BookingContext, id: string): Promise<POSBookingAppointmentRow> {
     this.need(ctx, 'pos.booking.edit'); const a = await this.bookingOr404(ctx, id);
     if (!pbCanConfirm(a.status)) throw withCode(new ValidationError('Only a booked appointment can be confirmed'), 'ONLY_BOOKED_CAN_CONFIRM');
-    await this.repo.setStatus(ctx, id, 'confirmed'); this.log(ctx, 'pos_booking_appointment_confirmed', 'pos_booking_appointment', id); return (await this.repo.detail(ctx, id))!;
+    await this.repo.setStatus(ctx, id, 'confirmed'); this.log(ctx, 'pos_booking_appointment_confirmed', 'pos_booking_appointment', id);
+    // round 10 (AI Booking 08): the POS board / AI Calendar hear about a confirmation like every other status move — projected
+    // from appointment.confirmed (via setStatus) when the repository emits events, announced directly otherwise
+    if (!this.repo.emitsDomainEvents?.()) this.announce(ctx, EVENTS.appointmentUpdated, id, { status: 'confirmed' });
+    return (await this.repo.detail(ctx, id))!;
   }
   async cancel(ctx: BookingContext, id: string, body: PBCancelRequest): Promise<POSBookingAppointmentRow> {
     this.need(ctx, 'pos.booking.cancel'); await this.bookingOr404(ctx, id);

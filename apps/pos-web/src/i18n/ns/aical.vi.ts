@@ -288,4 +288,6 @@ export const AICAL_VI: Record<string, string> = {
   "aical.pv.code.expired": "đã hết hạn", // DRAFT — Kevin reviews
   "aical.pv.code.locked": "bị khóa do thử quá nhiều lần", // DRAFT — Kevin reviews
   "aical.pv.code.canceled": "đã hủy", // DRAFT — Kevin reviews
+  "aical.byTech": "{name}: {n} giờ bắt đầu còn trống · được gán {s} dịch vụ đang hoạt động", // DRAFT — Kevin reviews
+  "aical.byTechUnmapped": "chưa gán dịch vụ — chưa đặt được dịch vụ cụ thể", // DRAFT — Kevin reviews
 };

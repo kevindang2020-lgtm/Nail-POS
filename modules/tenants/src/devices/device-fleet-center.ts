@@ -35,6 +35,18 @@ export const DF_PAGE_SIZES = [10, 25, 50, 100] as const;
 /** a kiosk reports when a guest uses it and on its keep-alive; heard from in 5 minutes = connected */
 export const KIOSK_ONLINE_WINDOW_MS = 5 * 60_000;
 const CAP = 2000;
+/** round 10 (Tablets 02): a battery at or below this, not charging, in a reading newer than BATTERY_FRESH_MS, needs attention */
+export const BATTERY_LOW_PERCENT = 15;
+export const BATTERY_FRESH_MS = 30 * 60_000;
+/** round 10 (Tablets 02): the reported OS + battery as facts, and whether the battery needs attention (fresh, low, not charging) */
+function batteryHealth(r: { os_version?: unknown; battery_percent?: unknown; battery_charging?: unknown; battery_reported_at?: unknown }, nowMs: number) {
+  const at = r.battery_reported_at == null ? null : new Date(String(r.battery_reported_at instanceof Date ? r.battery_reported_at.toISOString() : r.battery_reported_at)).getTime();
+  const fresh = at != null && Number.isFinite(at) && nowMs - at <= BATTERY_FRESH_MS;
+  const pct = r.battery_percent == null ? null : Number(r.battery_percent);
+  return { low: fresh && pct != null && pct <= BATTERY_LOW_PERCENT && r.battery_charging !== true,
+    facts: { osVersion: r.os_version == null ? null : String(r.os_version), batteryPercent: pct, batteryCharging: r.battery_charging == null ? null : !!r.battery_charging,
+      batteryReportedAt: at != null && Number.isFinite(at) ? new Date(at).toISOString() : null, batteryStale: at != null && !fresh } };
+}
 const TABLET_DISPLAY_TYPES = ['ipad', 'ipad_mini', 'android', 'android_tablet', 'tablet'];
 const TABLET_KIOSK_TYPES = ['ipad', 'tablet', 'tablet_kiosk', 'ipad_display'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -77,6 +89,10 @@ export class DeviceFleetCenter {
     const t = textTenant ? sql`${cols.tenant}::text = ${ctx.tenantId}` : sql`${cols.tenant} = ${ctx.tenantId}`;
     return ctx.branchId ? sql`${t} AND (${cols.branch}::text = ${ctx.branchId} OR ${cols.branch} IS NULL)` : t;
   }
+  private async branchName(ctx: DfCtx): Promise<string | null> {
+    const r = await sql<{ name: string | null }>`SELECT name FROM branches WHERE tenant_id = ${ctx.tenantId} AND id::text = ${ctx.branchId}`.execute(this.db);
+    return r.rows[0]?.name ?? null;
+  }
   private async todayStart(ctx: DfCtx): Promise<Date> {
     const r = await sql<{ tz: string | null }>`SELECT timezone AS tz FROM branches WHERE tenant_id = ${ctx.tenantId} AND deleted_at IS NULL
       ORDER BY (id::text = ${ctx.branchId || ''}) DESC, created_at LIMIT 1`.execute(this.db);
@@ -104,26 +120,29 @@ export class DeviceFleetCenter {
 
   private async kiosks(ctx: DfCtx, nowMs: number, types?: string[]): Promise<DfDevice[]> {
     const r = await sql<any>`
-      SELECT k.id, k.device_name, k.device_type, k.branch_id, b.name AS branch_name, k.status, k.last_seen_at, k.created_at, k.updated_at, k.disabled_at, k.token_expires_at
+      SELECT k.id, k.device_name, k.device_type, k.branch_id, b.name AS branch_name, k.status, k.last_seen_at, k.created_at, k.updated_at, k.disabled_at, k.token_expires_at,
+             k.os_version, k.battery_percent, k.battery_charging, k.battery_reported_at
         FROM go_checkin_devices k LEFT JOIN branches b ON b.id = k.branch_id AND b.tenant_id = k.tenant_id
        WHERE ${this.scope('k', ctx)} ${types ? sql`AND k.device_type = ANY(${types}::text[])` : sql``}
        ORDER BY k.created_at DESC LIMIT ${CAP}`.execute(this.db);
     return r.rows.map((k: any) => {
       const seen = ms(k.last_seen_at); const st = String(k.status ?? '');
+      const bh = batteryHealth(k, nowMs);
       const expired = st === 'expired' || (k.token_expires_at && (ms(k.token_expires_at) ?? Infinity) < nowMs);
       const status: DfStatus = k.disabled_at || st === 'disabled' || st === 'inactive' ? 'disabled' : st === 'revoked' ? 'revoked' : expired ? 'attention'
         : seen == null ? 'pending' : nowMs - seen <= KIOSK_ONLINE_WINDOW_MS ? 'online' : 'offline';
       return { id: String(k.id), source: 'kiosk', class: types ? 'tablet' : 'kiosk', name: String(k.device_name ?? ''), type: String(k.device_type ?? 'kiosk'),
         branchId: k.branch_id ? String(k.branch_id) : null, branch: k.branch_name ?? null, station: null, status,
-        reason: expired ? 'KIOSK_LINK_EXPIRED' : status === 'pending' ? 'NEVER_CONNECTED' : status === 'offline' ? 'NOT_HEARD_FROM' : !k.branch_id ? 'NO_BRANCH' : null,
-        lastSeenAt: iso(k.last_seen_at), createdAt: iso(k.created_at), updatedAt: iso(k.updated_at), facts: { role: 'kiosk' } } as DfDevice;
+        reason: expired ? 'KIOSK_LINK_EXPIRED' : status === 'pending' ? 'NEVER_CONNECTED' : status === 'offline' ? 'NOT_HEARD_FROM' : !k.branch_id ? 'NO_BRANCH' : status === 'online' && bh.low ? 'BATTERY_LOW' : null,
+        lastSeenAt: iso(k.last_seen_at), createdAt: iso(k.created_at), updatedAt: iso(k.updated_at), facts: { role: 'kiosk', ...bh.facts } } as DfDevice;
     });
   }
 
   private async displays(ctx: DfCtx, nowMs: number, types?: string[]): Promise<DfDevice[]> {
     const r = await sql<any>`
       SELECT d.id, d.device_name, d.device_type, d.branch_id, b.name AS branch_name, st.name AS station_name, d.pos_station_id, d.pairing_status,
-             d.last_seen_at, d.revoked_at, d.maintenance_at, d.created_at, d.updated_at, d.app_version, d.reported_mode, d.screen_width, d.screen_height
+             d.last_seen_at, d.revoked_at, d.maintenance_at, d.created_at, d.updated_at, d.app_version, d.reported_mode, d.screen_width, d.screen_height,
+             d.os_version, d.battery_percent, d.battery_charging, d.battery_reported_at
         FROM customer_display_devices d
         LEFT JOIN branches b ON b.id = d.branch_id AND b.tenant_id = d.tenant_id
         LEFT JOIN pos_stations st ON st.tenant_id = d.tenant_id AND st.id = d.pos_station_id
@@ -131,13 +150,17 @@ export class DeviceFleetCenter {
        ORDER BY d.created_at DESC LIMIT ${CAP}`.execute(this.db);
     return r.rows.map((d: any) => {
       const seen = ms(d.last_seen_at); const ps = String(d.pairing_status ?? '').toLowerCase();
+      const bh = batteryHealth(d, nowMs); const batteryLow = bh.low;
       const status: DfStatus = d.revoked_at ? 'revoked' : d.maintenance_at ? 'maintenance' : ps === 'pending' && seen == null ? 'pending'
         : seen == null ? 'unknown' : nowMs - seen <= DISPLAY_ONLINE_WINDOW_MS ? 'online' : 'offline';
       return { id: String(d.id), source: 'display', class: types ? 'tablet' : 'display', name: String(d.device_name ?? ''), type: String(d.device_type ?? 'customer_display'),
         branchId: d.branch_id ? String(d.branch_id) : null, branch: d.branch_name ?? null, station: d.station_name ?? null, status,
-        reason: status === 'offline' ? 'NOT_HEARD_FROM' : status === 'pending' ? 'PAIRING_NOT_FINISHED' : !d.pos_station_id && status !== 'revoked' ? 'NO_REGISTER' : null,
+        reason: status === 'offline' ? 'NOT_HEARD_FROM' : status === 'pending' ? 'PAIRING_NOT_FINISHED' : !d.pos_station_id && status !== 'revoked' ? 'NO_REGISTER' : batteryLow ? 'BATTERY_LOW' : null,
         lastSeenAt: iso(d.last_seen_at), createdAt: iso(d.created_at), updatedAt: iso(d.updated_at),
-        facts: { role: 'customer_display', appVersion: d.app_version ?? null, mode: d.reported_mode ?? null, screen: d.screen_width && d.screen_height ? `${d.screen_width}×${d.screen_height}` : null } } as DfDevice;
+        facts: { role: 'customer_display', appVersion: d.app_version ?? null, mode: d.reported_mode ?? null, screen: d.screen_width && d.screen_height ? `${d.screen_width}×${d.screen_height}` : null,
+          // round 10 (Tablets 02): only what the device's browser reported — null = not reported; a battery reading older than
+          // BATTERY_FRESH_MS is marked stale (shown with its time, never as the current level)
+          ...bh.facts } } as DfDevice;
     });
   }
 
@@ -247,6 +270,11 @@ export class DeviceFleetCenter {
     if (term) { const f = fold(term); rows = rows.filter((r) => [r.name, r.branch, r.station, r.type, r.id, r.facts?.hsnMasked].some((v) => fold(v).includes(f))); }
     if (status === 'unassigned') rows = rows.filter((r) => r.status === 'unassigned' || (r.source === 'display' && !r.station) || (r.source === 'kiosk' && !r.branchId) || (r.source === 'terminal' && !r.station));
     else if (status !== 'all') rows = rows.filter((r) => r.status === status);
+    // round 10 (Tablets 10): the locations in this (scoped) list with their device counts — for the branch filter and the
+    // "whose devices am I looking at" line; computed BEFORE the branch filter so every location stays choosable
+    const branchMap = new Map<string, { branchId: string | null; name: string | null; devices: number }>();
+    for (const r of rows) { const k = r.branchId ?? ''; const e = branchMap.get(k) ?? { branchId: r.branchId ?? null, name: r.branch ?? null, devices: 0 }; e.devices += 1; branchMap.set(k, e); }
+    const branches = [...branchMap.values()].sort((a, b) => (a.branchId == null ? 1 : b.branchId == null ? -1 : String(a.name ?? '').localeCompare(String(b.name ?? ''))));
     if (q.branchId) rows = rows.filter((r) => r.branchId === q.branchId);
     const df = q.dateField === 'last_seen' ? 'lastSeenAt' : q.dateField === 'updated' ? 'updatedAt' : 'createdAt';
     if (q.from || q.to) {
@@ -257,7 +285,8 @@ export class DeviceFleetCenter {
     rows.sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : (by[sort as keyof typeof by](a) - by[sort as keyof typeof by](b))) || a.id.localeCompare(b.id));
     const total = rows.length; const totalPages = Math.max(1, Math.ceil(total / pageSize)); const page = Math.min(Math.max(1, Math.trunc(Number(q.page ?? 1)) || 1), totalPages);
     return { class: cls, items: rows.slice((page - 1) * pageSize, page * pageSize), total, page, pageSize, totalPages,
-      applied: { q: term || null, status, branchId: q.branchId ?? null, from: q.from ?? null, to: q.to ?? null, dateField: q.dateField ?? 'created', sort }, checkedAt: this.now().toISOString() };
+      applied: { q: term || null, status, branchId: q.branchId ?? null, from: q.from ?? null, to: q.to ?? null, dateField: q.dateField ?? 'created', sort }, checkedAt: this.now().toISOString(),
+      scope: { branchId: ctx.branchId || null, branchName: ctx.branchId ? (await this.branchName(ctx)) : null }, branches };
   }
 
   /** the canonical history — audit_logs for displays / registers / terminals, go_checkin_logs for kiosks — newest first */

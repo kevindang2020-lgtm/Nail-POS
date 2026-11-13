@@ -603,4 +603,5 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.src.set": "Ghi nguồn", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Hãy chọn ghi chú và nguồn của nó.", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Hãy ghi tên nguồn đã xác nhận.", // DRAFT — Kevin reviews
+  "cpf.prov.updated": "cập nhật {at}", // DRAFT — Kevin reviews
 };

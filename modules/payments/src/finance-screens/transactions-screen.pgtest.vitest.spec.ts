@@ -266,6 +266,12 @@ describe('TRANSACTIONS 03 — safe duplicate-payment review (diagnosis only)', (
     expect(d.duplicateReview.conflicting.map((x: any) => x.id)).toEqual([b]);
     expect(d.duplicateReview.overCollectedCents).toBe(3000);
     expect(d.duplicateReview.signals).toBe(4);
+    // round 10 (Split Payments 07): every callback is on the payment timeline with its outcome and a MASKED event id
+    const cbs = d.timeline.filter((x) => x.kind === 'callback');
+    expect(cbs).toHaveLength(3);   // the other salon's delivery is not ours
+    expect(cbs.map((x) => x.status).sort()).toEqual(['not_processed', 'processed', 'processed']);
+    expect(cbs.every((x) => x.ref === '••••EV-1' || x.ref === '••••EV-2')).toBe(true);
+    expect(JSON.stringify(d.timeline)).not.toContain('"EV-1"');
     const after = (await q(`select count(*)::int as n, sum(amount_cents)::int as s from payments where tenant_id = $1`, [T])).rows[0];
     expect(after).toEqual(before);
   });

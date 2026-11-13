@@ -105,6 +105,12 @@ export function FullDayOverlay({ technicianId, date: date0, today, canPay, onClo
           {i.kind === 'appt' && onAppt ? <button type="button" className="fk-btn ghost sm" onClick={() => onAppt(i.id)}>{tx('pos.details')}</button> : null}</li>)}</ul>}
         {gaps.length ? <><h3 className="fk-h3">{tx('tm.gaps')}</h3><div className="cg-chips" data-testid="full-day-gaps">{gaps.map((g) => <span key={g.s} className="fk-chip info">{hm12(h(g.s))} – {hm12(h(g.e))} · {tx('cg.min', { n: nf(g.e - g.s) })}</span>)}</div></>
           : x.shift ? <p className="fk-hint" data-testid="full-day-full">{tx('tm.noGap')}</p> : null}
+        {/* round 10 (LIVE TECHNICIAN SCHEDULE 03) — Gap Quality: what each open gap can hold, from the server (the salon's saved
+            booking buffer and this location's active services); qualification is checked when a time is booked */}
+        {Array.isArray(x.gapQuality) && x.gapQuality.length ? <ul className="fk-list dense" data-testid="full-day-gap-quality">{x.gapQuality.map((g: any) => <li key={g.slotId} className="fk-li" data-testid="gap-quality-row">
+          <span className="fk-li-t">{hm12(g.startTime)} – {hm12(g.endTime)} · {tx('cg.min', { n: nf(g.minutes) })}
+            <span className="fk-li-s">{g.longestFit ? tx('tm.gq.fits', { n: nf(g.servicesFit), t: nf(g.servicesTotal), s: g.longestFit.name, m: nf(g.longestFit.minutes), b: nf(g.bufferMinutes) }) : tx('tm.gq.none', { u: nf(g.usableMinutes), b: nf(g.bufferMinutes) })}</span></span></li>)}
+          <li className="fk-hint">{tx('tm.gq.note')}</li></ul> : null}
         {/* extras LIVE TECHNICIAN SCHEDULE 12 — Technician Day Notes: the notes already on this day's records, from the server
             (appointment notes only for a role with customer access — the server leaves them out otherwise and counts them) */}
         {Array.isArray(x.dayNotes) ? <><h3 className="fk-h3">{tx('tm.dayNotes')}</h3>

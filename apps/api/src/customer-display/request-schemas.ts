@@ -20,6 +20,8 @@ export const DISPLAY_HEARTBEAT_BODY: BodySchema = S.object({
   mode: str(20), appVersion: str(64), profile: str(40),
   screen: S.nullable(S.object({ width: S.nullable(S.number()), height: S.nullable(S.number()), pixelRatio: S.nullable(S.number()) })),
   adPolicy: S.nullable(S.object({ version: S.nullable(S.integer({ minimum: 0 })), mode: str(20) })),   // G7: the applied advertising policy (ACK)
+  // round 10 (Tablets 02): what the browser exposes — the OS and the battery; absent when the device cannot read them
+  os: str(64), battery: S.nullable(S.object({ percent: S.nullable(S.number()), charging: S.nullable(S.boolean()) })),
 });
 export const DISPLAY_RELEASE_BODY: BodySchema = S.object({ sessionId: str(64) });
 export const DISPLAY_AD_DISPLAYS_BODY: BodySchema = S.object({

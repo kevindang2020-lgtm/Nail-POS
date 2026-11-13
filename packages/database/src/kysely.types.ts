@@ -90,6 +90,7 @@ export interface CustomerDisplayDevicesTable {
   applied_ad_policy_version: number | null;   // types sync (Nov 5 2026)
   applied_ad_mode: string | null;   // types sync (Nov 5 2026)
   applied_ad_at: TsNull;   // types sync (Nov 5 2026)
+  os_version: string | null; battery_percent: number | null; battery_charging: boolean | null; battery_reported_at: TsNull;   // migration 930 (Tablets 02)
 }
 // 23-inch spec §9–§10 (migration 511): a POS register — a display dedicated to it has pos_station_id = its id.
 export interface PosStationsTable {
@@ -8355,6 +8356,7 @@ export interface GoCheckinDevicesTable {
   allowed_branch_ids: ColumnType<string[] | null, string | null, string | null>;
   welcome_message: string | null;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  os_version: string | null; battery_percent: number | null; battery_charging: boolean | null; battery_reported_at: TsNull;   // migration 931 (Tablets 02)
 }
 export interface GoCheckinSessionsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; device_id: string | null;

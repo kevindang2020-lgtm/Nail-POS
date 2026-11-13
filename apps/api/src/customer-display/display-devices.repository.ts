@@ -5,6 +5,7 @@
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { DisplayProfile, DisplayReportedMode } from '@aipowersalon/api-contracts';
+import { DISPLAY_ONLINE_WINDOW_MS } from '@aipowersalon/api-contracts';
 import type { DisplayActor, DisplayPairingPort, DisplayPlatform, PairingClaim, PairingRow, PickedUp } from './display-pairing.repository';
 import { deviceTypeFor, writeDisplayAudit } from './display-pairing.repository';
 
@@ -19,7 +20,9 @@ export interface DeviceRow {
 /** The checkout attached to a display right now — the staff-facing facts only (§81: first name and ticket number). */
 export interface ActiveSessionRow { sessionId: string; deviceId: string; ticketId: string | null; ticketNumber: string | null; customerFirstName: string | null; state: string }
 export interface StationRow { id: string; branchId: string; name: string }
-export interface HeartbeatFacts { mode: DisplayReportedMode; appVersion: string; width: number; height: number; pixelRatio: number; profile: DisplayProfile; adPolicy?: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null }
+export interface HeartbeatFacts { mode: DisplayReportedMode; appVersion: string; width: number; height: number; pixelRatio: number; profile: DisplayProfile; adPolicy?: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null;
+  /** round 10 (Tablets 02): the OS and battery the device's browser exposes; null = not reported (never guessed) */
+  os?: string | null; battery?: { percent: number; charging: boolean | null } | null }
 export interface DevicePatch { name?: string; stationId?: string | null; maintenance?: boolean }
 /** An audit_logs row written in the SAME transaction as the change it records. */
 export interface DisplayAudit { action: string; metadata: Record<string, unknown> }
@@ -147,11 +150,22 @@ export class KyselyDisplayDevicesRepository implements DisplayDevicesPort {
     return this.db.transaction().execute(async (trx) => {
       const before = await sql<any>`${this.deviceQuery(tenantId)} AND d.id = ${deviceId} AND d.revoked_at IS NULL FOR UPDATE OF d`.execute(trx);
       if (!before.rows[0]) return null;
+      // round 10 (Tablets 09): the activity timeline also records RECOVERY (back after being offline — how long it was gone) and
+      // APP UPDATES (from → to), written by the display's own heartbeat (no staff actor); routine beats write nothing
+      const b0 = before.rows[0];
+      const lastMs = b0.last_seen_at ? new Date(b0.last_seen_at).getTime() : null;
+      const dev = { tenantId, branchId: b0.branch_id ?? null, userId: null, role: 'DEVICE' };
+      if (lastMs != null && Date.now() - lastMs > DISPLAY_ONLINE_WINDOW_MS) await writeDisplayAudit(trx, dev, 'customer_display_reconnected', 'customer_display', deviceId, { offlineSeconds: Math.round((Date.now() - lastMs) / 1000) });
+      if (b0.app_version && b0.app_version !== hb.appVersion) await writeDisplayAudit(trx, dev, 'customer_display_app_updated', 'customer_display', deviceId, { from: String(b0.app_version), to: hb.appVersion });
       await sql`
         UPDATE customer_display_devices
            SET last_seen_at = now(), reported_mode = ${hb.mode}, app_version = ${hb.appVersion}, screen_width = ${hb.width},
                screen_height = ${hb.height}, pixel_ratio = ${hb.pixelRatio}, display_profile = ${hb.profile}
          WHERE tenant_id = ${tenantId} AND id = ${deviceId}`.execute(trx);
+      // round 10 (Tablets 02): the OS and the battery, only when the device reported them (a missing reading leaves the last one
+      // with its own battery_reported_at, so the fleet can tell a stale battery figure from a live one)
+      if (hb.os) await sql`UPDATE customer_display_devices SET os_version = ${hb.os} WHERE tenant_id = ${tenantId} AND id = ${deviceId}`.execute(trx);
+      if (hb.battery) await sql`UPDATE customer_display_devices SET battery_percent = ${hb.battery.percent}, battery_charging = ${hb.battery.charging}, battery_reported_at = now() WHERE tenant_id = ${tenantId} AND id = ${deviceId}`.execute(trx);
       // G7: what the display last APPLIED (policy version + mode) — the only source of "policy applied" in the fleet status
       if (hb.adPolicy) await sql`UPDATE customer_display_devices SET applied_ad_policy_version = ${hb.adPolicy.version}, applied_ad_mode = ${hb.adPolicy.mode},
           applied_ad_at = CASE WHEN applied_ad_policy_version IS DISTINCT FROM ${hb.adPolicy.version} OR applied_ad_mode IS DISTINCT FROM ${hb.adPolicy.mode} THEN now() ELSE applied_ad_at END

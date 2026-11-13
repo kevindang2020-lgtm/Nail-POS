@@ -55,7 +55,7 @@ export function POSCustomerDisplaysScreen() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [pairing, setPairing] = useState<{ code: string; name: string; stationId: string } | null>(null);
+  const [pairing, setPairing] = useState<{ code: string; name: string; stationId: string; replacing?: string } | null>(null);
   const [newRegister, setNewRegister] = useState('');
   // inline rename (no native dialogs): a display or a register being renamed in place
   const [editing, setEditing] = useState<{ kind: 'display' | 'register'; id: string; name: string } | null>(null);
@@ -129,6 +129,13 @@ export function POSCustomerDisplaysScreen() {
     d.session ? t('pos.revoke_name_the_checkout_on_it_1iyd', { name: String(d.name) }) : t('pos.revoke_name_it_must_be_paired_1cp8', { name: String(d.name) }),
     () => { void run('rv' + d.deviceId, () => posCustomerDisplaysApi.revoke(d.deviceId), `${d.name} revoked.`); }, { confirmLabel: t('pos.revoke_display') });
 
+  // round 10 (Tablets 06): Replace a lost / broken display — revoke the old one (its credential stops working at once), then
+  // open pairing for the new one with the same name and register filled in. The new display gets its OWN pairing code and
+  // credential: nothing is copied from the old device.
+  const replace = (d: PosDisplayDeviceView) => confirm(t('dsp.replace.confirm', { name: String(d.name) }),
+    () => { void run('rv' + d.deviceId, async () => { await posCustomerDisplaysApi.revoke(d.deviceId); setPairing({ code: '', name: d.name, stationId: d.stationId ?? '', replacing: d.name }); }, t('dsp.replace.revoked', { name: String(d.name) })); },
+    { confirmLabel: t('dsp.replace.go') });
+
   return (
     <div className="work" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-testid="customer-displays-screen">
       {confirmUi}
@@ -193,6 +200,7 @@ export function POSCustomerDisplaysScreen() {
               <div className="s" style={fieldLabel}>{t('pos.pairing_code')} *</div>
               <input aria-label={t('pos.pairing_code')} value={pairing.code} inputMode="numeric" autoComplete="off" placeholder="1234 5678" onChange={(e) => setPairing({ ...pairing, code: formatPairingCode(e.target.value.replace(/\D/g, '').slice(0, DISPLAY_PAIRING_CODE_DIGITS)) })} style={{ ...field, width: '100%', fontSize: 15, letterSpacing: '.12em', fontWeight: 800, textAlign: 'center', fontFamily: 'monospace', borderColor: '#D8A646' }} />
             </div>
+            {pairing.replacing ? <div className="fk-note" data-testid="display-replace-note" style={{ gridColumn: '1 / -1' }}>{t('dsp.replace.note', { name: pairing.replacing })}</div> : null}
             <div>
               <div className="s" style={fieldLabel}>{t('pos.display_name_2')}</div>
               <input aria-label={t('pos.display_name')} value={pairing.name} maxLength={40} placeholder={t('pos.front_display_1')} onChange={(e) => setPairing({ ...pairing, name: e.target.value })} style={{ ...field, width: '100%' }} />
@@ -277,6 +285,7 @@ export function POSCustomerDisplaysScreen() {
                           {manage ? <>
                             <button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setEditing({ kind: 'display', id: d.deviceId, name: d.name })}>{t('pos.rename')}</button>
                             <button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 8px', fontSize: 11 }} disabled={busy === 'mt' + d.deviceId} onClick={() => { void toggleMaintenance(d); }}>{d.maintenance ? t('pos.end_maintenance') : t('pos.maintenance_3')}</button>
+                            <button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 8px', fontSize: 11 }} disabled={busy === 'rv' + d.deviceId || d.awaitingPickup} onClick={() => replace(d)} data-testid="display-replace">{t('dsp.replace.button')}</button>
                             <button className="btn ghost whitespace-nowrap w-fit" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--danger, #B85B4D)', borderColor: '#F5C6BA' }} disabled={busy === 'rv' + d.deviceId} onClick={() => revoke(d)}>{t('pos.revoke')}</button>
                           </> : null}
                         </div>

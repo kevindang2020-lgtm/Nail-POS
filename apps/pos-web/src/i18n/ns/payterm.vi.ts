@@ -122,4 +122,10 @@ export const PAYTERM_VI: Record<string, string> = {
   'pt.sharedPhone': 'Máy dùng chung (không gắn với một nhân viên)', 'pt.addPhoneNote': 'Điện thoại ở trạng thái Chờ duyệt cho đến khi quản lý duyệt.',
   "pt.reenable": "Bật lại",
   "pt.reenabled": "{label} có thể nhận thanh toán trở lại.",
+  "pt.reason.register_other_location": "quầy của chi nhánh khác", // DRAFT — Kevin reviews
+  "pt.reason.merchant_other_location": "tài khoản người bán không khớp", // DRAFT — Kevin reviews
+  "pt.why.register_other_location": "Được gán cho quầy của chi nhánh khác", // DRAFT — Kevin reviews
+  "pt.why.merchant_other_location": "Tài khoản người bán đã liên kết không thuộc chi nhánh này — máy sẽ không thu tiền ở đây", // DRAFT — Kevin reviews
+  "pt.fix.register_other_location": "Gán máy cho một quầy của chi nhánh này.", // DRAFT — Kevin reviews
+  "pt.fix.merchant_other_location": "Ghép nối lại máy tại chi nhánh này để dùng tài khoản người bán của chi nhánh này.", // DRAFT — Kevin reviews
 };

@@ -13,6 +13,7 @@ import type {
 } from '@aipowersalon/api-contracts/customer';
 import { HeaderEventSource } from './headerEventSource';
 import { buildApiUrl } from '@aipowersalon/api-client';
+import type { DeviceHealthFacts } from './useHeartbeat';
 
 export type Creds =
   | { mode: 'session'; sessionId: string; token: string }
@@ -118,7 +119,7 @@ export async function submitReceipt(c: Creds, choice: DisplayReceiptSubmission['
 }
 
 // ── 23-inch spec §85–§86: the heartbeat (mode, app version, screen, profile); the answer says whether it is in maintenance ──
-export async function sendHeartbeat(c: Creds, hb: DisplayHeartbeat): Promise<DisplayHeartbeatAck> {
+export async function sendHeartbeat(c: Creds, hb: DisplayHeartbeat & DeviceHealthFacts): Promise<DisplayHeartbeatAck> {
   if (c.mode !== 'device') return { maintenance: false };
   return parse(await fetch(`${devBase}/heartbeat`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-device-token': c.deviceToken }, body: JSON.stringify(hb) }));
 }

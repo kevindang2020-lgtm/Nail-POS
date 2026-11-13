@@ -129,4 +129,6 @@ export const ASSISTANTS_EN: Record<string, string> = {
   "cpx.ev.dup": "Possible duplicates: the duplicate review, last checked {at}.",
   "cpx.ev.dupNever": "Possible duplicates: the duplicate review has not run yet.",
   "cpx.ev.prefs": "Preferences, favourite services and notes are shown on each customer’s profile from their own records; this page keeps no copy.",
+  "asx.staleSum": "Showing the last good numbers, from {at}.",
+  "asx.staleList": "Showing the last good list, from {at} — it may have changed since.",
 };

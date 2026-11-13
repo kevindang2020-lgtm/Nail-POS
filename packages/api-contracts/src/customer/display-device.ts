@@ -27,6 +27,9 @@ export interface DisplayHeartbeat {
   profile: DisplayProfile;
   /** G7: the advertising policy this display APPLIED (from the playlist it is playing) — its acknowledgment */
   adPolicy?: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null;
+  /** round 10 (Tablets 02): only what the device's browser exposes — the OS (from its user agent) and the battery (Battery Status API) */
+  os?: string | null;
+  battery?: { percent: number; charging: boolean | null } | null;
 }
 export interface DisplayHeartbeatAck { maintenance: boolean }
 

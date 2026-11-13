@@ -535,4 +535,11 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   "admin.timeClock.rush.result": "{a} đã chấm công vào · {b} đã chấm công trước đó · {c} bị từ chối", // DRAFT — Kevin reviews
   "admin.timeClock.rush.code.TECHNICIAN_NOT_FOUND": "không thuộc tiệm này", // DRAFT — Kevin reviews
   "admin.timeClock.rush.code.REFUSED": "bị từ chối", // DRAFT — Kevin reviews
+  "tcov.title": "Mức độ dịch (Tiếng Anh → Tiếng Việt)", // DRAFT — Kevin reviews
+  "tcov.summary": "{p}% chữ trên màn hình đã có tiếng Việt ({d} trên {t} khóa).", // DRAFT — Kevin reviews
+  "tcov.missing": "Chưa có tiếng Việt — đang hiện tiếng Anh: {n}", // DRAFT — Kevin reviews
+  "tcov.same": "Tiếng Việt giống hệt tiếng Anh (có thể chưa dịch): {n}", // DRAFT — Kevin reviews
+  "tcov.errors": "Thông báo lỗi chưa có tiếng Việt: {n} trên {t}", // DRAFT — Kevin reviews
+  "tcov.more": "… và {n} khóa nữa", // DRAFT — Kevin reviews
+  "tcov.gates": "Chữ viết cứng trên màn hình và từ trong bảng thuật ngữ được kiểm tra mỗi lần build (check-pos-i18n, check-vi-glossary). Bản dịch tiếng Việt nháp đang chờ duyệt có trong bảng duyệt bản nháp tiếng Việt.", // DRAFT — Kevin reviews
 };

@@ -698,4 +698,9 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzx.cmp.cannot.no_snapshot": "One of the reports has no verified Sales Report figures to compare.",
   "bzx.cmp.cannot.no_permission": "Your role cannot read the Sales Report figures.",
   "bzx.cmp.cannot.same_report": "Pick a different report.",
+  "bzx.src.sales": "Sales for this period",
+  "bzx.src.booking": "Booking on that day",
+  "bzx.src.history": "Appointment history",
+  "bzx.src.staff": "Staff performance",
+  "bzx.src.customers": "Customers",
 };

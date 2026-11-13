@@ -94,6 +94,22 @@ describe('T31–T37 the four counters, traced to canonical rows', () => {
     expect(s.openSlots.columnsCounted).toBe(3);                // Dana is active but has no working hours: no column counted
     expect(s.openSlots.reconciliation.join(' ')).toMatch(/8 start time\(s\) removed because a live booking hold/);
     expect(s.openSlots.definition).toMatch(/45-minute service.*15-minute grid/);
+    // round 10 (AI Calendar 03): the same count per technician (sums to the value) with each one's mapped active services
+    const by = s.openSlots.byTechnician as Array<{ technicianId: string; name: string | null; openStarts: number; qualifiedServices: number }>;
+    expect(by).toHaveLength(3);
+    expect(by.reduce((a, x) => a + x.openStarts, 0)).toBe(s.openSlots.value);
+    expect(by.every((x) => typeof x.qualifiedServices === 'number')).toBe(true);
+    const unmapped = by.filter((x) => !x.qualifiedServices).length;
+    expect(s.openSlots.reconciliation.join(' ')).toMatch(unmapped ? /mapped to no active service/ : /Every counted technician is mapped/);
+    // map one technician to one active service (and one archived) → exactly that technician counts 1
+    const cat = randomUUID(), sv = randomUUID(), old = randomUUID(), tech = by[0].technicianId;
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name) values (${cat}, ${T}, ${B}, 'Nails')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, archived_at) values (${sv}, ${T}, ${B}, ${cat}, 'Gel', 45, 4000, 'active', null), (${old}, ${T}, ${B}, ${cat}, 'Old', 45, 4000, 'active', now())`);
+    await q(sql`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values (${T}, ${B}, ${tech}, ${sv}), (${T}, ${B}, ${tech}, ${old})`);
+    const s2 = await cal.summary(OWNER, DAY);
+    const by2 = s2.openSlots.byTechnician as Array<{ technicianId: string; qualifiedServices: number }>;
+    expect(by2.find((x) => x.technicianId === tech)!.qualifiedServices).toBe(by.find((x) => x.technicianId === tech)!.qualifiedServices + 1);
+    await q(sql`delete from technician_services where tenant_id = ${T} and service_id in (${sv}, ${old})`);
   });
   it('A11 Nov 6: Open Slots counts only inside the branch’s saved opening hours; a saved closed day counts none; removing them restores the engine hours', async () => {
     const full = await cal.summary(OWNER, DAY);

@@ -150,4 +150,44 @@ describe('Check Three Payment Channels', () => {
     expect(by.no_side_effects.state).toBe('PASSED');
     expect(r.overall).not.toBe('PASSED');   // never a generic "all working" while UAT / approvals are open
   });
+  it('PC-10 round 10 (Split Payments 02): processor callback processing health — none is not a pass; stuck and bad signatures are counted; other salons and other locations are not read', async () => {
+    const empty = Object.fromEntries((await center().check(ctx())).checks.map((c) => [c.key, c]));
+    expect(empty.webhook_processing).toMatchObject({ state: 'INSUFFICIENT_DATA', reason: 'NO_CALLBACKS_24H' });
+    expect(empty.webhook_signatures).toMatchObject({ state: 'INSUFFICIENT_DATA' });
+    await q(sql`insert into payment_gateway_events (tenant_id, branch_id, processor_type, event_id, signature_valid, processed_at, created_at) values
+      (${T}, ${B}, 'test-proc', 'W-1', true, now(), now() - interval '1 hour'),
+      (${T}, null, 'test-proc', 'W-2', true, now(), now() - interval '2 hours'),
+      (${T}, ${B}, 'test-proc', 'W-3', true, null, now() - interval '40 minutes'),
+      (${T}, ${B}, 'test-proc', 'W-4', true, null, now() - interval '2 minutes'),
+      (${T}, ${B}, 'test-proc', 'W-5', false, null, now() - interval '3 hours'),
+      (${T}, ${B}, 'test-proc', 'W-OLD', true, null, now() - interval '3 days'),
+      (${T}, ${B2}, 'test-proc', 'W-B2', false, null, now() - interval '1 hour'),
+      (${X}, ${BX}, 'test-proc', 'W-X', false, null, now() - interval '1 hour')`);
+    const before = (await q(sql`select count(*)::int n, count(*) filter (where processed_at is not null)::int p from payment_gateway_events`))[0];
+    const by = Object.fromEntries((await center().check(ctx())).checks.map((c) => [c.key, c]));
+    expect(by.webhook_processing).toMatchObject({ state: 'WARNING', reason: 'CALLBACKS_NOT_PROCESSED', count: 1 });   // W-3 only (W-4 is still fresh, W-OLD is outside 24 h)
+    expect(by.webhook_signatures).toMatchObject({ state: 'WARNING', reason: 'CALLBACK_SIGNATURE_FAILURES', count: 1 });   // W-5 only (B2 / other salon not read)
+    expect((await q(sql`select count(*)::int n, count(*) filter (where processed_at is not null)::int p from payment_gateway_events`))[0]).toEqual(before);   // read-only
+    await q(sql`update payment_gateway_events set processed_at = now() where tenant_id = ${T} and event_id in ('W-3')`);
+    await q(sql`delete from payment_gateway_events where tenant_id = ${T} and event_id = 'W-5'`);
+    const ok = Object.fromEntries((await center().check(ctx())).checks.map((c) => [c.key, c]));
+    expect(ok.webhook_processing).toMatchObject({ state: 'PASSED', reason: null, count: 3 });
+    expect(ok.webhook_signatures).toMatchObject({ state: 'PASSED', reason: null });
+  });
+  it('PC-11 round 10 (Split Payments 15): cash and gift card readiness per location, read through Checkout\'s own gift-card settings', async () => {
+    await q(sql`insert into gift_cards (tenant_id, branch_id, code, initial_balance_cents, balance_cents, status) values
+      (${T}, ${B}, 'GC-PC-1', 5000, 5000, 'active'), (${T}, null, 'GC-PC-2', 5000, 1200, 'partially_redeemed'), (${T}, ${B}, 'GC-PC-3', 5000, 0, 'redeemed'),
+      (${T}, ${B}, 'GC-PC-4', 5000, 5000, 'void'), (${T}, ${B2}, 'GC-PC-5', 5000, 5000, 'active'), (${X}, ${BX}, 'GC-PC-6', 5000, 5000, 'active')`);
+    const by = Object.fromEntries((await center().check(ctx())).checks.map((c) => [c.key, c]));
+    expect(by.cash_method).toMatchObject({ state: 'PASSED', reason: 'CASH_ALWAYS_ACCEPTED' });
+    expect(by.gift_card_method).toMatchObject({ state: 'PASSED', reason: 'GIFT_CARD_REDEEM_ALL_LOCATIONS', count: 3 });   // default: every location's cards (never another salon's, never empty / void)
+    expect(by.gift_card_sales).toMatchObject({ state: 'PASSED', reason: null });
+    await q(sql`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values (${T}, ${B}, 'gift-card-settings', '{"crossBranchRedemption":false,"posSalesEnabled":false}'::jsonb)`);
+    const here = Object.fromEntries((await center().check(ctx())).checks.map((c) => [c.key, c]));
+    expect(here.gift_card_method).toMatchObject({ reason: 'GIFT_CARD_REDEEM_THIS_LOCATION', count: 2 });
+    expect(here.gift_card_sales).toMatchObject({ state: 'WARNING', reason: 'GIFT_CARD_SALES_DISABLED' });
+    const b2 = Object.fromEntries((await center().check(ctx(B2))).checks.map((c) => [c.key, c]));
+    expect(b2.gift_card_sales.state).toBe('PASSED');   // the other location keeps the salon default
+    await q(sql`delete from tenant_settings where tenant_id = ${T} and category = 'gift-card-settings'`);
+  });
 });

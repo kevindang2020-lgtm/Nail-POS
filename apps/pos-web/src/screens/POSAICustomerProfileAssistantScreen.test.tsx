@@ -99,6 +99,21 @@ describe('AI Customer Profile Assistant', () => {
     expect(screen.getByTestId('cpx-ev-dup')).toHaveTextContent('has not run yet');
     expect(ci.summary).toHaveBeenCalledTimes(1);                                                // no second fetch for the evidence
   });
+  it('round 10 (CPA-05): a failed REFRESH keeps the last good cards and list on screen, marked with their time; a new filter that fails shows the error alone', async () => {
+    ci.summary.mockResolvedValueOnce({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 } }).mockRejectedValue({ status: 403 });
+    ci.customers.mockResolvedValueOnce(page([ROW])).mockRejectedValue({ status: 403 });
+    wrap();
+    await waitFor(() => expect(screen.getByTestId('as-kpi-scanned')).toHaveTextContent('40'));
+    await screen.findByTestId('as-row');
+    fireEvent.click(screen.getByTestId('as-refresh'));
+    expect(await screen.findByTestId('as-list-stale')).toHaveTextContent('Showing the last good list, from');
+    expect(screen.getByTestId('as-sum-stale')).toHaveTextContent('Showing the last good numbers');
+    expect(screen.getByTestId('as-row')).toHaveTextContent('Linh Pham');            // the customers stay visible
+    expect(screen.getByTestId('as-kpi-scanned')).toHaveTextContent('40');
+    fireEvent.change(screen.getByTestId('as-f-status'), { target: { value: 'inactive_all' } });   // a different question
+    await waitFor(() => expect(screen.queryByTestId('as-row')).toBeNull());
+    expect(screen.queryByTestId('as-list-stale')).toBeNull();
+  });
   it('CPA-05 slow network / AI outage: a dropped summary read is retried and the cards fill; a 403 is not retried; an AI package outage keeps the customer dashboard visible with Retry', { timeout: 15000 }, async () => {
     ci.summary.mockRejectedValueOnce({}).mockResolvedValue({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 } });
     const { unmount } = wrap();

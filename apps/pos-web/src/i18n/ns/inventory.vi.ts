@@ -465,4 +465,20 @@ export const INVENTORY_VI = {
   'inv.price.receiptsKeep': 'Hóa đơn cũ giữ nguyên giá đã tính lúc bán — đổi giá không bao giờ sửa lại hóa đơn cũ.', // DRAFT — Kevin reviews
   'inv.price.reasonLabel': 'Vì sao đổi giá? (không bắt buộc)', // DRAFT — Kevin reviews
   'inv.price.reasonPh': 'vd: nhà cung cấp tăng giá vốn', // DRAFT — Kevin reviews
+  'inv.def.title': 'Cách đếm các con số này', // DRAFT — Kevin reviews
+  'inv.def.products': 'Sản phẩm — các hồ sơ sản phẩm đang hoạt động (chai và lô không phải là sản phẩm).', // DRAFT — Kevin reviews
+  'inv.def.bottles': 'Chai — số chai dùng được đang có theo hồ sơ chai (chưa mở + đang mở), theo từng loại đơn vị.', // DRAFT — Kevin reviews
+  'inv.def.open': 'Đang mở — chai đã mở còn dùng (kể cả chai đánh dấu sắp hết).', // DRAFT — Kevin reviews
+  'inv.def.unopened': 'Chưa mở — chai còn niêm phong đang có.', // DRAFT — Kevin reviews
+  'inv.def.lowStock': 'Sắp hết — sản phẩm bằng hoặc dưới mức đặt lại nhưng chưa hết (đã tính mức riêng của chi nhánh).', // DRAFT — Kevin reviews
+  'inv.def.outOfStock': 'Hết hàng — sản phẩm không còn gì dùng được.', // DRAFT — Kevin reviews
+  'inv.def.needReorder': 'Cần đặt lại — sắp hết cộng hết hàng: phạm vi của Cảnh báo tồn kho.', // DRAFT — Kevin reviews
+  'inv.def.expiringSoon': 'Sắp hết hạn — chai dùng được hết hạn trong {d} ngày; chai đã hết hạn được đếm riêng.', // DRAFT — Kevin reviews
+  'inv.def.pendingReports': 'Báo cáo chờ — báo cáo chai của thợ đang chờ xem xét.', // DRAFT — Kevin reviews
+  'inv.def.inventoryValue': 'Giá trị tồn kho — giá vốn × số chai dùng được, chưa hết hạn (sản phẩm chưa có giá vốn không được tính và được nêu tên).', // DRAFT — Kevin reviews
+  'inv.def.retailValue': 'Giá trị bán lẻ — giá bán lẻ × số chai dùng được, chưa hết hạn.', // DRAFT — Kevin reviews
+  'inv.tr.preview': '{name}: tại đây {before} → {after} · đến {to}', // DRAFT — Kevin reviews
+  'inv.tr.previewShort': 'chỉ còn {n} tại đây — chỉ chuyển số đang có', // DRAFT — Kevin reviews
+  'inv.retrySafe': 'Chưa nhận được phản hồi, có thể đã được lưu. Thử lại là an toàn: cùng một yêu cầu được gửi lại và máy chủ không bao giờ tính hai lần.', // DRAFT — Kevin reviews
+  'inv.retrySafeBtn': 'Thử lại an toàn', // DRAFT — Kevin reviews
 };

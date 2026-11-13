@@ -22,7 +22,7 @@ const REASONS = ['CALLBACK', 'COMPLAINT', 'BOOKING_HELP', 'FAILED_TRANSFER', 'VE
 const RESOLUTIONS = ['customer_reached', 'booked', 'issue_resolved', 'no_action_needed', 'unreachable', 'duplicate', 'referred_to_manager'] as const;
 const OUTCOMES = ['reached', 'no_answer', 'voicemail', 'wrong_number', 'requested_later', 'resolved', 'escalated'] as const;
 const BASES = ['created', 'due', 'updated', 'call', 'assigned', 'first_response', 'last_contact', 'resolved'] as const;
-const TABS = ['overview', 'customer', 'call', 'attempts', 'booking', 'audit'] as const;
+const TABS = ['overview', 'timeline', 'customer', 'call', 'attempts', 'booking', 'audit'] as const;
 const key = () => `fu-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 const fmt = (s: string | null | undefined, tz?: string) => (s ? new Date(s).toLocaleString(undefined, { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : tx('aifu.none'));
 const label = (group: string, v: string | null | undefined) => (v ? tx(`aifu.${group}.${v}`) : tx('aifu.none'));
@@ -64,6 +64,8 @@ export function POSAIFollowUpsScreen() {
   };
   const showRuns = () => fa.healthHistory(1, 10).then(setRuns).catch((e) => setNotice(errorTextOf(e, tx('aifu.loadFailed'))));
   const c = kpis?.cards;
+  // round 10 (AI Follow Ups 06 / 02): shift handover and the location's overdue-alert setting
+  const [handing, setHanding] = useState(false); const [alerting, setAlerting] = useState(false);
 
   return (
     <div className="work aifu" data-testid="aifu">
@@ -75,6 +77,8 @@ export function POSAIFollowUpsScreen() {
           <button className="btn ghost" onClick={runImport} disabled={importing} data-testid="aifu-import">{tx('aifu.import')}</button>
           <button className="btn ghost" onClick={runHealth} data-testid="aifu-health">{tx('aifu.check')}</button>
           <button className="btn ghost" onClick={showRuns} data-testid="aifu-health-history">{tx('aifu.checkHistory')}</button>
+          <button className="btn ghost" onClick={() => setHanding(true)} data-testid="aifu-handover">{tx('aifu.ho.button')}</button>
+          <button className="btn ghost" onClick={() => setAlerting(true)} data-testid="aifu-alerts">{tx('aifu.al.button')}</button>
           <button className="btn ghost" onClick={() => nav('/tenant/ai/command-center')} data-testid="aifu-back">{tx('aifu.back')}</button>
         </div>
       </div>
@@ -84,6 +88,8 @@ export function POSAIFollowUpsScreen() {
           {!runs.items.length ? <div className="muted">{tx('aifu.noRuns')}</div> : (
             <table className="tbl"><tbody>{runs.items.map((r: any, i: number) => <tr key={i} data-testid="aifu-run-row"><td>{r.at ? fmtDateTime(r.at) : '—'}</td><td>{r.overall}</td><td>{r.by ?? '—'}</td><td>{r.failed ? tx('aifu.runFailed', { n: r.failed }) : ''}</td></tr>)}</tbody></table>)}
         </section>) : null}
+      {handing ? <HandoverDialog staff={staff} onClose={() => setHanding(false)} onDone={(n) => { setHanding(false); setNotice(tx('aifu.ho.done', { n })); load(); }} /> : null}
+      {alerting ? <AlertSettingsDialog onClose={() => setAlerting(false)} /> : null}
       {notice ? <div className="aifu-notice" role="status">{notice} <button className="link" onClick={() => setNotice(null)}>{tx('aifu.dismiss')}</button></div> : null}
       <div className="aifu-kpis" data-testid="aifu-kpis">
         <KpiCard label={tx('aifu.k.open')} value={c ? c.open : '—'} onClick={() => setStatus('open')} testId="aifu-k-open" />
@@ -253,6 +259,10 @@ function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id
               {can?.canManage && active ? <div className="aifu-row-btns"><span className="sub">{tx('aifu.override')}</span>{PRIOS.map((p) => <button key={p} className="btn ghost" disabled={busy || p === o.priority || form.reason.trim().length < 3} onClick={() => act(() => fa.priority(id, { priority: p, reason: form.reason, version: v }), tx('aifu.done'))}>{label('prio', p)}</button>)}</div> : null}
             </div> : <div className="sub">{tx('aifu.viewOnly')}</div>}
           </div> : null}
+          {tab === 'timeline' ? <div data-testid="aifu-p-timeline">{d.timeline?.length ? <table className="tbl"><thead><tr><th>{tx('aifu.at.when')}</th><th>{tx('aifu.tl.what')}</th><th>{tx('aifu.at.by')}</th></tr></thead>
+            <tbody>{d.timeline.map((e, i) => <tr key={e.kind + e.at + i} data-testid="aifu-tl-row"><td>{fmt(e.at)}</td><td><span className="chip">{tx('aifu.tl.k.' + e.kind)}</span> {e.kind === 'attempt' ? `${label('ch', e.type)} · ${label('out', e.detail)}`
+              : e.kind === 'handoff' ? codeLabel('aifu.hk.' + e.type, e.type) : e.kind === 'task' ? codeLabel('aifu.ev.' + e.type, e.type) : e.kind === 'booking' ? `${tx('aifu.tl.booking')}${e.detail ? ' · ' + codeLabel('aifu.bst.' + e.detail, e.detail) : ''}` : tx('aifu.tl.call.' + e.type)}</td><td>{e.actor ?? tx('aifu.system')}</td></tr>)}</tbody></table>
+            : <div className="sub">{tx('aifu.tl.empty')}</div>}</div> : null}
           {tab === 'customer' ? <div data-testid="aifu-p-customer"><dl className="aifu-dl">
             <dt>{tx('aifu.col.customer')}</dt><dd>{d.customer.name ?? `${tx('aifu.unmatchedCaller')} (${label('match', d.customer.match ?? 'unmatched')})`}</dd>
             <dt>{tx('aifu.cu.phone')}</dt><dd>{d.customer.phone ?? tx('aifu.none')}{d.customer.smsOptedOut ? ` · ${tx('aifu.optedOut')}` : ''}</dd>
@@ -265,6 +275,13 @@ function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id
             <dt>{tx('aifu.ca.transfer')}</dt><dd data-testid="aifu-ca-transfer">{label('tr', d.call.transfer)}</dd><dt>{tx('aifu.ca.summary')}</dt><dd>{d.call.summary ?? tx('aifu.none')}</dd>
             <dt>{tx('aifu.ca.handoffs')}</dt><dd>{d.call.handoffs.map((h) => `${label('hk', h.kind)} (${fmt(h.at)})`).join(' · ') || tx('aifu.none')}</dd></dl> : <div className="sub">{tx('aifu.noCall')}</div>}</div> : null}
           {tab === 'attempts' ? <div data-testid="aifu-p-attempts">
+            {d.lastContact ? <dl className="aifu-dl" data-testid="aifu-lastcontact">
+              <dt>{tx('aifu.lc.attempted')}</dt><dd data-testid="aifu-lc-counts">{tx('aifu.lc.counts', { a: d.lastContact.attempted, r: d.lastContact.reached })}</dd>
+              <dt>{tx('aifu.lc.lastAttempt')}</dt><dd>{d.lastContact.lastAttempt ? `${fmt(d.lastContact.lastAttempt.at)} · ${label('ch', d.lastContact.lastAttempt.channel)} · ${label('out', d.lastContact.lastAttempt.outcome)}${d.lastContact.lastAttempt.attestation ? ` · ${tx('aifu.attestation')}` : ''}` : tx('aifu.none')}</dd>
+              <dt>{tx('aifu.lc.lastReached')}</dt><dd>{d.lastContact.lastReached ? `${fmt(d.lastContact.lastReached.at)} · ${label('ch', d.lastContact.lastReached.channel)}` : tx('aifu.lc.neverReached')}</dd>
+              <dt>{tx('aifu.lc.texts')}</dt><dd data-testid="aifu-lc-texts">{tx('aifu.lc.textCounts', { t: d.lastContact.texts.total, s: d.lastContact.texts.submitted, p: d.lastContact.texts.providerAccepted, d: d.lastContact.texts.delivered, f: d.lastContact.texts.failed })}</dd>
+              <dt>{tx('aifu.lc.verified')}</dt><dd data-testid="aifu-lc-verified">{d.lastContact.lastVerified ? `${fmt(d.lastContact.lastVerified.at)} · ${label('ch', d.lastContact.lastVerified.channel)} · ${label('out', d.lastContact.lastVerified.outcome)}` : tx('aifu.lc.noneVerified')}</dd>
+            </dl> : null}
             {d.attempts.length ? <table className="tbl"><thead><tr><th>{tx('aifu.at.when')}</th><th>{tx('aifu.at.channel')}</th><th>{tx('aifu.at.outcome')}</th><th>{tx('aifu.at.by')}</th></tr></thead>
               <tbody>{d.attempts.map((a) => <tr key={a.id} data-testid="aifu-attempt"><td>{fmt(a.at)}</td><td>{label('ch', a.channel)}</td><td>{label('out', a.outcome)}{a.attestation ? <div className="sub">{tx('aifu.attestation')}</div> : null}</td><td>{a.recordedBy ?? tx('aifu.none')}{a.note ? <div className="sub">{a.note}</div> : null}</td></tr>)}</tbody></table> : <div className="sub">{tx('aifu.noAttempts')}</div>}
             {can?.canWork && active ? <div className="aifu-acts">
@@ -320,3 +337,39 @@ function EditBlock({ o, busy, onSave }: { o: { description: string | null; dueAt
     </div>
   );
 }
+
+/** round 10 (AI Follow Ups 06): hand every open follow-up of mine to one colleague at shift change (server: same rules as a
+ *  reassignment, one alert to them, an activity + audit row per task) */
+function HandoverDialog({ staff, onClose, onDone }: { staff: { id: string; name: string }[]; onClose: () => void; onDone: (moved: number) => void }) {
+  const [to, setTo] = useState(''); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const go = async () => { setBusy(true); setErr(null); try { const r = await fa.handover({ toUserId: to, note }); onDone(r.moved); } catch (e) { setErr(errorTextOf(e, tx('aifu.saveFailed'))); } finally { setBusy(false); } };
+  return (
+    <FitDialog title={tx('aifu.ho.title')} subtitle={tx('aifu.ho.sub')} onClose={onClose} busy={busy} testId="aifu-ho"
+      footer={<><button className="btn ghost" onClick={onClose}>{tx('aifu.cancel')}</button><button className="btn" disabled={busy || !to || note.trim().length < 3} onClick={go} data-testid="aifu-ho-go">{tx('aifu.ho.go')}</button></>}>
+      {err ? <div className="err" data-testid="aifu-ho-err">{err}</div> : null}
+      <label>{tx('aifu.ho.to')}<select value={to} onChange={(e) => setTo(e.target.value)} data-testid="aifu-ho-to"><option value="">{tx('aifu.ho.choose')}</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+      <label>{tx('aifu.ho.note')}<textarea value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} data-testid="aifu-ho-note" /></label>
+    </FitDialog>
+  );
+}
+
+/** round 10 (AI Follow Ups 02): this location's overdue-callback manager alert — on/off and minutes of grace after the due
+ *  time. Read by anyone who sees follow-ups; saved by an owner / manager (the server refuses others and audits the change). */
+function AlertSettingsDialog({ onClose }: { onClose: () => void }) {
+  const [v, setV] = useState<{ enabled: boolean; graceMinutes: number; scope: string } | null>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [saved, setSaved] = useState(false);
+  useEffect(() => { fa.alertSettings().then(setV).catch((e) => setErr(errorTextOf(e, tx('aifu.loadFailed')))); }, []);
+  const save = async () => { if (!v) return; setBusy(true); setErr(null); setSaved(false); try { setV(await fa.saveAlertSettings({ enabled: v.enabled, graceMinutes: v.graceMinutes })); setSaved(true); } catch (e) { setErr(errorTextOf(e, tx('aifu.saveFailed'))); } finally { setBusy(false); } };
+  return (
+    <FitDialog title={tx('aifu.al.title')} subtitle={tx('aifu.al.sub')} onClose={onClose} busy={busy} testId="aifu-al"
+      footer={<><button className="btn ghost" onClick={onClose}>{tx('aifu.close')}</button><button className="btn" disabled={busy || !v} onClick={save} data-testid="aifu-al-save">{tx('aifu.al.save')}</button></>}>
+      {err ? <div className="err" data-testid="aifu-al-err">{err}</div> : null}
+      {saved ? <div className="aifu-notice" role="status" data-testid="aifu-al-saved">{tx('aifu.done')}</div> : null}
+      {!v ? (err ? null : <div className="state">{tx('aifu.loading')}</div>) : <>
+        <label><input type="checkbox" checked={v.enabled} onChange={(e) => setV({ ...v, enabled: e.target.checked })} data-testid="aifu-al-on" /> {tx('aifu.al.on')}</label>
+        <label>{tx('aifu.al.grace')}<input type="number" min={0} max={1440} step={5} value={v.graceMinutes} disabled={!v.enabled} onChange={(e) => setV({ ...v, graceMinutes: Math.max(0, Math.min(1440, Math.trunc(Number(e.target.value) || 0))) })} data-testid="aifu-al-grace" /></label>
+        <div className="sub" data-testid="aifu-al-scope">{tx('aifu.al.scope.' + v.scope)}</div>
+      </>}
+    </FitDialog>
+  );
+}
+
