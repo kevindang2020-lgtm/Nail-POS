@@ -60,6 +60,12 @@ const normRef = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
 const masked = (nickname: unknown, last4: unknown) => `${String(nickname ?? '')}${last4 ? ` ••••${String(last4).slice(-4)}` : ''}`.trim() || null;
 const phoneLast4 = (v: unknown) => { const d = String(v ?? '').replace(/\D/g, ''); return d.length >= 4 ? `•••-${d.slice(-4)}` : null; };
 
+/** extras PAYMENTS 09 — card attempt states that are unresolved: waiting on a person, or still in flight. */
+export const CARD_ATTEMPT_REVIEW = ['needs_review', 'unknown', 'reconciliation_required'];
+export const CARD_ATTEMPT_IN_FLIGHT = ['created', 'processing', 'pending', 'readiness_checking', 'ready', 'reader_initializing', 'awaiting_customer_tap', 'card_detected', 'authorization_pending', 'authorized', 'confirmation_pending'];
+export const CARD_ATTEMPT_STALE_MIN = 30;
+const CARD_ATTEMPT_LIST = 10;
+
 export class ReconWorkspaceRepository {
   constructor(private readonly db: Kysely<any>, private readonly auditor: AuditRecorder | null = null) {}
   private log = (where: string, ctx: FinanceCtx) => (e: unknown) => logException(e, { where: `recon-workspace.${where}`, tenantId: ctx.tenantId });
@@ -592,6 +598,7 @@ export class ReconWorkspaceRepository {
       ${from} order by e.created_at desc, e.id desc limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
     return {
       kpis: { total, open: N(k.open_n), inReview: N(k.review_n), escalated: N(k.esc_n), resolved: N(k.resolved_n), amountAtRiskCents: N(k.at_risk) },
+      cardAttempts: await this.unresolvedCardAttempts(ctx),
       items: rows.map((e: any) => ({
         id: String(e.id), kind: String(e.kind), class: classOfKind(String(e.kind)), severity: String(e.severity), title: String(e.title), detail: e.detail ?? null, amountCents: N(e.amount_cents),
         status: String(e.status), sourceRef: e.source_ref ?? null, settlementId: e.s_id ? String(e.s_id) : null, depositId: e.d_id ? String(e.d_id) : null,
@@ -599,6 +606,31 @@ export class ReconWorkspaceRepository {
         reviewer: e.reviewer ?? null, assignedToUserId: e.assigned_to_user_id ?? null, resolutionNote: e.resolution_note ?? null, resolvedAt: iso(e.resolved_at), createdAt: iso(e.created_at), ageDays: N(e.age_days),
       })),
       total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
+    };
+  }
+  /** extras PAYMENTS 09 — one inbox: the card attempts nobody has resolved yet sit beside the reconciliation cases instead of
+   *  only on Split Payments / Check Payments System. Read-only and current (not period-bound — an unresolved attempt is open
+   *  NOW): a card attempt still in flight past CARD_ATTEMPT_STALE_MIN, one sent to review, or one the stranded sweep could not
+   *  verify and nobody resolved. Branch-scoped when the person is. Each item carries its own evidence (state, the sweep's
+   *  resolution note, the last processor error code, card brand / last 4 — never a full number). */
+  async unresolvedCardAttempts(ctx: FinanceCtx) {
+    const br = ctx.branchId && isUuid(ctx.branchId) ? sql`and a.branch_id = ${ctx.branchId}::uuid` : sql``;
+    const where = sql`from payment_attempts a left join tickets t on t.tenant_id = a.tenant_id and t.id = a.ticket_id
+      where a.tenant_id = ${ctx.tenantId}::uuid ${br} and a.resolved_at is null
+        and (a.status = any(${CARD_ATTEMPT_REVIEW}::text[]) or a.stranded_at is not null
+          or (a.status = any(${CARD_ATTEMPT_IN_FLIGHT}::text[]) and a.created_at < now() - make_interval(mins => ${CARD_ATTEMPT_STALE_MIN})))`;
+    const k = (await sql<{ n: number; cents: string | number }>`select count(*)::int as n, coalesce(sum(a.amount_cents), 0)::bigint as cents ${where}`.execute(this.db)).rows[0];
+    const rows = (await sql<any>`select a.id, a.ticket_id, t.ticket_number, a.amount_cents, a.status, a.stranded_at, a.resolution, a.last_error_code, a.card_brand, a.card_last4, a.created_at,
+        floor(extract(epoch from (now() - a.created_at)) / 60)::int as age_min
+      ${where} order by a.created_at asc, a.id asc limit ${CARD_ATTEMPT_LIST}`.execute(this.db)).rows;
+    return {
+      total: N(k?.n), amountCents: N(k?.cents), staleAfterMinutes: CARD_ATTEMPT_STALE_MIN,
+      items: rows.map((a: any) => ({
+        id: String(a.id), ticketId: a.ticket_id ? String(a.ticket_id) : null, ticketNumber: a.ticket_number ?? null, amountCents: N(a.amount_cents), state: String(a.status),
+        reason: a.stranded_at ? 'stranded' as const : CARD_ATTEMPT_REVIEW.includes(String(a.status)) ? 'needs_review' as const : 'in_flight_too_long' as const,
+        resolutionNote: a.resolution ?? null, lastErrorCode: a.last_error_code ?? null, card: a.card_last4 ? { brand: a.card_brand ?? null, last4: String(a.card_last4) } : null,
+        createdAt: iso(a.created_at), ageMinutes: N(a.age_min),
+      })),
     };
   }
   async exceptionDetail(ctx: FinanceCtx, id: string) {

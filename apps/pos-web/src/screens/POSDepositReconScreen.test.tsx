@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ kpis: vi.fn(), bankAccounts: vi.fn(), settlements: vi.fn(), deposits: vi.fn(), search: vi.fn(), recordDeposit: vi.fn(), deposit: vi.fn(), settlement: vi.fn(), allocate: vi.fn(), suggestions: vi.fn() }));
+const api = vi.hoisted(() => ({ kpis: vi.fn(), bankAccounts: vi.fn(), settlements: vi.fn(), deposits: vi.fn(), search: vi.fn(), recordDeposit: vi.fn(), deposit: vi.fn(), settlement: vi.fn(), allocate: vi.fn(), suggestions: vi.fn(), exceptions: vi.fn() }));
 vi.mock('../api/posDepositReconApi', () => ({ posDepositReconApi: api }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 vi.mock('./access/accessUi', () => ({ useStepUp: () => ({ run: (fn: () => Promise<unknown>) => fn(), prompt: null }), isStepUpCancelled: () => false }));
@@ -70,5 +70,21 @@ describe('POSDepositReconScreen', () => {
     expect(await screen.findByText(/could not be reached/i)).toBeInTheDocument();
     // the KPI strip shows the error (whose sentence mentions "$0.00") — never a $0.00 figure (a settlement row's real $0.00 matched is data)
     expect(screen.getByTestId('kpis').textContent).not.toMatch(/\$0\.00(?! until)/);
+  });
+  it('extras PAYMENTS 09: the exceptions inbox also lists the unresolved card attempts with their evidence and a way to settle them', async () => {
+    api.exceptions.mockResolvedValue({ ...pageOf([]), kpis: { total: 0, open: 0, inReview: 0, escalated: 0, resolved: 0, amountAtRiskCents: 0 }, cardAttempts: { total: 3, amountCents: 9500, staleAfterMinutes: 30, items: [
+      { id: 'a1', ticketId: 't1', ticketNumber: 'T-77', amountCents: 3500, state: 'needs_review', reason: 'needs_review', resolutionNote: null, lastErrorCode: 'TIMEOUT', card: null, ageMinutes: 1500 },
+      { id: 'a2', ticketId: 't2', ticketNumber: 'T-78', amountCents: 4500, state: 'processing', reason: 'stranded', resolutionNote: 'provider_unreachable', lastErrorCode: null, card: null, ageMinutes: 180 },
+      { id: 'a3', ticketId: 't1', ticketNumber: 'T-77', amountCents: 1500, state: 'processing', reason: 'in_flight_too_long', resolutionNote: null, lastErrorCode: null, card: { brand: 'visa', last4: '4242' }, ageMinutes: 120 },
+    ] } });
+    mount(); fireEvent.click(await screen.findByTestId('tab-exceptions'));
+    const box = await screen.findByTestId('exc-card-attempts');
+    expect(box).toHaveTextContent('Unresolved card attempts: 3 · $95.00');
+    const rows = screen.getAllByTestId('exc-card-row');
+    expect(rows.map((r) => r.getAttribute('data-reason'))).toEqual(['needs_review', 'stranded', 'in_flight_too_long']);
+    expect(rows[0]).toHaveTextContent('Last error: TIMEOUT'); expect(rows[0]).toHaveTextContent('1 d');
+    expect(rows[1]).toHaveTextContent('Processor could not be reached.');
+    expect(rows[2]).toHaveTextContent('still in progress after 30 min'); expect(rows[2]).toHaveTextContent('VISA ••4242');
+    expect(screen.getByTestId('exc-card-open')).toHaveTextContent('Settle in Split Payments');
   });
 });
