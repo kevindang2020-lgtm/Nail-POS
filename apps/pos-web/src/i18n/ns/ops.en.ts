@@ -2118,4 +2118,13 @@ export const OPS_EN = {
   "acx.quiet.save": "Save quiet hours",
   "acx.quiet.turnOff": "Turn off",
   "acx.quiet.rule": "Only this sign-in’s pushes are affected; the salon’s reminder quiet hours for customers are separate.",
+  "dfx.v.run": "Verify history",
+  "dfx.v.state.INTACT": "History intact — every device record still matches its chain link.",
+  "dfx.v.state.TAMPERED": "History changed — some device records no longer match their chain link.",
+  "dfx.v.state.EMPTY": "No chained device history yet.",
+  "dfx.v.counts": "{l} links · {i} intact · {a} changed · {b} broken links · {m} missing · {r} removed by the 365-day retention",
+  "dfx.v.kind.altered": "record changed after it was written",
+  "dfx.v.kind.broken": "chain link broken",
+  "dfx.v.kind.missing": "record missing",
+  "dfx.v.note": "Read only — nothing is repaired. Each device record is linked to the previous one when written; this check recomputes the links.",
 };

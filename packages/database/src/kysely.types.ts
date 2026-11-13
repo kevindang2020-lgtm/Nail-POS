@@ -8265,6 +8265,7 @@ export interface DB {
   token_purchase_events: TokenPurchaseEventsTable;
   token_purchase_intents: TokenPurchaseIntentsTable;
   rewards_idempotency_events: RewardsIdempotencyEventsTable;   // 922
+  device_history_chain: DeviceHistoryChainTable;   // 923
   token_wallet_ledger: TokenWalletLedgerTable;
   // ── drift patch Oct 30 2026: round-2 guides + migrations 730/731 ──
   ai_billing_invoice_events: AiBillingInvoiceEventsTable;
@@ -10536,6 +10537,9 @@ export interface TokenPurchaseEventsTable {
   created_at: Generated<Ts>;
 }
 
+export interface DeviceHistoryChainTable {   // migration 923 — Device Assignments 25 (append-only hash chain over device audit rows)
+  id: Generated<string>; tenant_id: string; seq: number; audit_log_id: string; entity_type: string; entity_id: string | null; prev_hash: string; row_hash: string; created_at: Ts;
+}
 export interface RewardsIdempotencyEventsTable {   // migration 922 — GLOBAL LOYALTY REWARDS 11 (append-only)
   id: Generated<string>; tenant_id: string; scope: string; outcome: string; request_key: string; resource_id: string | null; detail: Generated<unknown>; created_at: Ts;
 }

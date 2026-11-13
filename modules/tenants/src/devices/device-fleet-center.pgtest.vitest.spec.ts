@@ -202,3 +202,30 @@ describe('Tablets 11 — Safe Export & Evidence Bundle', () => {
     expect(off.slice(off.indexOf(DF_EXPORT_COLUMNS.join(',')) + 1).filter(Boolean).map((r) => r.split(',')[1])).toEqual(['Old kiosk']);
   });
 });
+
+describe('extras Device Assignments 25 (round 10) — tamper-evident device history (migration 923)', () => {
+  it('every device audit row is chained at insert; verify says INTACT; an edited row, a removed row and a forged link are named; the chain is append-only', async () => {
+    const XC = id(931);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${XC}, 'C', 'Chain', 'df-chain', 'DFCHAIN', 'active')`);
+    const cx = { tenantId: XC, branchId: null as any, userId: U, role: 'OWNER', permissions: ['pos.devices.view'] };
+    expect((await fc.verifyHistory(cx as any)).state).toBe('EMPTY');
+    for (const [act, ent] of [['pos_station_created', 'pos_station'], ['terminal_paired', 'payment_terminal'], ['display_revoked', 'customer_display'], ['login', 'user']] as const)
+      await q(sql`insert into audit_logs (tenant_id, action_type, entity_type, entity_id, metadata_json) values (${XC}, ${act}, ${ent}, ${id(940)}, ${JSON.stringify({ station: 'Front' })}::jsonb)`);
+    const chain = await q(sql`select seq::int, prev_hash, row_hash from device_history_chain where tenant_id = ${XC} order by seq`);
+    expect(chain.map((c: any) => c.seq)).toEqual([1, 2, 3]);                       // the non-device 'login' row is not chained
+    expect(chain[0].prev_hash).toBe('GENESIS'); expect(chain[1].prev_hash).toBe(chain[0].row_hash);
+    let v = await fc.verifyHistory(cx as any);
+    expect(v).toMatchObject({ state: 'INTACT', links: 3, intact: 3, altered: 0, broken: 0, missing: 0 });
+    // audit_logs refuse UPDATE / DELETE; simulate someone bypassing the triggers with direct database access
+    await q(sql`set session_replication_role = replica`);
+    await q(sql`update audit_logs set metadata_json = '{"station":"Back"}'::jsonb where tenant_id = ${XC} and action_type = 'terminal_paired'`);
+    await q(sql`delete from audit_logs where tenant_id = ${XC} and action_type = 'display_revoked'`);
+    await q(sql`set session_replication_role = origin`);
+    v = await fc.verifyHistory(cx as any);
+    expect(v).toMatchObject({ state: 'TAMPERED', intact: 1, altered: 1, missing: 1 });
+    expect(v.findings.map((f) => [f.seq, f.kind])).toEqual([[2, 'altered'], [3, 'missing']]);
+    await expect(q(sql`update device_history_chain set row_hash = 'x' where tenant_id = ${XC}`)).rejects.toThrow(/append-only/);
+    await expect(q(sql`delete from device_history_chain where tenant_id = ${XC}`)).rejects.toThrow(/append-only/);
+    expect((await fc.verifyHistory(ctx() as any)).findings.every((f) => f.entityId !== id(940))).toBe(true);   // another salon's chain is never mixed in
+  });
+});

@@ -37,3 +37,22 @@ export interface DfAlertsResponse {
   items: DfAlert[]; page: number; pageSize: number; totalItems: number; totalPages: number;
   evaluatedAt: string | null; cooldownMinutes: number; canResolve: boolean;
 }
+
+/** extras Device Assignments 25 (round 10): the read-only verification of the device-history hash chain (migration 923). */
+export interface DfHistoryVerifyResponse {
+  checkedAt: string;
+  /** chain links examined (this salon, oldest first) */
+  links: number;
+  /** links whose stored hash still matches the recomputed one AND whose prev link is intact */
+  intact: number;
+  /** an audit row changed after it was chained (recomputed hash differs) */
+  altered: number;
+  /** a link whose prev_hash is not the previous link's hash, or a gap in the sequence */
+  broken: number;
+  /** the chained audit row no longer exists: removed by the 365-day retention job (expected) or otherwise (not expected) */
+  prunedByRetention: number;
+  missing: number;
+  state: 'INTACT' | 'TAMPERED' | 'EMPTY';
+  /** the first problems, oldest first (ids and kinds only) */
+  findings: { seq: number; auditLogId: string; kind: 'altered' | 'broken' | 'missing'; entityType: string; entityId: string | null }[];
+}

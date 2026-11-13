@@ -2117,4 +2117,13 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "acx.quiet.save": "Lưu giờ yên lặng", // DRAFT — Kevin reviews
   "acx.quiet.turnOff": "Tắt", // DRAFT — Kevin reviews
   "acx.quiet.rule": "Chỉ ảnh hưởng thông báo đẩy của tài khoản này; giờ yên lặng nhắc lịch cho khách hàng của tiệm là riêng.", // DRAFT — Kevin reviews
+  "dfx.v.run": "Kiểm tra lịch sử", // DRAFT — Kevin reviews
+  "dfx.v.state.INTACT": "Lịch sử còn nguyên — mọi bản ghi thiết bị vẫn khớp với mắt xích của nó.", // DRAFT — Kevin reviews
+  "dfx.v.state.TAMPERED": "Lịch sử đã bị thay đổi — một số bản ghi thiết bị không còn khớp với mắt xích.", // DRAFT — Kevin reviews
+  "dfx.v.state.EMPTY": "Chưa có lịch sử thiết bị được xâu chuỗi.", // DRAFT — Kevin reviews
+  "dfx.v.counts": "{l} mắt xích · {i} nguyên vẹn · {a} bị sửa · {b} đứt mắt xích · {m} bị mất · {r} đã xóa theo lưu trữ 365 ngày", // DRAFT — Kevin reviews
+  "dfx.v.kind.altered": "bản ghi bị sửa sau khi ghi", // DRAFT — Kevin reviews
+  "dfx.v.kind.broken": "đứt mắt xích", // DRAFT — Kevin reviews
+  "dfx.v.kind.missing": "thiếu bản ghi", // DRAFT — Kevin reviews
+  "dfx.v.note": "Chỉ đọc — không sửa gì. Mỗi bản ghi thiết bị được nối với bản ghi trước khi ghi; kiểm tra này tính lại các mắt xích.", // DRAFT — Kevin reviews
 };

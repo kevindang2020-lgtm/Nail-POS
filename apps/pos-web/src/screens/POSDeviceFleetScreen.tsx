@@ -15,7 +15,7 @@
 // Terminals; kiosks are set up by AIPowerSalon support). No count is invented — an unreadable figure shows "—".
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfClass, DfDevice, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfHistoryVerifyResponse } from '@aipowersalon/api-contracts/tenant';
 import { posDevicesApi, type DevicesOverview } from '../api/posDevicesApi';
 import { posDeviceFleetApi, type DeviceFleetQuery } from '../api/posDeviceFleetApi';
 import { reportError } from './reportsCommon';
@@ -249,6 +249,7 @@ export function FleetHistory({ cls, deviceId }: { cls: DfClass; deviceId?: strin
   const [draft, setDraft] = useState('');
   const [d, setD] = useState<DfHistoryResponse | null>(null); const [err, setErr] = useState<string | null>(null);
   const [cal, setCal] = useState(false);
+  const [verify, setVerify] = useState<DfHistoryVerifyResponse | 'loading' | { error: string } | null>(null);   // extras Device Assignments 25
   const load = useCallback(() => { setErr(null); posDeviceFleetApi.history({ class: cls, deviceId, ...q }).then(setD).catch((e) => setErr(reportError(e, 'devices'))); }, [cls, deviceId, q]);
   useEffect(load, [load]);
   const receipts = cls === 'receipt';
@@ -259,9 +260,17 @@ export function FleetHistory({ cls, deviceId }: { cls: DfClass; deviceId?: strin
           <input className="rvw-search" type="search" data-testid="dfx-h-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tt(receipts ? 'dfx.h.receiptPh' : 'dfx.h.searchPh')} aria-label={tt('dfx.h.searchPh')} />
           <button className="btn" type="submit">{tt('dfx.search')}</button>
         </form>
+        {!receipts ? <button className="btn ghost" data-testid="dfx-h-verify" onClick={() => { setVerify('loading'); posDeviceFleetApi.verifyHistory().then(setVerify).catch((e) => setVerify({ error: reportError(e, 'devices') })); }}>{tt('dfx.v.run')}</button> : null}
         <button className={'btn ghost' + (q.from || q.to ? ' on' : '')} data-testid="dfx-h-range" onClick={() => setCal(true)}>{q.from || q.to ? `${q.from ?? '…'} → ${q.to ?? '…'}` : tt('dfx.range')}</button>
         {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: q.from, to: q.to }} today={deviceToday()} onApply={(r) => { setQ((c) => ({ ...c, from: r.from, to: r.to, page: 1 })); setCal(false); }}
           onCancel={() => setCal(false)} onClear={() => { setQ((c) => ({ ...c, from: undefined, to: undefined, page: 1 })); setCal(false); }} /></div> : null}
+      </div> : null}
+      {verify ? <div className={'panel ' + (verify === 'loading' || 'error' in verify ? '' : verify.state === 'TAMPERED' ? 'bad' : '')} data-testid="dfx-h-verify-result" style={{ padding: 10, margin: '8px 0' }}>
+        {verify === 'loading' ? tt('dfx.loading') : 'error' in verify ? <span className="err">{verify.error}</span> : <>
+          <b>{tt('dfx.v.state.' + verify.state)}</b>
+          <div className="sub">{tt('dfx.v.counts', { l: String(verify.links), i: String(verify.intact), a: String(verify.altered), b: String(verify.broken), m: String(verify.missing), r: String(verify.prunedByRetention) })}</div>
+          {verify.findings.length ? <ul className="sub" data-testid="dfx-h-verify-findings">{verify.findings.map((f) => <li key={f.seq}>#{f.seq} · {tt('dfx.v.kind.' + f.kind)} · {tt('dfx.ent.' + f.entityType)}</li>)}</ul> : null}
+          <div className="sub">{tt('dfx.v.note')}</div></>}
       </div> : null}
       {err ? <ErrorRetry message={err} onRetry={load} /> : !d ? <div className="state">{tt('dfx.loading')}</div>
         : d.total === 0 ? <Empty title={tt(receipts ? 'dfx.h.noReceipts' : 'dfx.h.empty')} />

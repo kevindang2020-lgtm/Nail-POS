@@ -22,7 +22,7 @@ import { sql } from 'kysely';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { DISPLAY_ONLINE_WINDOW_MS, terminalOperationalStatus } from '@aipowersalon/api-contracts';
-import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfClass, DfDevice, DfStatus, DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfReceiptEvent, DfAlertsResponse, DfHistoryVerifyResponse } from '@aipowersalon/api-contracts/tenant';
 import { evaluateDeviceAlerts, listDeviceAlerts } from './device-alert-routing';
 
 export interface DfCtx { tenantId: string; branchId: string; userId?: string | null; role?: string; permissions?: string[] }
@@ -261,6 +261,33 @@ export class DeviceFleetCenter {
   }
 
   /** the canonical history — audit_logs for displays / registers / terminals, go_checkin_logs for kiosks — newest first */
+  /** extras Device Assignments 25 (round 10): verify this salon's device-history hash chain (migration 923) — recompute every
+   *  link from the CURRENT audit row with the database's own digest function and compare; check each prev link and the
+   *  sequence. Read only; nothing is repaired. A row removed by the 365-day audit retention is reported as such. */
+  async verifyHistory(ctx: DfCtx): Promise<DfHistoryVerifyResponse> {
+    type L = { seq: string | number; audit_log_id: string; entity_type: string; entity_id: string | null; prev_hash: string; row_hash: string; created_at: Date | string; exists: boolean; recomputed: string | null };
+    const rows = (await sql<L>`SELECT c.seq, c.audit_log_id, c.entity_type, c.entity_id, c.prev_hash, c.row_hash, c.created_at, (a.id IS NOT NULL) AS exists,
+        CASE WHEN a.id IS NULL THEN NULL ELSE device_history_row_digest(c.prev_hash, a.id, a.tenant_id, a.entity_type, a.entity_id::text, a.action_type, a.user_id, a.created_at, a.metadata_json::text) END AS recomputed
+      FROM device_history_chain c LEFT JOIN audit_logs a ON a.id = c.audit_log_id
+      WHERE c.tenant_id = ${ctx.tenantId} ORDER BY c.seq LIMIT 100000`.execute(this.db)).rows;
+    const out: DfHistoryVerifyResponse = { checkedAt: this.now().toISOString(), links: rows.length, intact: 0, altered: 0, broken: 0, prunedByRetention: 0, missing: 0, state: 'EMPTY', findings: [] };
+    const retentionMs = 365 * 86_400_000; let prev: L | null = null;
+    for (const r of rows) {
+      const seq = Number(r.seq);
+      const linkOk = prev ? r.prev_hash === prev.row_hash && seq === Number(prev.seq) + 1 : r.prev_hash === 'GENESIS' && seq === 1;
+      let kind: 'altered' | 'broken' | 'missing' | null = null;
+      if (!linkOk) { out.broken++; kind = 'broken'; }
+      if (!r.exists) {
+        if (this.now().getTime() - new Date(r.created_at).getTime() > retentionMs) out.prunedByRetention++; else { out.missing++; kind = kind ?? 'missing'; }
+      } else if (r.recomputed !== r.row_hash) { out.altered++; kind = kind ?? 'altered'; }
+      if (!kind && r.exists) out.intact++;
+      if (kind && out.findings.length < 20) out.findings.push({ seq, auditLogId: String(r.audit_log_id), kind, entityType: r.entity_type, entityId: r.entity_id ?? null });
+      prev = r;
+    }
+    out.state = !rows.length ? 'EMPTY' : out.altered || out.broken || out.missing ? 'TAMPERED' : 'INTACT';
+    return out;
+  }
+
   async history(ctx: DfCtx, q: { class?: string; deviceId?: string; q?: string; from?: string; to?: string; page?: number; pageSize?: number }): Promise<DfHistoryResponse> {
     const cls = this.cls(q.class);
     const pageSize = Number(q.pageSize ?? 25);

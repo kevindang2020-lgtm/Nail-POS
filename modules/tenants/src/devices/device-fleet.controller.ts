@@ -4,7 +4,7 @@
 // extras Tablets 11: GET export (pos.devices.export → owners and managers) — the redacted inventory + health CSV, audited.
 import { ListQuery } from '@aipowersalon/database';
 import type { ListQuery as ListQueryParams } from '@aipowersalon/api-contracts';
-import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse } from '@aipowersalon/api-contracts/tenant';
+import type { DfSummary, DfListResponse, DfHistoryResponse, DfCheckResponse, DfAlertsResponse, DfHistoryVerifyResponse } from '@aipowersalon/api-contracts/tenant';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import { Body, Controller, Get, Header, HttpException, HttpStatus, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
@@ -36,6 +36,9 @@ export class DeviceFleetController {
   @ListQuery(LIST)
   list(@Req() q: any, @Query() f: any): Promise<DfListResponse> { return run(() => this.r().list(ctxFrom(q), f ?? {})); }
 
+  /** extras Device Assignments 25 (round 10): read-only verification of the device-history hash chain */
+  @Get('history/verify') @RequirePermission('pos.devices.view')
+  verifyHistory(@Req() q: any): Promise<DfHistoryVerifyResponse> { return run(() => this.r().verifyHistory(ctxFrom(q))); }
   @Get('history') @RequirePermission('pos.devices.view')
   @ListQuery(HIST)
   history(@Req() q: any, @Query() f: any): Promise<DfHistoryResponse> { return run(() => this.r().history(ctxFrom(q), f ?? {})); }

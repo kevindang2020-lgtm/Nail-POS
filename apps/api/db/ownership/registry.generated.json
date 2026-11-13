@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 979,
+  "tables": 980,
   "ownership": {
-   "tenant_owned": 657,
+   "tenant_owned": 658,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 161,
    "tenant_branch_owned": 92,
@@ -23,7 +23,7 @@
    "MARKETING": 24,
    "AI": 151,
    "AUDIT": 29,
-   "OPERATIONS": 77,
+   "OPERATIONS": 78,
    "SUPPORT": 57,
    "BOOKING": 43,
    "PAYMENTS": 60,
@@ -44,11 +44,11 @@
    "HIGHLY_SENSITIVE": 147,
    "CONFIDENTIAL": 170,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 541,
+   "INTERNAL": 542,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 62,
+  "append_only": 63,
   "platform_rows": 101
  },
  "tables": {
@@ -3729,6 +3729,18 @@
    "has_tenant_id": false,
    "has_branch_id": false,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "device_history_chain": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "OPERATIONS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
    "source": "heuristic"
   },
   "device_maintenance": {
