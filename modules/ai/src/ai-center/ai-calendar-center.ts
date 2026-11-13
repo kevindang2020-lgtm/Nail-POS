@@ -225,6 +225,9 @@ export class AiCalendarCenter {
     // (tenant_location_hours, Business Setup) — the booking engine itself is unchanged. No saved hours → the engine's hours.
     const saved = await this.savedHours(ctx, date);
     let value = 0; let pastExcluded = 0; let holdExcluded = 0; let columns = 0; let hoursExcluded = 0;
+    // round 10 (AI Calendar 03): the same count per technician, with how many active services each is mapped to do
+    // (technician_services — Booking's eligibility list); a technician mapped to none can be booked for nothing specific
+    const perTech: Array<{ technicianId: string; name: string | null; openStarts: number }> = [];
     for (const c of (g.columns ?? []) as Row[]) {
       if (!c.available || !(c.windows ?? []).length) continue;
       columns++;
@@ -241,15 +244,22 @@ export class AiCalendarCenter {
       const withHolds = pbComputeAvailabilityInWindows(c.windows, interval, dur, buf, [...mine, ...held]);
       const future = withHolds.filter((s) => notBefore == null || minOf(s) >= notBefore);
       holdExcluded += base.length - withHolds.length; pastExcluded += withHolds.length - future.length; value += future.length;
+      perTech.push({ technicianId: String(c.technicianId), name: c.name ?? c.technicianName ?? null, openStarts: future.length });
     }
+    const ids = perTech.map((x) => x.technicianId).filter((x) => /^[0-9a-f-]{36}$/i.test(x));
+    const mapped = ids.length ? (await sql<{ tid: string; n: number }>`SELECT ts.technician_id::text AS tid, count(DISTINCT ts.service_id)::int AS n FROM technician_services ts
+        JOIN services sv ON sv.tenant_id = ts.tenant_id AND sv.id = ts.service_id AND sv.status = 'active' AND sv.archived_at IS NULL
+        WHERE ts.tenant_id = ${ctx.tenantId} AND ts.technician_id::text IN (${sql.join(ids)}) GROUP BY ts.technician_id`.execute(this.db)).rows : [];
+    const byTechnician = perTech.map((x) => ({ ...x, qualifiedServices: Number(mapped.find((m) => m.tid === x.technicianId)?.n ?? 0) }));
     const engineValue = n(g.totalOpenSlots);
     return {
-      value, engineValue, state: 'computed', columnsCounted: columns, savedHours: saved === null ? null : saved.closed ? 'closed' : `${hhmm(saved.open)}–${hhmm(saved.close)}`, hoursExcluded, slotIntervalMinutes: interval, serviceMinutes: dur, bufferMinutes: buf, hours: `${g.openTime}–${g.closeTime}`,
+      value, engineValue, state: 'computed', columnsCounted: columns, byTechnician, savedHours: saved === null ? null : saved.closed ? 'closed' : `${hhmm(saved.open)}–${hhmm(saved.close)}`, hoursExcluded, slotIntervalMinutes: interval, serviceMinutes: dur, bufferMinutes: buf, hours: `${g.openTime}–${g.closeTime}`,
       definition: `Bookable start times for a ${dur}-minute service (Booking's default duration, ${buf}-minute buffer) on the ${interval}-minute grid, summed over ${columns} technician column(s) with working hours ${g.openTime}–${g.closeTime}. Excludes appointments, blocked times, live holds${notBefore != null ? ' and times already past today' : ''}. A grid estimate — a longer service fits fewer starts.`,
       reconciliation: [
         `POS Booking engine total: ${engineValue} (counts every active column, does not subtract live holds or past times).`,
         holdExcluded ? `${holdExcluded} start time(s) removed because a live booking hold covers them.` : 'No live booking holds on this day.',
         notBefore != null ? `${pastExcluded} start time(s) removed because they are already past (${hhmm(clk.minute)} salon time).` : 'Not today: no past-time adjustment.',
+        byTechnician.some((x) => !x.qualifiedServices) ? `${byTechnician.filter((x) => !x.qualifiedServices).length} counted technician(s) are mapped to no active service — their open starts cannot be booked for a specific service until a manager maps their services.` : 'Every counted technician is mapped to at least one active service; Booking checks the exact service when a time is booked.',
         saved === null ? `Hours ${g.openTime}–${g.closeTime} come from Booking's settings (this branch has no saved opening hours in Business Setup).`
           : saved.closed ? `The branch's saved hours say it is closed this day, so no start times are counted (Booking's own grid still shows ${g.openTime}–${g.closeTime}).`
           : `Counted inside the branch's saved hours ${hhmm(saved.open)}–${hhmm(saved.close)}${hoursExcluded ? `; ${hoursExcluded} start time(s) of Booking's ${g.openTime}–${g.closeTime} grid fall outside them` : ''}. Booking itself still uses its own hours.`,

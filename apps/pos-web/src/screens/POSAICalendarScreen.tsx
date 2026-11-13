@@ -117,6 +117,9 @@ export function POSAICalendarScreen() {
             <div className="aic-panel aic-defs" data-testid="aic-defs">
               {(['appointments', 'aiCreated', 'openSlots', 'technicians'] as const).map((k) => <p key={k}><b>{t(`aical.def.${k}`)}</b> {sum.definitions[k]}</p>)}
               <ul>{(sum.openSlots.reconciliation ?? []).map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
+              {/* round 10 (AI Calendar 03): open start times per technician with how many active services each is mapped to do */}
+              {Array.isArray(sum.openSlots.byTechnician) && sum.openSlots.byTechnician.length ? <ul data-testid="aic-slots-by-tech">{sum.openSlots.byTechnician.map((x: { technicianId: string; name: string | null; openStarts: number; qualifiedServices: number }) =>
+                <li key={x.technicianId} data-testid="aic-slots-tech">{t('aical.byTech', { name: x.name ?? '—', n: ns(x.openStarts), s: ns(x.qualifiedServices) })}{!x.qualifiedServices ? <span className="chip warn"> {t('aical.byTechUnmapped')}</span> : null}</li>)}</ul> : null}
             </div>
           ) : null}
         </>
