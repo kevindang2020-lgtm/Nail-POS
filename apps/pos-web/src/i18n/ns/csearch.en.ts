@@ -603,4 +603,8 @@ export const CSEARCH_EN: Record<string, string> = {
   "cnx.src.set": "Set source",
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Choose a note and where it came from.",
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Name the source that confirmed it.",
+  "ahx.health.k.service_done_mismatch": "Bookings vs Service Done",
+  "ahx.health.d.service_done_mismatch.READY": "Every booking that reached Service Done is marked completed, and every completed booking’s ticket reached Service Done.",
+  "ahx.health.d.service_done_mismatch.WARNING": "Some bookings disagree with their ticket — the ticket reached Service Done while the booking is still open, or the booking is completed but its ticket never reached Service Done. Open them in Booking to confirm.",
+  "ahx.health.d.service_done_mismatch.FAILED": "Bookings could not be compared with Service Done.",
 };

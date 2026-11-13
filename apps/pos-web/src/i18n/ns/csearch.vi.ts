@@ -603,4 +603,8 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.src.set": "Ghi nguồn", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Hãy chọn ghi chú và nguồn của nó.", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Hãy ghi tên nguồn đã xác nhận.", // DRAFT — Kevin reviews
+  "ahx.health.k.service_done_mismatch": "Lịch hẹn so với Xong dịch vụ", // DRAFT — Kevin reviews
+  "ahx.health.d.service_done_mismatch.READY": "Mọi lịch hẹn đã tới Xong dịch vụ đều được đánh dấu hoàn tất, và hóa đơn của mọi lịch hẹn hoàn tất đều đã tới Xong dịch vụ.", // DRAFT — Kevin reviews
+  "ahx.health.d.service_done_mismatch.WARNING": "Một số lịch hẹn không khớp với hóa đơn — hóa đơn đã Xong dịch vụ nhưng lịch hẹn vẫn mở, hoặc lịch hẹn đã hoàn tất nhưng hóa đơn chưa Xong dịch vụ. Hãy mở trong Đặt lịch để xác nhận.", // DRAFT — Kevin reviews
+  "ahx.health.d.service_done_mismatch.FAILED": "Không so sánh được lịch hẹn với Xong dịch vụ.", // DRAFT — Kevin reviews
 };

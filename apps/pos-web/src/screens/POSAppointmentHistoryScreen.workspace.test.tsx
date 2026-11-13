@@ -55,14 +55,16 @@ describe('Appointment History workspace', () => {
     expect(within(h).getByText(/before today are still booked/)).toBeInTheDocument();
   });
   it('Appointment History 02: the check names booking-to-history drift (inactive technician, status vs change history) in words', async () => {
-    m.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-09T10:00:00Z', checks: [{ key: 'inactive_technician', state: 'WARNING', count: 2 }, { key: 'status_log_mismatch', state: 'READY', count: 0 }, { key: 'no_side_effects', state: 'READY' }] });
+    m.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-09T10:00:00Z', checks: [{ key: 'inactive_technician', state: 'WARNING', count: 2 }, { key: 'status_log_mismatch', state: 'READY', count: 0 }, { key: 'service_done_mismatch', state: 'WARNING', count: 3 }, { key: 'no_side_effects', state: 'READY' }] });
     render(<POSAppointmentHistoryScreen />);
     fireEvent.click(await screen.findByTestId('ahx-check'));
     const h = await screen.findByTestId('ahx-health');
     expect(await within(h).findByTestId('ahx-chk-inactive_technician')).toHaveTextContent('Upcoming bookings with an inactive technician · 2');
     expect(within(h).getByTestId('ahx-chk-inactive_technician')).toHaveTextContent(/reassign them in Booking/);
     expect(within(h).getByTestId('ahx-chk-status_log_mismatch')).toHaveTextContent('Every booking’s status matches the last status in its change history.');
-    expect(h.textContent).not.toMatch(/inactive_technician|status_log_mismatch/);   // codes never raw
+    expect(within(h).getByTestId('ahx-chk-service_done_mismatch')).toHaveTextContent('Bookings vs Service Done · 3');
+    expect(within(h).getByTestId('ahx-chk-service_done_mismatch')).toHaveTextContent(/ticket reached Service Done while the booking is still open/);
+    expect(h.textContent).not.toMatch(/inactive_technician|status_log_mismatch|service_done_mismatch/);   // codes never raw
   });
   it('Appointment History 04: details list the recorded changes — original → new, who, which path — with statuses labelled and ids never raw', async () => {
     m.list.mockResolvedValue(listOf([{ ...row, changes: [

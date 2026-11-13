@@ -127,4 +127,20 @@ describe('Appointment History 02 — booking-to-history accuracy (read-only)', (
     expect(c2.checks.find((c) => c.key === 'status_log_mismatch')).toMatchObject({ count: 0 });
     expect(c2.checks.find((c) => c.key === 'inactive_technician')).toMatchObject({ count: 0 });
   });
+  it('Service Done cross-check: a ticket done while its booking is still open, or a completed booking whose ticket never finished', async () => {
+    expect((await ah.check(owner())).checks.find((c) => c.key === 'service_done_mismatch')).toMatchObject({ state: 'READY', count: 0 });
+    const link = async (aid: string, done: boolean, removed = false) => {
+      const tk = (await q(sql`insert into tickets (tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents, service_done_at, removed_at)
+        values (${T}, ${B}, ${C.hang}, ${done ? 'SERVICE_DONE' : 'IN_SERVICE'}, 0, 0, 0, 0, ${done ? sql`now()` : null}, ${removed ? sql`now()` : null}) returning id`))[0].id;
+      await q(sql`insert into pos_tech_queue_tickets (tenant_id, branch_id, ticket_id, customer_id, customer_name, is_vip, source, appointment_id, priority, status, assigned_technician_id, assigned_at)
+        values (${T}, ${B}, ${tk}, ${C.hang}, 'Hang', false, 'appointment', ${aid}, 'normal', 'in_service', ${LAN}, now())`);
+    };
+    await link(await appt({ days: 0, status: 'in_service' }), true);           // ticket done, booking still open
+    await link(await appt({ days: -10, status: 'completed' }), false);          // booking completed, ticket never done
+    await link(await appt({ days: -11, status: 'completed' }), true);           // agrees
+    await link(await appt({ days: 7, status: 'in_service' }), true, true);     // removed ticket: ignored
+    const h = await ah.check(owner());
+    expect(h.checks.find((c) => c.key === 'service_done_mismatch')).toMatchObject({ state: 'WARNING', count: 2 });
+    expect((await ah.check(confinedB2())).checks.find((c) => c.key === 'service_done_mismatch')).toMatchObject({ count: 0 });
+  });
 });

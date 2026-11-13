@@ -211,6 +211,14 @@ export class AppointmentHistoryCenter {
           and (l.change_type = 'status_changed' or l.change_type = 'cancelled') and l.new_value is not null order by l.created_at desc, l.id desc limit 1) last on true
         where a.tenant_id = ${T} and last.new_value <> a.status ${BR}`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'status_log_mismatch', state: drift ? 'WARNING' : 'READY', count: drift });
+    //   service_done_mismatch Service Done cross-check: a booking whose ticket (through its queue card) reached Service Done
+    //                       while the booking is still open, or a booking marked completed whose live ticket never did
+    const sdOff = N((await sql<Row>`select count(distinct a.id)::int as n from pos_tech_appointments a
+        join pos_tech_queue_tickets qt on qt.tenant_id = a.tenant_id and qt.appointment_id = a.id
+        join tickets tk on tk.tenant_id = qt.tenant_id and tk.id = qt.ticket_id and tk.removed_at is null
+        where a.tenant_id = ${T} and ((tk.service_done_at is not null and a.status = any(${OPEN}::text[]))
+          or (tk.service_done_at is null and tk.paid_at is null and a.status = 'completed')) ${BR}`.execute(this.db)).rows[0]?.n);
+    checks.push({ key: 'service_done_mismatch', state: sdOff ? 'WARNING' : 'READY', count: sdOff });
     checks.push({ key: 'no_side_effects', state: 'READY' });
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : 'READY';
     return { overall, checkedAt: new Date(this.now()).toISOString(), checks };
