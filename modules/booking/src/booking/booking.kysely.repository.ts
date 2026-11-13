@@ -33,6 +33,12 @@ const parseServices = (v: any): any[] => { if (!v) return []; if (Array.isArray(
 type ExRow = { appointmentId: string; technicianId?: string; customerId?: string; startTime: string; endTime: string; status: PBStatus };
 
 export class KyselyBookingRepository implements BookingRepositoryPort {
+  /** the filter facet's branch list: the session branch's own name from branches (no sample data); [] when unknown */
+  private async sessionBranchFacet(ctx: { tenantId: string; branchId?: string | null }): Promise<{ branchId: string; name: string }[]> {
+    if (!ctx.branchId) return [];
+    const b = await (this.db as any).selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', ctx.tenantId).where('id', '=', ctx.branchId).executeTakeFirst();
+    return b ? [{ branchId: String(b.id), name: String(b.name) }] : [];
+  }
   private seq = Date.now() % 1000000;
   // Constitution 8 §18: domain events are written INSIDE the same transaction as the business rows. Optional so
   // existing construction sites and tests are unaffected; when absent, no event is written (never a fake one).
@@ -427,7 +433,7 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
         technicians: roster.map((t) => ({ technicianId: t.technicianId, name: t.name })),
         services: cat.map((s) => ({ serviceId: s.serviceId, name: s.name, priceCents: s.priceCents, durationMinutes: s.durationMinutes })),
         serviceCategories: [...new Set(cat.map((s) => s.categoryName))],
-        branches: [{ branchId: ctx.branchId || 'br_cherryhill', name: 'Cherry Hill' }],
+        branches: await this.sessionBranchFacet(ctx),   // the session's real branch (was a hard-coded sample name)
       },
       settings: this._settings(),
       integrationStatus: DEFAULT_INTEGRATION_STATUS,

@@ -47,6 +47,12 @@ export function queueLine(s: { serviceId: string; serviceName: string; durationM
 const UUID_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class KyselyCheckInRepository implements CheckInRepositoryPort {
+  /** the filter facet's branch list: the session branch's own name from branches (no sample data); [] when unknown */
+  private async sessionBranchFacet(ctx: { tenantId: string; branchId?: string | null }): Promise<{ branchId: string; name: string }[]> {
+    if (!ctx.branchId) return [];
+    const b = await (this.db as any).selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', ctx.tenantId).where('id', '=', ctx.branchId).executeTakeFirst();
+    return b ? [{ branchId: String(b.id), name: String(b.name) }] : [];
+  }
   private store = new Map<string, CIRecord[]>(); // intake records (no POS table — see header note)
   private seq = Date.now() % 1000000;
   constructor(private readonly db: Kysely<DB>, private readonly outbox?: OutboxWriter) { }
@@ -456,7 +462,7 @@ export class KyselyCheckInRepository implements CheckInRepositoryPort {
       kpis, recentCheckIns: { items: pageRows, pagination: { page, pageSize, totalItems, totalPages } }, appointmentsReadyForCheckIn: apptsReady,
       filters: {
         sources: ['appointment', 'walk_in', 'online', 'google', 'ai', 'customer_app', 'manual'], statuses: ['checked_in', 'sent_to_queue', 'sent_to_tech_queue', 'in_service', 'cancelled'],
-        technicians: techs.map((t) => ({ technicianId: t.technicianId, name: t.name, avatarUrl: t.avatarUrl || null })), services: cat.map((s) => ({ serviceId: s.serviceId, name: s.name })), branches: [{ branchId: ctx.branchId || 'br_cherryhill', name: 'Cherry Hill' }],
+        technicians: techs.map((t) => ({ technicianId: t.technicianId, name: t.name, avatarUrl: t.avatarUrl || null })), services: cat.map((s) => ({ serviceId: s.serviceId, name: s.name })), branches: await this.sessionBranchFacet(ctx),   // the session's real branch (was a hard-coded sample name)
       },
       settings: this._settings(),
       aggregates: computeCheckInAggregates(all),
