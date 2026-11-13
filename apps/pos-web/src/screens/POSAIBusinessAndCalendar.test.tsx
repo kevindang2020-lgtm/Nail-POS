@@ -260,3 +260,33 @@ describe('AI Calendar extras #08 — automatic responsive density (spacing only,
     expect(compact.filter((l) => /min-height:\s*(\d+)px/.test(l) && Number(/min-height:\s*(\d+)px/.exec(l)![1]) < 44)).toEqual([]);
   });
 });
+
+describe('AI Business Setup — long lists (extras #09)', () => {
+  it('the pager states the range and page of the total, pages and page size refetch from the server, and the tabs + pager stay on screen', async () => {
+    const calls: any[] = [];
+    const row = (n: number) => ({ id: `f${n}`, question: `Question ${n}`, answer: 'A', category: 'General', status: 'approved', aiServable: true, hasPendingChange: false, createdAt: '2026-10-30T12:00:00Z', approvedAt: null });
+    faqsOverride.fn = (q: any) => { calls.push(q); const size = q.pageSize ?? 20, page = q.page ?? 1;
+      const items = Array.from({ length: Math.max(0, Math.min(size, 45 - (page - 1) * size)) }, (_, i) => row((page - 1) * size + i + 1));
+      return Promise.resolve({ items, page, pageSize: size, totalItems: 45, totalPages: Math.ceil(45 / size), categories: ['General'] }); };
+    try {
+      render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+      const list = await screen.findByTestId('ais-list');
+      expect(list).toHaveClass('ais-list');
+      await waitFor(() => expect(list.querySelector('.fk-pager-range')).toHaveTextContent('Showing 1–20 of 45 · Page 1 of 3'));
+      expect(screen.getAllByTestId('ais-faq-row')).toHaveLength(20);
+      fireEvent.click(screen.getByRole('button', { name: 'Page 2' }));
+      await waitFor(() => expect(list.querySelector('.fk-pager-range')).toHaveTextContent('Showing 21–40 of 45 · Page 2 of 3'));
+      expect(calls.at(-1)).toMatchObject({ page: 2, pageSize: 20 });
+      expect(screen.getByText('Question 21')).toBeInTheDocument();
+      fireEvent.change(screen.getByTestId('ais-size'), { target: { value: '50' } });
+      await waitFor(() => expect(list.querySelector('.fk-pager-range')).toHaveTextContent('Showing 1–45 of 45 · Page 1 of 1'));
+      expect(calls.at(-1)).toMatchObject({ page: 1, pageSize: 50 });
+      // the scope tabs and the pager are the list's own sticky header / footer (direct children the CSS pins)
+      expect(list.querySelector(':scope > .ais-tabs')).not.toBeNull();
+      expect(list.querySelector(':scope > .ais-pager')).not.toBeNull();
+      const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8');
+      expect(css).toMatch(/\.ais-list > \.ais-tabs \{[^}]*position: sticky; top: 0/);
+      expect(css).toMatch(/\.ais-list > \.ais-pager \{[^}]*position: sticky; bottom: 0/);
+    } finally { faqsOverride.fn = null; }
+  });
+});

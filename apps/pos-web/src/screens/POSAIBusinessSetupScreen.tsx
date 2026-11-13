@@ -182,7 +182,7 @@ export function POSAIBusinessSetupScreen() {
       </div>
 
       <ClosuresPanel canManage={canManage} />
-      <section className="panel ais-card" data-testid="ais-list">
+      <section className="panel ais-card ais-list" data-testid="ais-list">
         <div className="ais-tabs" role="tablist">{SCOPES.map((s) => <button key={s} role="tab" aria-selected={scope === s} className={'btn' + (scope === s ? '' : ' ghost')} data-testid={`ais-scope-${s}`} onClick={() => setScope(s)}>{t(`aiset.scope.${s}`)}</button>)}</div>
         <div className="ais-filters">
           {scope !== 'history' ? <input className="ais-search" data-testid="ais-search" value={search} maxLength={100} placeholder={t('aiset.searchPh')} onChange={(e) => setSearch(e.target.value)} aria-label={t('aiset.searchPh')} /> : null}
