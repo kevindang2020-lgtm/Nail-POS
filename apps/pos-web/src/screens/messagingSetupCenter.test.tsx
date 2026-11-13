@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const api = vi.hoisted(() => ({ overview: vi.fn(), branches: vi.fn(), activity: vi.fn(), detail: vi.fn() }));
 vi.mock('../api/posMessagingSetupApi', () => ({ posMessagingSetupApi: api }));
-import { SmsReadinessPanel, buildSupportReport, redactSupportText } from './messagingSetupCenter';
+import { SmsReadinessPanel, buildSupportReport, redactSupportText, BranchSenders as BranchSendersPanel } from './messagingSetupCenter';
 import type { SetupOverview, BranchSenders } from '../api/posMessagingSetupApi';
 
 const BR_ID = '3f2b8c1e-1111-4222-8333-944455556666';
@@ -54,5 +54,29 @@ describe('SMS setup support report (masked)', () => {
     expect(box.readOnly).toBe(true);
     await waitFor(() => expect(api.branches).toHaveBeenCalledTimes(1));
     expect(api.overview).not.toHaveBeenCalled(); expect(api.activity).not.toHaveBeenCalled();
+  });
+});
+
+// extras TEXT MESSAGING SETUP 07 / 09 (round 10): per-branch Ready / Pending / Blocked + next actions, and the read-only sender
+// simulator (what reminders, a test text and booking codes would use, with the STOP rule)
+describe('Branch senders — summary, next actions and simulator', () => {
+  it('shows the server summary, the next actions and each route with its STOP rule', async () => {
+    api.branches.mockResolvedValue({ ...BR, branches: [{ ...BR.branches[0], summary: { ready: 3, pending: 1, blocked: 2 },
+      nextActions: [{ key: 'registration', state: 'attention_required', nextAction: 'Submit the toll-free verification', fixLink: '#registration' }, { key: 'delivery', state: 'failed', nextAction: 'Fix the status callback', fixLink: '#webhooks' }],
+      routes: { reminders: { account: 'AC…9f3a', number: '+12155550123', messagingServiceSidLast4: '7c1d', via: 'messaging_service', sendable: true, stopRule: 'blocked_by_stop' },
+        testSms: { account: 'AC…9f3a', number: '+12155550123', messagingServiceSidLast4: '7c1d', via: 'number', sendable: true, stopRule: 'not_applicable' },
+        otp: { account: 'AC…9f3a', verifyServiceSidLast4: 'b2e0', via: 'verify_service', sendable: false, stopRule: 'sent_despite_stop' } } }] });
+    render(<BranchSendersPanel onConfigure={() => {}} />);
+    expect(await screen.findByTestId('ms-br-sum-' + BR_ID)).toHaveTextContent('3 ready · 1 pending · 2 blocked');
+    expect(screen.getByTestId('ms-br-next-' + BR_ID).textContent).toMatch(/^Next: .+, .+$/);
+    expect(screen.getByTestId(`ms-br-sim-${BR_ID}-reminders`)).toHaveTextContent('Reminders & follow-ups: Messaging Service MG…7c1d (number +12155550123) · can send · not sent to people who texted STOP');
+    expect(screen.getByTestId(`ms-br-sim-${BR_ID}-testSms`)).toHaveTextContent('Test text: number +12155550123 · can send');
+    expect(screen.getByTestId(`ms-br-sim-${BR_ID}-otp`)).toHaveTextContent('Booking codes: Verify service VA…b2e0 · cannot send yet · sent even after STOP (transactional)');
+  });
+  it('an older server without them shows the row as before', async () => {
+    api.branches.mockResolvedValue(BR);
+    render(<BranchSendersPanel onConfigure={() => {}} />);
+    await screen.findByTestId('ms-br-' + BR_ID);
+    expect(screen.queryByTestId('ms-br-sum-' + BR_ID)).toBeNull(); expect(screen.queryByTestId('ms-br-sim-' + BR_ID)).toBeNull();
   });
 });

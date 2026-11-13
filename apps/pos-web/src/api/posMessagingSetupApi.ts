@@ -21,7 +21,12 @@ export interface SetupOverview {
 export interface ConsentBoundaryRuleView { kind: string; channel: 'sms' | 'email'; purpose: string | null; blockedByOptOut: boolean; blockedByMarketingUnsubscribe: boolean; basis: 'transactional' | 'service' | 'marketing'; path: 'verify_service' | 'notifications';
   last30Days: { blocked: number; sentToOptedOut: number } | null; state: 'consistent' | 'breach' | 'not_on_ledger' }
 export interface ConsentBoundaryView { rules: ConsentBoundaryRuleView[]; optedOut: { sms: number; email: number }; overall: 'consistent' | 'breach'; note: string }
-export interface BranchSender { branchId: string; name: string | null; source: string; inherits: boolean; accountSidMasked: string | null; sender: string | null; senderType: string | null; registration: MsgSetupPartState; parts: { key: MsgSetupPartKey; state: MsgSetupPartState }[]; lastCheckedAt: string | null }
+export interface BranchSender { branchId: string; name: string | null; source: string; inherits: boolean; accountSidMasked: string | null; sender: string | null; senderType: string | null; registration: MsgSetupPartState; parts: { key: MsgSetupPartKey; state: MsgSetupPartState }[]; lastCheckedAt: string | null;
+  /** extras TEXT MESSAGING SETUP 07: the branch's parts counted + the parts' own next actions (server) */
+  summary?: { ready: number; pending: number; blocked: number }; nextActions?: { key: MsgSetupPartKey; state: MsgSetupPartState; nextAction: string; fixLink: string }[];
+  /** extras TEXT MESSAGING SETUP 09: what each kind of text would use from this branch, and its STOP rule (server, read only) */
+  routes?: { reminders: MsgRoute; testSms: MsgRoute; otp: MsgRoute } }
+export interface MsgRoute { account: string | null; number?: string | null; messagingServiceSidLast4?: string | null; verifyServiceSidLast4?: string | null; via: string; sendable: boolean; stopRule: 'blocked_by_stop' | 'sent_despite_stop' | 'not_applicable' }
 export interface BranchSenders { salonDefault: { accountSidMasked: string | null; sender: string | null; senderType: string | null; source: string }; branches: BranchSender[]; rule: string }
 export type MsgSetupActivityKind = 'test_sms' | 'health_check' | 'registration_check' | 'number_purchase';
 export interface MessagingActivityRow { kind: MsgSetupActivityKind; id: string; branchId: string | null; branchName: string | null; createdAt: string | null; updatedAt: string | null; deliveredAt: string | null; state: 'ok' | 'pending' | 'failed'; rawStatus: string; number: string | null; recipient: string | null; providerRef: string | null; reason: string | null; detail: string | null }

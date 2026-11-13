@@ -142,4 +142,20 @@ export const SMSSETUP_VI = {
   "ms.cb.k.email_transactional": "Email hóa đơn / đặt lịch", // DRAFT — Kevin reviews
   "ms.cb.k.email_marketing": "Email tiếp thị", // DRAFT — Kevin reviews
   "ms.cb.note": "Chỉ xem. Mã đặt lịch là tin giao dịch nên vẫn gửi sau STOP; mọi tin khác bị chặn. Ở đây không thay đổi sự đồng ý của ai.", // DRAFT — Kevin reviews
+  "ms.br.sum": "{r} sẵn sàng · {p} đang chờ · {b} bị chặn", // DRAFT — Kevin reviews
+  "ms.br.next": "Việc tiếp theo:", // DRAFT — Kevin reviews
+  "ms.br.sim": "Chi nhánh này sẽ dùng gì", // DRAFT — Kevin reviews
+  "ms.br.sim.reminders": "Nhắc lịch & tin theo dõi", // DRAFT — Kevin reviews
+  "ms.br.sim.testSms": "Tin nhắn thử", // DRAFT — Kevin reviews
+  "ms.br.sim.otp": "Mã đặt lịch", // DRAFT — Kevin reviews
+  "ms.br.via.ms": "Messaging Service MG…{sid} (số {n})", // DRAFT — Kevin reviews
+  "ms.br.via.number": "số {n}", // DRAFT — Kevin reviews
+  "ms.br.via.verify": "dịch vụ Verify VA…{sid}", // DRAFT — Kevin reviews
+  "ms.br.via.smsCode": "mã SMS từ số gửi", // DRAFT — Kevin reviews
+  "ms.br.via.off": "mã đặt lịch đang tắt", // DRAFT — Kevin reviews
+  "ms.br.via.none": "chưa thiết lập", // DRAFT — Kevin reviews
+  "ms.br.sendable": "gửi được", // DRAFT — Kevin reviews
+  "ms.br.notSendable": "chưa gửi được", // DRAFT — Kevin reviews
+  "ms.br.stop.blocked_by_stop": "không gửi cho người đã nhắn STOP", // DRAFT — Kevin reviews
+  "ms.br.stop.sent_despite_stop": "vẫn gửi sau STOP (giao dịch)", // DRAFT — Kevin reviews
 } as const;

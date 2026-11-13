@@ -177,7 +177,14 @@ export function BranchSenders({ onConfigure }: { onConfigure: (branchId: string)
                   <td>{b.accountSidMasked ?? '—'}</td>
                   <td>{b.sender ?? '—'}{b.senderType ? <span className="pmc-r">{b.senderType}</span> : null}</td>
                   <td><StateChip state={b.registration} /></td>
-                  <td className="ms-dots">{b.parts.map((p) => <span key={p.key} className={'ms-dot ' + TONE[p.state]} title={`${PART[p.key]()}: ${STATE[p.state]()}`} aria-label={`${PART[p.key]()}: ${STATE[p.state]()}`} />)}</td>
+                  <td className="ms-dots">{b.parts.map((p) => <span key={p.key} className={'ms-dot ' + TONE[p.state]} title={`${PART[p.key]()}: ${STATE[p.state]()}`} aria-label={`${PART[p.key]()}: ${STATE[p.state]()}`} />)}
+                    {b.summary ? <div className="pmc-r" data-testid={'ms-br-sum-' + b.branchId}>{t('ms.br.sum', { r: String(b.summary.ready), p: String(b.summary.pending), b: String(b.summary.blocked) })}</div> : null}
+                    {b.nextActions?.length ? <div className="pmc-r" data-testid={'ms-br-next-' + b.branchId}>{t('ms.br.next')} {b.nextActions.map((a) => PART[a.key]()).join(', ')}</div> : null}
+                    {b.routes ? <details data-testid={'ms-br-sim-' + b.branchId}><summary>{t('ms.br.sim')}</summary>
+                      {(['reminders', 'testSms', 'otp'] as const).map((k) => { const r = b.routes![k]; return (
+                        <div key={k} data-testid={`ms-br-sim-${b.branchId}-${k}`} className="pmc-r">{t('ms.br.sim.' + k)}: {r.via === 'messaging_service' ? t('ms.br.via.ms', { sid: r.messagingServiceSidLast4 ?? '—', n: r.number ?? '—' }) : r.via === 'number' ? t('ms.br.via.number', { n: r.number ?? '—' }) : r.via === 'verify_service' ? t('ms.br.via.verify', { sid: r.verifyServiceSidLast4 ?? '—' }) : r.via === 'sms_code' ? t('ms.br.via.smsCode') : r.via === 'off' ? t('ms.br.via.off') : t('ms.br.via.none')}
+                          {' · '}{r.sendable ? t('ms.br.sendable') : t('ms.br.notSendable')}{r.stopRule !== 'not_applicable' ? ' · ' + t('ms.br.stop.' + r.stopRule) : ''}</div>); })}
+                    </details> : null}</td>
                   <td><button type="button" className="fk-btn sm" onClick={() => onConfigure(b.branchId)}>{t('ms.br.manage')}</button></td>
                 </tr>
               ))}

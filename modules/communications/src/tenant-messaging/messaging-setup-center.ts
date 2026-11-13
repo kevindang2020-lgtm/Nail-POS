@@ -126,6 +126,29 @@ export function sixParts(r: ReadinessView, d: DeliveryEvidence): ReadinessPart[]
   return parts;
 }
 
+/** extras TEXT MESSAGING SETUP 07 (round 10): one branch's parts counted Ready / Pending / Blocked and the next actions — the
+ *  parts' OWN nextAction + fixLink (sixParts), never a second rule. 'off' (a part the salon turned off) counts as ready. */
+export function branchSummary(parts: ReadinessPart[]) {
+  const READY: PartState[] = ['ready', 'off']; const BLOCKED: PartState[] = ['failed', 'attention_required'];
+  const ready = parts.filter((p) => READY.includes(p.state)).length, blocked = parts.filter((p) => BLOCKED.includes(p.state)).length;
+  return { summary: { ready, pending: parts.length - ready - blocked, blocked },
+    nextActions: parts.filter((p) => !READY.includes(p.state) && p.nextAction).map((p) => ({ key: p.key, state: p.state, nextAction: p.nextAction as string, fixLink: p.fixLink })) };
+}
+/** extras TEXT MESSAGING SETUP 09 (round 10): the Branch Sender Simulator — read only: for each kind of text, what this branch
+ *  WOULD use (account, number, Messaging Service, Verify) and the rule that governs it. Reminders / follow-ups: the sender
+ *  (through its Messaging Service when one is attached), blocked by STOP (Kevin decision 1); test SMS: the sender, from
+ *  the setup page only; booking codes (OTP): the Verify service or an SMS code, sent despite STOP — transactional (Kevin
+ *  decision 4). Nothing is sent. */
+export function branchRoutes(r: ReadinessView) {
+  const ms = r.a2p?.messagingService?.sidLast4 ?? null;
+  const canSend = r.outbound.state !== 'blocked';
+  return {
+    reminders: { account: r.account.accountSidMasked, number: r.sender.number, messagingServiceSidLast4: ms, via: ms ? 'messaging_service' : r.sender.number ? 'number' : 'none', sendable: canSend && !!r.sender.number, stopRule: 'blocked_by_stop' as const },
+    testSms: { account: r.account.accountSidMasked, number: r.sender.number, messagingServiceSidLast4: ms, via: r.sender.number ? 'number' : 'none', sendable: canSend && !!r.sender.number, stopRule: 'not_applicable' as const },
+    otp: { account: r.account.accountSidMasked, via: r.verify.tenantEnabled ? (r.verify.channel ?? 'none') : 'off', verifyServiceSidLast4: r.verify.serviceSidLast4, sendable: r.verify.tenantEnabled && r.verify.state === 'ready', stopRule: 'sent_despite_stop' as const },
+  };
+}
+
 // ── §12 the guided wizard: derived from the same evidence; resumes at the first unfinished step ────────────────────────
 export function wizardSteps(r: ReadinessView, parts: ReadinessPart[]): { steps: WizardStep[]; resumeAt: WizardKey } {
   const p = (k: PartKey) => parts.find((x) => x.key === k)!;
@@ -212,7 +235,8 @@ export class MessagingSetupCenter {
       const parts = sixParts(r, await this.deliveryEvidence(ctx.tenantId, b.branchId));
       out.push({ branchId: b.branchId, name: b.name, source: b.source, inherits: b.source !== 'branch_override', accountSidMasked: r.account.accountSidMasked,
         sender: r.sender.number, senderType: r.sender.senderType, registration: parts.find((p) => p.key === 'registration')!.state,
-        parts: parts.map((p) => ({ key: p.key, state: p.state })), lastCheckedAt: r.account.lastCheckedAt });
+        parts: parts.map((p) => ({ key: p.key, state: p.state })), lastCheckedAt: r.account.lastCheckedAt,
+        ...branchSummary(parts), routes: branchRoutes(r) });
     }
     return { salonDefault: { accountSidMasked: base.account.accountSidMasked, sender: base.sender.number, senderType: base.sender.senderType, source: base.source },
       branches: out, rule: 'Platform prohibition > salon setting > a branch\'s own Twilio > the salon default > Setup Required. A branch without its own Twilio inherits the salon default; changing it never rewrites past messages.' };

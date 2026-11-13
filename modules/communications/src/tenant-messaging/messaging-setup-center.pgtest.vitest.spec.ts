@@ -193,6 +193,25 @@ describe('branch senders (§13)', () => {
     expect(r.salonDefault.sender).toBe(NUM_A);
     expect((await center().branches(ctxA, [BR_A])).branches.map((b: any) => b.branchId)).toEqual([BR_A]);
   });
+  // extras TEXT MESSAGING SETUP 07 / 09 (round 10): per-branch Ready / Pending / Blocked with next actions, and what each kind of
+  // text would use — from the same six parts / readiness view; nothing sent
+  it('each branch carries its Ready / Pending / Blocked summary with the parts\' own next actions, and its routes per kind of text', async () => {
+    const r: any = await center().branches(ctxA, null);
+    const ov: any = await center().overview(ctxA, BR_A, null);
+    for (const b of r.branches) {
+      expect(b.summary.ready + b.summary.pending + b.summary.blocked).toBe(6);
+      expect(b.nextActions.every((a: any) => typeof a.nextAction === 'string' && a.nextAction.length > 0 && typeof a.fixLink === 'string')).toBe(true);
+      expect(b.nextActions.map((a: any) => a.key)).not.toContain(b.parts.find((p: any) => p.state === 'ready')?.key ?? '__none__');
+      expect(b.routes.reminders).toMatchObject({ number: NUM_A, stopRule: 'blocked_by_stop' });
+      expect(b.routes.testSms).toMatchObject({ number: NUM_A, via: 'number', stopRule: 'not_applicable' });
+      expect(b.routes.otp.stopRule).toBe('sent_despite_stop');
+      expect(JSON.stringify(b.routes)).not.toContain(AC_A);   // the account stays masked
+    }
+    const a = r.branches.find((b: any) => b.branchId === BR_A);
+    const blocked = ov.parts.filter((p: any) => p.state === 'failed' || p.state === 'attention_required').length;
+    expect(a.summary.blocked).toBe(blocked);   // the same parts the branch's own overview shows
+    expect(a.nextActions.some((x: any) => x.key === 'registration')).toBe(true);   // registration was never approved
+  });
 });
 
 describe('controlled nightly run (§11)', () => {
