@@ -152,7 +152,9 @@ export class ReputationSettingsCenter {
         if (v === undefined || v === null) continue;
         if (validValue(key, v)) source = lvl; else ignoredAt.push(lvl);
       }
-      return { key, value: effectiveValue(eff, key), default: DEFAULTS[key], source, ignoredAt };
+      // Review Reputation Settings 02 (round 10): the value configured at each level (as stored) beside the effective one
+      const configured = { tenant: layerValue(tenant?.enabled, tenant?.config as Cfg | null, key) ?? null, branch: layerValue(branch?.enabled, branch?.config as Cfg | null, key) ?? null };
+      return { key, value: effectiveValue(eff, key), default: DEFAULTS[key], source, ignoredAt, configured };
     });
     let ent: Awaited<ReturnType<EntitlementFn>> = null; let entError = false;
     try { ent = await this.entitlement(ctx); } catch { entError = true; }
@@ -171,7 +173,19 @@ export class ReputationSettingsCenter {
       count(*) filter (where status in ('sent', 'delivered', 'converted'))::int as sent from review_requests where tenant_id = ${T}`.execute(this.db)).rows[0] ?? {};
     const last = (await sql<Row>`select v.created_at, coalesce(u.full_name, u.email) as actor from ai_reputation_config_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = ${T}
       where v.tenant_id = ${T} order by v.created_at desc, v.id desc limit 1`.execute(this.db)).rows[0];
+    // Review Reputation Settings 05 (round 10): the role-based security failures recorded for this salon in the last 7 days
+    // (security_events: a privilege escalation or cross-salon access attempt) — counts and the latest time only, no actor
+    const sec = (await sql<Row>`select count(*) filter (where event_type = 'PRIVILEGE_ESCALATION_ATTEMPT')::int as escalation,
+        count(*) filter (where event_type = 'CROSS_TENANT_ACCESS_ATTEMPT')::int as cross_tenant, max(occurred_at) as last_at
+      from security_events where tenant_id = ${T} and event_type in ('PRIVILEGE_ESCALATION_ATTEMPT', 'CROSS_TENANT_ACCESS_ATTEMPT') and occurred_at > now() - interval '7 days'`.execute(this.db)).rows[0] ?? {};
     const subscriptionBlocks = !!ent && !ent.allowed && mode === 'enforce';
+    // Review Reputation Settings 02 (round 10): why a control cannot change what runs here, one exact reason per control — a
+    // branch override (the salon value is not the one this branch uses), the assistant switched off (its controls do nothing
+    // while it is off), or the subscription blocking it (the master switch only); null = the control is in force as shown
+    const lockOf = (key: string, source: string): string | null => source === 'branch' ? 'branch_override'
+      : key === 'enabled' ? (subscriptionBlocks ? 'subscription_blocked' : null)
+      : !eff.enabled ? 'assistant_disabled' : null;
+    for (const st of settings) (st as typeof st & { lockReason: string | null }).lockReason = lockOf(st.key, st.source);
     return {
       assistant: {
         effectiveEnabled: eff.enabled, disabledAtLevel: eff.disabledAtLevel,
@@ -195,9 +209,13 @@ export class ReputationSettingsCenter {
       sms: { configured: sms?.status === 'configured', sender: sms ? (sms.has_service ? 'messaging_service' : sms.has_number ? 'number' : 'none') : 'none', lastValidatedAt: iso(sms?.last_validated_at), lastError: sms?.last_validation_error ? 'validation_failed' : null },
       providers: { connected: providers, lastSuccessfulSyncAt: iso(prov.last_ok), lastFailedSyncAt: iso(prov.last_failed), failing: N(prov.failing) },
       publishQueue: { approvedNotPublished: N(pub.waiting), publishFailed: N(pub.failed) },
+      securityFailures: { windowDays: 7, privilegeEscalation: N(sec.escalation), crossTenant: N(sec.cross_tenant), lastAt: iso(sec.last_at) },
       providerInventory: await this.providerInventory(T),
       salonRow: { version: N(tenant?.version ?? 0), exists: !!tenant, updatedAt: iso(tenant?.updated_at) },
       lastChange: last ? { at: iso(last.created_at), by: last.actor ?? null } : null,
+      // the revision the workers run: drafting and checkout read the stored row on every call (propagation 'live'), so the
+      // applied revision IS the salon row's current version — never a cached copy
+      appliedRevision: { version: N(tenant?.version ?? 0), at: iso(tenant?.updated_at) ?? (last ? iso(last.created_at) : null), by: last?.actor ?? null, propagation: 'live' as const },
       checkedAt: new Date(this.now()).toISOString(),
     };
   }

@@ -19,6 +19,12 @@ import { couponVerdict, configReasons, type CouponVerdict } from './coupon-verdi
 import { stackingInspector } from './stacking-inspector';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
+/** extras Promotions Management 03: the effective terms returned beside a read-only check */
+export interface CheckTerms { version: number; discountType: string; discountPercent: number | null; discountCents: number | null; maxDiscountCents: number | null;
+  startsAt: string | null; endsAt: string | null; daysOfWeek: number[] | null; validFromMinute: number | null; validToMinute: number | null; minSpendCents: number | null;
+  newCustomersOnly: boolean; memberOnly: boolean; maxRedemptions: number | null; redemptionCount: number; maxPerCustomer: number | null; requiresCode: boolean;
+  serviceIds: string[]; channels: string[] | null; stackable: boolean; termsText: string | null }
+
 export class DealRefusedError extends Error {
   constructor(message: string, public readonly status: 400 | 409 | 429, public readonly reasons: Reason[] = [], public readonly code = 'DEAL_REFUSED') { super(message); this.name = 'DealRefusedError'; }
 }
@@ -240,7 +246,7 @@ export class DealsCheckoutService {
    */
   async check(ctx: DealContext, dealId: string, input: { ticketId?: string | null; customerId?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean }): Promise<CouponVerdict & {
     dealId: string; title: string; status: string; discountPreviewCents: number; eligibleBaseCents: number; context: { ticketId: string | null; customerId: string | null; serviceIds: string[]; spendCents: number; onTicket: number; policy: string };
-    stacking: ReturnType<typeof stackingInspector> }> {
+    stacking: ReturnType<typeof stackingInspector>; terms: CheckTerms }> {
     const deal = await this.ledger.deal(ctx.tenantId, dealId);
     if (!deal || deal.kind === 'announcement') throw withCode(new DealRefusedError('Deal not found.', 400), 'DEAL_NOT_FOUND');
     const t = input.ticketId ? await this.ticket(ctx, input.ticketId) : null;
@@ -276,7 +282,13 @@ export class DealsCheckoutService {
     return { ...v, dealId: deal.id, title: deal.title, status: deal.status, discountPreviewCents: v.eligible ? preview : 0, eligibleBaseCents: eligibleBase,
       context: { ticketId: t?.ticketId ?? null, customerId, serviceIds, spendCents, onTicket, policy: policy.mode },
       // Extras · Coupons & Promotions 06: why this offer does / does not combine with each other benefit (same rules as priceTicket)
-      stacking: stackingInspector(policy, { stackable: !!deal.stackable, stackGroup: deal.stackGroup ?? null }) };
+      stacking: stackingInspector(policy, { stackable: !!deal.stackable, stackGroup: deal.stackGroup ?? null }),
+      // extras Promotions Management 03 (round 10): the EFFECTIVE terms this verdict was judged against — the live row's
+      // current version, exactly as Checkout reads it (read only; the check never saves a redemption or charges anything)
+      terms: { version: deal.version, discountType: deal.discountType, discountPercent: deal.discountPercent, discountCents: deal.discountCents, maxDiscountCents: deal.maxDiscountCents,
+        startsAt: deal.startsAt, endsAt: deal.endsAt, daysOfWeek: deal.daysOfWeek ?? null, validFromMinute: deal.validFromMinute ?? null, validToMinute: deal.validToMinute ?? null,
+        minSpendCents: deal.minSpendCents ?? null, newCustomersOnly: deal.newCustomersOnly, memberOnly: deal.memberOnly, maxRedemptions: deal.maxRedemptions ?? null, redemptionCount: deal.redemptionCount,
+        maxPerCustomer: deal.maxPerCustomer ?? null, requiresCode: !!deal.requiresCode, serviceIds: deal.serviceIds, channels: deal.channels ?? null, stackable: !!deal.stackable, termsText: deal.terms_text } };
   }
 
   async onPaid(ctx: DealContext, ticketId: string) { return this.ledger.markTicketPaid(ctx.tenantId, ticketId); }

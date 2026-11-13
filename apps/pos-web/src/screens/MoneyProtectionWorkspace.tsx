@@ -260,6 +260,14 @@ export function MpOverview() {
         {s && !Object.keys(s.byCategory ?? {}).length ? <div className="state">{s.monitoring === 'current' ? t('mpx.noOpen') : t('mpx.mon.' + s.monitoring, { at: monAt })}</div>
           : Object.entries(s?.byCategory ?? {}).map(([k, n]) => <div key={k} className="rvw-ev"><Link to={`/tenant/ai/money-protection/alerts?category=${k}`}>{catName(k)}</Link> · <b>{fmtNumber(Number(n))}</b></div>)}
       </section>
+      {s?.byBranch?.rows?.length > 1 || s?.byBranch?.financials === 'included' ? <section className="panel" style={{ padding: 12, marginTop: 8 }} data-testid="mpx-bybranch">
+        <div className="p-h">{t('mpx.br.title')}</div>
+        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.br.branch')}</th><th>{t('mpx.br.open')}</th><th>{t('mpx.br.critical')}</th><th>{t('mpx.br.review')}</th><th>{t('mpx.br.sales')}</th></tr></thead>
+          <tbody>{s.byBranch.rows.map((r: any) => <tr key={r.branchId} data-testid="mpx-br-row"><td>{r.branch ?? '—'}</td><td>{fmtNumber(r.openAlerts)}</td><td>{fmtNumber(r.critical)}</td><td>{money(r.valueUnderReviewCents)}</td>
+            <td data-testid="mpx-br-sales">{r.netSalesCents == null ? '—' : money(r.netSalesCents)}</td></tr>)}
+            {s.byBranch.unbranched?.openAlerts ? <tr data-testid="mpx-br-unbranched"><td>{t('mpx.br.salonWide')}</td><td>{fmtNumber(s.byBranch.unbranched.openAlerts)}</td><td>{fmtNumber(s.byBranch.unbranched.critical)}</td><td>{money(s.byBranch.unbranched.valueUnderReviewCents)}</td><td>—</td></tr> : null}</tbody></table></div>
+        <div className="sub" data-testid="mpx-br-note">{s.byBranch.financials === 'included' ? t('mpx.br.salesFrom') : s.byBranch.financials === 'forbidden' ? t('mpx.br.salesHidden') : t('mpx.br.salesNone')} {t('mpx.br.why')}</div>
+      </section> : null}
       <section className="panel" style={{ padding: 12, marginTop: 8 }} data-testid="mpx-runs">
         <div className="p-h">{t('mpx.runs')}</div>
         {runs.err ? <ErrorRetry message={runs.err} onRetry={runs.load} /> : !runs.list ? <div className="state">{t('mpx.loading')}</div> : !runs.list.total ? <div className="sub">{t('mpx.noRuns')}</div> : (
@@ -291,7 +299,7 @@ export function MpAlerts() {
         {GROUPS.map((g) => <button key={g} role="tab" aria-selected={L.f.status === g} className={'btn ghost' + (L.f.status === g ? ' on' : '')} data-testid={`mpx-grp-${g}`} onClick={() => L.set({ status: g })}>{t('mpx.grp.' + g)}</button>)}
       </div>
       <ListFrame testId="mpx-alerts" surface="money-protection.alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} staleAt={L.staleAt} total={L.list?.total}
-        searchPh={L.list?.customersVisible === false ? t('mpx.searchPhNoCustomer') : t('mpx.searchPh')} empty={alertsEmpty(L.f, L.period, L.list)}
+        searchPh={L.list?.customersVisible === false ? t('mpx.searchPhRefNoCustomer') : t('mpx.searchPhRef')} empty={alertsEmpty(L.f, L.period, L.list)}
         filters={<>
           <select data-testid="mpx-severity" aria-label={t('mpx.severityLabel')} value={L.f.severity} onChange={(e) => L.set({ severity: e.target.value })}>{SEVS.map((k) => <option key={k} value={k}>{t('mpx.sev.' + k)}</option>)}</select>
           <select data-testid="mpx-category" aria-label={t('mpx.categoryLabel')} value={L.f.category} onChange={(e) => L.set({ category: e.target.value, rule: undefined })}>{CATS.map((k) => <option key={k} value={k}>{catName(k)}</option>)}</select>
@@ -307,7 +315,8 @@ export function MpAlerts() {
             <tr key={a.id} data-testid="mpx-alert-row">
               {canBatch ? <td><input type="checkbox" aria-label={t('mpx.triage.select')} checked={sel.includes(a.id)} onChange={() => toggle(a.id)} data-testid="mpx-alert-select" /></td> : null}
               <td className="nowrap">{when(a.firstSeenAt)}{a.eventCount > 1 ? <div className="sub">×{fmtNumber(a.eventCount)}</div> : null}</td>
-              <td><b>{ruleName(a.ruleId, a.rule)}</b><div className="sub">{catName(a.category)}{a.branch ? ` · ${a.branch}` : ''}</div></td>
+              <td><b>{ruleName(a.ruleId, a.rule)}</b><div className="sub">{catName(a.category)}{a.branch ? ` · ${a.branch}` : ''}</div>
+                {a.match?.field ? <div className="sub" data-testid="mpx-alert-match">{t('mpx.match.on', { field: t('mpx.match.' + a.match.field) })}{a.match.shown ? `: ${a.match.shown}` : ''}</div> : null}</td>
               <td><span className={'chip ' + (SEV_TONE[a.severity] ?? '')}>{t('mpx.sev.' + a.severity)}</span></td>
               <td>{money(a.amountCents)}</td>
               <td><span className="chip" data-testid="mpx-alert-status">{stName(a.status)}</span>{a.investigationId ? <div className="sub">{t('mpx.d.inCase')}</div> : null}</td>

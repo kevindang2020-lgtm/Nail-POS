@@ -100,7 +100,10 @@ const FAQ_GAP_TOPICS: { key: string; words: RegExp; question: string }[] = [
 ];
 
 export interface Check { key: string; status: BsStatus; source: string; branchScope: string; rawCount: number | null; eligibleCount: number | null;
-  exclusions: { reason: string; count: number }[]; warnings: string[]; detail: string; action: { label: string; route: string } | null; checkedAt: string; traceId: string; errorCode?: string }
+  exclusions: { reason: string; count: number }[]; warnings: string[]; detail: string; action: { label: string; route: string } | null; checkedAt: string; traceId: string; errorCode?: string;
+  /** AI BUSINESS SETUP 04 (round 10): when the source itself last changed (null = never saved / unknown — never a guess) and
+   *  how the AI reads it: 'live' = at call time, no copy, so there is no sync lag to report */
+  sourceUpdatedAt?: string | null; read?: 'live' }
 
 export class BusinessSetupCenter {
   constructor(private readonly db: Kysely<any>) {}
@@ -178,7 +181,7 @@ export class BusinessSetupCenter {
         : v.invalidDays.length ? `Invalid hours on ${v.invalidDays.join(', ')}.` : v.openDays === 0 ? 'Every day is closed.' : `Open ${v.openDays} day(s) a week (${h.timezone}).`;
       return { key: 'business_hours', status, source: h.source === 'branch' ? 'Settings → Store hours (this branch)' : h.source === 'tenant' ? 'Settings → Store hours (salon-wide)' : 'Platform default (not saved)',
         branchScope: this.scopeLabel(ctx), rawCount: 7, eligibleCount: v.openDays, exclusions: v.invalidDays.length ? [{ reason: 'invalid_hours', count: v.invalidDays.length }] : [], warnings, detail,
-        action: { label: 'Edit store hours', route: '/settings?section=auto-logout' }, checkedAt: nowIso(), traceId: trace() };
+        action: { label: 'Edit store hours', route: '/settings?section=auto-logout' }, checkedAt: nowIso(), traceId: trace(), sourceUpdatedAt: h.updatedAt, read: 'live' };
     } catch (e) { return this.unknown('business_hours', 'Settings → Store hours', ctx, e); }
   }
   private async servicesCheck(ctx: BsCtx): Promise<Check> {
@@ -186,7 +189,8 @@ export class BusinessSetupCenter {
       const b = this.branch(ctx);
       const r: Row = (await sql<Row>`select count(*)::int raw,
           count(*) filter (where status <> 'active')::int inactive,
-          count(*) filter (where status = 'active' and ${b}::uuid is not null and branch_id is not null and branch_id <> ${b})::int other_branch
+          count(*) filter (where status = 'active' and ${b}::uuid is not null and branch_id is not null and branch_id <> ${b})::int other_branch,
+          max(updated_at) as updated
         from services where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
       const el = await this.eligibleServices(ctx);
       const noDur = el.filter((s) => N(s.duration_minutes) <= 0).length, noPrice = el.filter((s) => s.price_cents == null || N(s.price_cents) <= 0).length;
@@ -200,7 +204,7 @@ export class BusinessSetupCenter {
       const detail = el.length > 0 ? `${el.length} of ${N(r.raw)} service(s) can be booked by the AI.`
         : N(r.raw) === 0 ? 'No services exist in the catalog yet.' : `No eligible services: ${N(r.raw)} exist but none is active for this branch.`;
       return { key: 'services', status, source: 'Services & Products (services)', branchScope: this.scopeLabel(ctx), rawCount: N(r.raw), eligibleCount: el.length, exclusions, warnings, detail,
-        action: { label: 'Open Services', route: '/services' }, checkedAt: nowIso(), traceId: trace() };
+        action: { label: 'Open Services', route: '/services' }, checkedAt: nowIso(), traceId: trace(), sourceUpdatedAt: iso(r.updated), read: 'live' };
     } catch (e) { return this.unknown('services', 'Services & Products', ctx, e); }
   }
   private async techniciansCheck(ctx: BsCtx): Promise<Check> {
@@ -209,7 +213,8 @@ export class BusinessSetupCenter {
       const r: Row = (await sql<Row>`select count(*)::int raw,
           count(*) filter (where not is_active)::int inactive,
           count(*) filter (where is_active and ${b}::uuid is not null and branch_id is not null and branch_id <> ${b})::int other_branch,
-          count(*) filter (where (status = 'active') <> is_active and archived_at is null)::int mismatch
+          count(*) filter (where (status = 'active') <> is_active and archived_at is null)::int mismatch,
+          max(updated_at) as updated
         from technicians where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
       const el = await this.eligibleTechnicians(ctx);
       const qualified = el.filter((t) => t.qualified).length, scheduled = el.filter((t) => t.scheduled).length;
@@ -223,18 +228,19 @@ export class BusinessSetupCenter {
         : qualified === 0 ? 'Technicians are on file but none has a service qualification.' : scheduled === 0 ? 'Technicians are on file but none has a working schedule.'
         : `${el.length} technician(s) can be offered; ${qualified} qualified, ${scheduled} scheduled. Availability is checked live at the time of a call.`;
       return { key: 'technicians', status, source: 'Team Management (technicians, technician_services, technician_schedules)', branchScope: this.scopeLabel(ctx), rawCount: N(r.raw), eligibleCount: el.length, exclusions, warnings, detail,
-        action: { label: 'Open Team', route: '/technicians' }, checkedAt: nowIso(), traceId: trace() };
+        action: { label: 'Open Team', route: '/technicians' }, checkedAt: nowIso(), traceId: trace(), sourceUpdatedAt: iso(r.updated), read: 'live' };
     } catch (e) { return this.unknown('technicians', 'Team Management', ctx, e); }
   }
   private async faqCheck(ctx: BsCtx): Promise<Check> {
     try {
       const r: Row = (await sql<Row>`select count(*)::int raw, count(*) filter (where status = 'approved' and approved_revision_id is not null)::int approved,
-          count(*) filter (where status in ('draft', 'pending_review', 'needs_review'))::int unapproved, count(*) filter (where status = 'archived')::int archived
+          count(*) filter (where status in ('draft', 'pending_review', 'needs_review'))::int unapproved, count(*) filter (where status = 'archived')::int archived,
+          max(approved_at) filter (where status = 'approved') as updated
         from ai_receptionist_faqs where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
       const exclusions = [{ reason: 'not_approved', count: N(r.unapproved) }, { reason: 'archived', count: N(r.archived) }].filter((x) => x.count > 0);
       return { key: 'faqs', status: N(r.approved) > 0 ? 'READY' : 'NEEDS_SETUP', source: 'Customer FAQs (approved revisions only)', branchScope: this.scopeLabel(ctx), rawCount: N(r.raw), eligibleCount: N(r.approved),
         exclusions, warnings: [], detail: N(r.approved) > 0 ? `${N(r.approved)} approved FAQ(s) the AI may use.` : 'No approved FAQs yet — optional, but the AI hands off questions it cannot answer.',
-        action: null, checkedAt: nowIso(), traceId: trace() };
+        action: null, checkedAt: nowIso(), traceId: trace(), sourceUpdatedAt: iso(r.updated), read: 'live' };
     } catch (e) { return this.unknown('faqs', 'Customer FAQs', ctx, e); }
   }
   private bookingCheck(ctx: BsCtx): Check {
@@ -253,7 +259,27 @@ export class BusinessSetupCenter {
 
   async readiness(ctx: BsCtx) {
     const [hours, services, technicians, faqs] = await Promise.all([this.hoursCheck(ctx), this.servicesCheck(ctx), this.techniciansCheck(ctx), this.faqCheck(ctx)]);
-    return { branchScope: this.scopeLabel(ctx), checkedAt: nowIso(), core: [hours, services, technicians], supplemental: [faqs, this.bookingCheck(ctx), this.providerCheck(ctx)] };
+    return { branchScope: this.scopeLabel(ctx), checkedAt: nowIso(), scope: await this.scopeInspector(ctx), core: [hours, services, technicians], supplemental: [faqs, this.bookingCheck(ctx), this.providerCheck(ctx)] };
+  }
+
+  /** AI BUSINESS SETUP 03 (round 10) — the Branch Scope Inspector: which salon and which branch this readiness was checked
+   *  for, and a read-only diagnostic when they do not line up: the session's branch is not one of this salon's branches,
+   *  or it is closed / removed (the AI at that location would serve nothing). It also says how many approved FAQs are scoped
+   *  to OTHER branches (not served here). Reads only. */
+  private async scopeInspector(ctx: BsCtx) {
+    const b = this.branch(ctx);
+    try {
+      const r: Row = (await sql<Row>`select (select coalesce(nullif(t.display_name, ''), t.legal_name) from tenants t where t.id = ${ctx.tenantId}) as tenant_name,
+          (select json_build_object('name', br.name, 'status', br.status, 'deleted', br.deleted_at is not null) from branches br where br.tenant_id = ${ctx.tenantId} and br.id = ${b}::uuid) as branch,
+          (select count(*)::int from branches bo where bo.tenant_id = ${ctx.tenantId} and bo.deleted_at is null) as branches,
+          (select count(*)::int from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and f.status = 'approved' and f.branch_id is not null and ${b}::uuid is not null and f.branch_id <> ${b}::uuid) as other_branch_faqs`.execute(this.db)).rows[0];
+      const br = r?.branch ? (typeof r.branch === 'string' ? JSON.parse(r.branch) : r.branch) as { name: string; status: string | null; deleted: boolean } : null;
+      const mismatch = !b ? null : !br ? 'branch_not_in_salon' : br.deleted ? 'branch_removed' : br.status && br.status !== 'active' ? 'branch_inactive' : null;
+      return { tenantName: r?.tenant_name ?? null, branchId: b, branchName: br?.name ?? null, branchStatus: br ? (br.deleted ? 'removed' : br.status ?? null) : null, branches: N(r?.branches),
+        otherBranchFaqs: N(r?.other_branch_faqs), mismatch, state: 'checked' as const };
+    } catch (e) {
+      return { tenantName: null, branchId: b, branchName: null, branchStatus: null, branches: null, otherBranchFaqs: null, mismatch: null, state: 'unknown' as const, traceId: trace(), errorCode: (e as { code?: string })?.code ? String((e as { code?: string }).code) : 'QUERY_FAILED' };
+    }
   }
 
   // ── one-click health check (guide §11; non-mutating) ─────────────────────────────────────────────────────────────────
@@ -346,12 +372,19 @@ export class BusinessSetupCenter {
       from ai_receptionist_faq_events e where tenant_id = ${ctx.tenantId} and faq_id = ${id} order by created_at desc, id desc limit 100`.execute(this.db)).rows;
     const usage = N((await sql<Row>`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and sources @> ${JSON.stringify([{ type: 'faq', id }])}::jsonb`.execute(this.db)).rows[0]?.n);
     const approved = revisions.find((x) => x.id === r.approved_revision_id) ?? null;
+    // AI BUSINESS SETUP 07 (round 10) — the Approval Difference View: the pending change field by field beside the live
+    // (approved) revision, so a manager sees exactly what publishing would change. Read only; null when nothing is pending.
+    const draft = r.draft_revision_id && r.draft_revision_id !== r.approved_revision_id ? revisions.find((x) => x.id === r.draft_revision_id) ?? null : null;
+    const difference = draft ? (['question', 'answer', 'category'] as const).map((field) => {
+      const live = approved ? (approved[field] ?? null) : null, proposed = draft[field] ?? null;
+      return { field, live, proposed, changed: String(live ?? '') !== String(proposed ?? '') };
+    }) : null;
     return { ...this.faqRow(r), approvedRevision: approved ? { id: approved.id, revisionNo: N(approved.revision_no), question: approved.question, answer: approved.answer, category: approved.category } : null,
       revisions: revisions.map((x) => ({ id: x.id, revisionNo: N(x.revision_no), question: x.question, answer: x.answer, category: x.category ?? null, priorRevisionId: x.prior_revision_id ?? null,
         reason: x.reason ?? null, source: x.source, createdAt: iso(x.created_at), isApproved: x.id === r.approved_revision_id, isPendingDraft: x.id === r.draft_revision_id && x.id !== r.approved_revision_id })),
       events: events.map((e) => ({ id: e.id, action: e.action, fromStatus: e.from_status ?? null, toStatus: e.to_status ?? null, revisionId: e.revision_id ?? null, reason: e.reason ?? null,
         actor: e.actor_name ?? (e.has_actor ? 'Staff member' : 'System / unknown'), createdAt: iso(e.created_at) })),
-      previewUses: usage };
+      previewUses: usage, difference, differenceRevisions: draft ? { live: approved ? N(approved.revision_no) : null, proposed: N(draft.revision_no) } : null };
   }
 
   // ── FAQ writes (ai.manage; version-checked, idempotent, audited in the same transaction) ───────────────────────────

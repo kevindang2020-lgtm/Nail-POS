@@ -87,4 +87,5 @@ export const TIPS_EN = {
   'tp.ri.post.future_period_pending': 'This pay period is already paid: the reversal goes to a future period and waits for approval.',
   'tp.ri.post.pending_review': 'A chargeback is not taken automatically — it waits for a manager review.',
   'tp.ri.readOnly': 'Preview only — nothing is refunded, voided or posted from here.',
+  'tp.d.unreconciled': '{n} ticket(s) do not add up',
 } as const;

@@ -51,6 +51,31 @@ describe('Review & Reputation Settings — state', () => {
     expect((await rss.state(ctx())).assistant.operational).toBe('subscription_blocked');
     mode = 'observe'; ent = { allowed: true, reason: 'ok', subscriptionStatus: 'active' };
   });
+  it('ST-03 (Review Reputation Settings 02, round 10): configured values per level, the exact lock reason per control and the applied revision', async () => {
+    let s: any = await rss.state(ctx());
+    expect(val(s, 'responseTone')).toMatchObject({ configured: { tenant: null, branch: null }, lockReason: null });
+    expect(s.appliedRevision).toMatchObject({ version: 0, propagation: 'live' });
+    mode = 'enforce'; ent = { allowed: false, reason: 'trial_expired', subscriptionStatus: 'trialing' };
+    expect(val(await rss.state(ctx()), 'enabled').lockReason).toBe('subscription_blocked');
+    mode = 'observe'; ent = { allowed: true, reason: 'ok', subscriptionStatus: 'active' };
+    // a branch override: the salon value is not the one this branch uses; the assistant off: its controls do nothing
+    await q(sql`insert into tenant_ai_reputation_settings (tenant_id, level, branch_id, enabled, config) values (${T}, 'branch', ${B}, false, '{"responseTone":"warm"}')`);
+    s = await rss.state(ctx());
+    expect(val(s, 'responseTone')).toMatchObject({ value: 'warm', source: 'branch', configured: { tenant: null, branch: 'warm' }, lockReason: 'branch_override' });
+    expect(val(s, 'channel').lockReason).toBe('assistant_disabled');
+    expect(val(s, 'enabled').lockReason).toBe('branch_override');
+    await q(sql`delete from tenant_ai_reputation_settings where tenant_id = ${T} and level = 'branch'`);
+  });
+  it('ST-04 (Review Reputation Settings 05, round 10): role-based security failures of the last 7 days — this salon only, counts and latest time', async () => {
+    expect((await rss.state(ctx())).securityFailures).toEqual({ windowDays: 7, privilegeEscalation: 0, crossTenant: 0, lastAt: null });
+    await q(sql`insert into security_events (event_type, severity, tenant_id, actor_type, reason, occurred_at) values
+      ('PRIVILEGE_ESCALATION_ATTEMPT', 'HIGH', ${T}, 'user', 'x', now() - interval '1 day'), ('CROSS_TENANT_ACCESS_ATTEMPT', 'HIGH', ${T}, 'user', 'x', now() - interval '2 hours'),
+      ('PRIVILEGE_ESCALATION_ATTEMPT', 'HIGH', ${T}, 'user', 'old', now() - interval '9 days'), ('PRIVILEGE_ESCALATION_ATTEMPT', 'HIGH', ${X}, 'user', 'other salon', now()),
+      ('LOGIN_FAILED_BURST', 'MEDIUM', ${T}, 'user', 'not role-based', now())`);
+    const s: any = await rss.state(ctx());
+    expect(s.securityFailures).toMatchObject({ privilegeEscalation: 1, crossTenant: 1 });
+    expect(new Date(s.securityFailures.lastAt).getTime()).toBeGreaterThan(Date.now() - 3 * 3600_000);
+  });
 });
 
 describe('Review & Reputation Settings — safe writes', () => {

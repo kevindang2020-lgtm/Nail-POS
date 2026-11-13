@@ -19,10 +19,21 @@ import { InvestigationService } from './ai-money-protection-investigations.servi
 import { MoneyProtectionExplainService } from './ai-money-protection-explain.service';
 import { InMemoryEntitlement, KyselyEntitlement, type EntitlementPort } from './ai-money-protection-entitlement';
 import { moneyProtectionFlags } from './ai-money-protection-flags';
+import { ReportsModule, ReportsService, ForbiddenError as ReportsForbiddenError, type ReportsContext } from '@aipowersalon/reports';
 import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one system context
 
+/** extras (AI Fraud Money Protection 09): Net Sales per branch from the Sales report — its own definition, financial gate
+ *  (pos.reports.financial_view) and branch access; a refusal becomes 'forbidden', every other failure propagates. */
+export function reportsBranchNetSales(reports: ReportsService) {
+  return async (ctx: McCtx, branchId: string, from: string, to: string): Promise<{ netSalesCents: number } | 'forbidden'> => {
+    const rctx: ReportsContext = { tenantId: ctx.tenantId, branchId, userId: String(ctx.userId ?? ''), role: ctx.role ?? '', permissions: ctx.permissions ?? [] };
+    try { return { netSalesCents: (await reports.getSales(rctx, { from, to })).kpis.netSalesCents }; }
+    catch (e) { if (e instanceof ReportsForbiddenError) return 'forbidden'; throw e; }
+  };
+}
+
 @Module({
-  imports: [AiModule],
+  imports: [AiModule, ReportsModule],
   controllers: [MoneyProtectionController, MoneyProtectionCenterController],
   providers: [
     {
@@ -50,7 +61,7 @@ import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one
     // the six Money Protection guides (Nov 3 2026): the center (overview, alerts, investigations, rules, detection runs, check)
     {
       provide: MONEY_PROTECTION_CENTER,
-      useFactory: (db: AppDatabase, svc: MoneyProtectionService, ent: EntitlementPort) => (db ? new MoneyProtectionCenter(db as never, {
+      useFactory: (db: AppDatabase, svc: MoneyProtectionService, ent: EntitlementPort, reports: ReportsService) => (db ? new MoneyProtectionCenter(db as never, {
         flags: () => moneyProtectionFlags(), entitlement: ent, scheduled: () => detectionScheduled(),
         detect: async (tenantId: string) => {
           const sys = { ...systemContext({ tenantId, actor: 'ai.money_protection.detect', permissions: ['ai_money_protection.manage_rules'] }), branchId: null } as never;   // every location
@@ -59,9 +70,10 @@ import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one
           return { evaluated: d.evaluated + r.evaluated, created: d.created + r.created, updated: d.updated + r.updated, layers: { deterministic: d, reconciliation: r } };
         },
         previewRule: (ctx: McCtx, ruleId: string, thresholds: Record<string, unknown>) => svc.previewThresholds({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: String(ctx.userId ?? ''), role: ctx.role ?? '', permissions: ctx.permissions ?? [] } as never, ruleId, thresholds),
+        branchNetSales: reportsBranchNetSales(reports),
         saveRule: (ctx: McCtx, ruleId: string, input) => svc.updateSetting({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: String(ctx.userId ?? ''), role: ctx.role ?? '', permissions: ctx.permissions ?? [] } as never, ruleId, input),
       }) : null),
-      inject: [DATABASE, MoneyProtectionService, 'MoneyProtectionEntitlementPort'],
+      inject: [DATABASE, MoneyProtectionService, 'MoneyProtectionEntitlementPort', ReportsService],
     },
     MoneyProtectionDetectionScheduler,
     {

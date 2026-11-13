@@ -33,7 +33,9 @@ export type TeamTimelineRow = { technicianId: string; name: string; status?: str
   blocks?: { blockId: string; startTime: string; endTime: string; reason?: string }[]; openSlots?: { slotId: string; startTime: string; endTime: string; durationMinutes?: number }[] };
 
 /** technician rows on one day's time axis; `from`/`to` in minutes (defaults 8 AM – 8 PM, widened to fit the data) */
-export function TechTimeline({ rows, onTech, onAppt, testId = 'timeline', nowMinute }: { rows: TeamTimelineRow[]; onTech?: (id: string) => void; onAppt?: (id: string) => void; testId?: string; nowMinute?: number | null }) {
+export function TechTimeline({ rows, onTech, onAppt, testId = 'timeline', nowMinute, fitMinutes }: { rows: TeamTimelineRow[]; onTech?: (id: string) => void; onAppt?: (id: string) => void; testId?: string; nowMinute?: number | null;
+  /** TECH APPOINTMENTS 04: a service length — open gaps at least this long are highlighted, shorter ones dimmed (the gap lengths are the server's) */
+  fitMinutes?: number | null }) {
   let lo = 8 * 60, hi = 20 * 60;
   for (const r of rows) for (const t of [r.shift?.startTime, r.shift?.endTime, ...r.appointments.flatMap((a) => [a.startTime, a.endTime])]) { const m = minOf(t); if (m != null) { lo = Math.min(lo, Math.floor(m / 60) * 60); hi = Math.max(hi, Math.ceil(m / 60) * 60); } }
   const span = Math.max(60, hi - lo); const pct = (m: number) => `${((m - lo) / span) * 100}%`; const w = (a: number, b: number) => `${(Math.max(0, b - a) / span) * 100}%`;
@@ -52,7 +54,8 @@ export function TechTimeline({ rows, onTech, onAppt, testId = 'timeline', nowMin
             <div className="tt-track">
               {Array.from({ length: Math.floor(span / 15) }, (_, i) => <i key={i} className={'tt-tick' + (i % 4 === 0 ? ' h' : '')} style={{ left: pct(lo + i * 15) }} />)}
               {ss != null && se != null ? <span className="tt-shift" style={{ left: pct(ss), width: w(ss, se) }} title={tx('tm.shift') + ` ${hm12(r.shift?.startTime)} – ${hm12(r.shift?.endTime)}`} /> : null}
-              {(r.openSlots ?? []).map((o) => bar('o' + o.slotId, minOf(o.startTime), minOf(o.endTime), 'open', tx('tm.open'), `${tx('tm.open')} ${hm12(o.startTime)} – ${hm12(o.endTime)}`))}
+              {(r.openSlots ?? []).map((o) => { const fit = fitMinutes ? (o.durationMinutes ?? 0) >= fitMinutes : null;
+                return bar('o' + o.slotId, minOf(o.startTime), minOf(o.endTime), 'open' + (fit === true ? ' fit' : fit === false ? ' short' : ''), tx('tm.open'), `${tx('tm.open')} ${hm12(o.startTime)} – ${hm12(o.endTime)}`, undefined, fit === true ? 'gap-fit' : fit === false ? 'gap-short' : undefined); })}
               {bar('brk', bs, be, 'break', tx('tm.break'), `${tx('tm.break')} ${hm12(r.shift?.breakStartTime)} – ${hm12(r.shift?.breakEndTime)}`)}
               {(r.blocks ?? []).map((b) => bar('b' + b.blockId, minOf(b.startTime), minOf(b.endTime), 'block', b.reason || tx('tm.blocked'), `${tx('tm.blocked')} ${hm12(b.startTime)} – ${hm12(b.endTime)}`))}
               {r.appointments.map((a) => bar('a' + a.appointmentId, minOf(a.startTime), minOf(a.endTime), 'appt s-' + String(a.status).toLowerCase(), a.serviceSummary || a.customerName || apptStatus(a.status),

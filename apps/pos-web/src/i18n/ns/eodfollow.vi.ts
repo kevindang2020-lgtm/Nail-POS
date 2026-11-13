@@ -168,4 +168,5 @@ export const EODFOLLOW_VI = {
   'eod.rec.archived': '{n}: khách hàng đã lưu trữ hoặc không còn trong hồ sơ — không bao giờ gửi được.', // DRAFT — Kevin reviews
   'eod.rec.booked': '{n}: khách hàng đã có lịch hẹn sắp tới — tạm giữ trừ khi quản lý cho phép.', // DRAFT — Kevin reviews
   'eod.rec.tech': '{n}: thợ không còn hoạt động — không nằm trong danh sách của thợ nào.', // DRAFT — Kevin reviews
+  'eod.rec.inbox': '{n}: khách đã nhắn tin cho tiệm sau lần ghé — hãy đọc Hộp thư SMS trước khi gửi.', // DRAFT — Kevin reviews
 } as const;

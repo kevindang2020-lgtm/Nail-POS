@@ -344,3 +344,51 @@ describe('booking confirmation email (guide §09)', () => {
     expect(mine.usage.handedToProvider).toBe(await handed(T));
   });
 });
+
+// extras round 10 (agent 5): Email 03 evidence timeline · 06 test-send wizard preview + history · 13 next action
+describe('extras Email Delivery Center round 10', () => {
+  it('Email 06: the test wizard preview shows the exact subject / body, whether the address is staff of THIS salon, and the test history — nothing sent, recorded or audited', async () => {
+    const n0 = mail.sent.length;
+    const tally = async () => Number((await q(sql`select (select count(*) from notifications where tenant_id = ${T}) + (select count(*) from audit_logs where tenant_id = ${T}) as n`))[0].n);
+    const before = await tally();
+    const p: any = await center.test(owner, { to: 'DEE@glow.test', preview: true });
+    expect(p).toMatchObject({ outcome: 'preview', subject: 'Test email from your salon', recipient: { address: 'dee@glow.test', validAddress: true, staff: true } });
+    expect(p.body).toMatch(/No customer received this message/);
+    // the earlier test send (em-test-0002) is in the history, newest first, with its outcome
+    expect(p.history.length).toBeGreaterThanOrEqual(1);
+    expect(p.history[0]).toMatchObject({ to: 'dee@glow.test', status: 'simulated' });
+    expect(((await center.test(owner, { to: 'ava@example.com', preview: true })) as any).recipient.staff).toBe(false);   // a customer
+    expect(((await center.test(owner, { to: 'oz@other.test', preview: true })) as any).recipient.staff).toBe(false);     // another salon's staff
+    expect(((await center.test(owner, { preview: true })) as any).recipient).toBeNull();
+    expect(((await center.test(owner2, { preview: true })) as any).history).toEqual([]);                                   // never another salon's tests
+    expect(await code(center.test(viewer, { to: 'dee@glow.test', preview: true }))).toBe('PERMISSION_DENIED');
+    expect(mail.sent.length).toBe(n0);
+    expect(await tally()).toBe(before);
+  });
+  it('Email 13: every row and the detail carry the next step (resend / fix address / opted out / await delivery / check delivery events)', async () => {
+    const ins = async (status: string, why: string | null, ago: string) => String((await q(sql`insert into notifications (tenant_id, channel, to_address, subject, body, customer_id, status, failure_reason, purpose, branch_id, created_at)
+        values (${T}, 'email', 'ava@example.com', ${'NA ' + status}, 'x', ${C1}, ${status}, ${why}, 'receipt', ${B}, now() - ${ago}::interval) returning id`))[0].id);
+    const failed = await ins('failed', 'email_failed:503', '1 minute'), bounced = await ins('failed', 'bounced:550', '1 minute'), opted = await ins('blocked', 'opted_out', '1 minute');
+    const fresh = await ins('sent', null, '1 hour'), old = await ins('sent', null, '3 days');
+    expect((await center.detail(owner, failed)).nextAction).toBe('resend');
+    expect((await center.detail(viewer, failed)).nextAction).toBe('review_reason');   // a viewer cannot resend
+    expect((await center.detail(owner, bounced)).nextAction).toBe('fix_address');
+    expect((await center.detail(owner, opted)).nextAction).toBe('customer_opted_out');
+    expect((await center.detail(owner, fresh)).nextAction).toBe('await_delivery');
+    expect((await center.detail(owner, old)).nextAction).toBe('check_delivery_events');
+    const h = await center.history(owner, { q: 'NA ', preset: 'all', pageSize: 50 });
+    const byId = new Map(h.items.map((r: any) => [r.id, r.nextAction]));
+    expect([byId.get(failed), byId.get(bounced), byId.get(opted), byId.get(fresh), byId.get(old)]).toEqual(['resend', 'fix_address', 'customer_opted_out', 'await_delivery', 'check_delivery_events']);
+  });
+  it('Email 03: health carries the provider evidence timeline — latest provider events (verified / applied) and the last real accepted / delivered send; another salon sees none of it', async () => {
+    const h: any = await center.health(owner);
+    expect(h.evidence.events.length).toBeGreaterThan(0);                       // the signed events applied earlier in this file
+    expect(h.evidence.events.length).toBeLessThanOrEqual(10);
+    const ats = h.evidence.events.map((e: any) => e.at);
+    expect([...ats].sort().reverse()).toEqual(ats);                            // newest first
+    expect(h.evidence.events.some((e: any) => e.verified && e.applied)).toBe(true);
+    expect(h.evidence.lastAcceptedAt).not.toBeNull();
+    const h2: any = await center.health(owner2);
+    expect(h2.evidence.events).toEqual([]);                                     // the other salon has no email events of its own and never sees these
+  });
+});

@@ -81,4 +81,27 @@ describe('Membership Overview 10 — consent-aware reminder preview with a text 
     await screen.findAllByText('Mai Le');
     expect(screen.queryByTestId('reminder-estimate')).toBeNull();
   });
+  it('extras Membership Overview 13·12 — Payments shows the server\'s monthly statement with the unconfirmed invoice share; an older server shows none', async () => {
+    const totals = { collectedCents: 12300, refundedCents: 3900, netCents: 8400, failed: 1 };
+    api.payments.mockResolvedValue(page([], { status: 'all', dateField: 'paid', totals, statement: [
+      { month: '2026-11', payments: 7, collectedCents: 12300, refundedCents: 3900, netCents: 8400, failed: 1, cardCents: 1000, invoiceCents: 3500, recordedCents: 7800, invoiceConfirmedCents: 2000, invoiceUnconfirmedCents: 1500 },
+      { month: '2026-10', payments: 1, collectedCents: 3900, refundedCents: 0, netCents: 3900, failed: 0, cardCents: 0, invoiceCents: 0, recordedCents: 3900, invoiceConfirmedCents: 0, invoiceUnconfirmedCents: 0 }] }));
+    renderScreen();
+    await screen.findAllByText('VIP Nail Club');
+    fireEvent.click(screen.getByTestId('tab-payments'));
+    const st = await screen.findByTestId('pay-statement');
+    expect(st).toHaveTextContent('Monthly statement');
+    expect(screen.getByTestId('stmt-2026-11')).toHaveTextContent('$123.00');
+    expect(screen.getByTestId('stmt-unconfirmed-2026-11')).toHaveTextContent('$15.00 not confirmed by Invoices');
+    expect(screen.queryByTestId('stmt-unconfirmed-2026-10')).toBeNull();
+    api.payments.mockResolvedValue(page([], { status: 'all', dateField: 'paid', totals }));
+  });
+  it('an older server without a statement shows no statement panel — never invented months', async () => {
+    api.payments.mockResolvedValue(page([], { status: 'all', dateField: 'paid', totals: { collectedCents: 0, refundedCents: 0, netCents: 0, failed: 0 } }));
+    renderScreen();
+    await screen.findAllByText('VIP Nail Club');
+    fireEvent.click(screen.getByTestId('tab-payments'));
+    await screen.findByTestId('pay-totals');
+    expect(screen.queryByTestId('pay-statement')).toBeNull();
+  });
 });

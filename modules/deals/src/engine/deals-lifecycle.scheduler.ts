@@ -13,6 +13,7 @@
 //                → redeemed; one on a ticket that was removed → released
 // Every ten minutes:
 //   aggregation  deal_daily_stats for today and yesterday, recomputed from the facts (idempotent)
+//   daily check  the promotion reconciliation run, recorded once per salon per 24 hours (extras Promotions Management 10)
 import { runTick } from '@aipowersalon/observability';
 import { utcDate } from '@aipowersalon/date-time';
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
@@ -23,9 +24,10 @@ import { OutboxWriter, createDomainEvent, DOMAIN_EVENTS } from '@aipowersalon/ev
 import { KyselyDealsLedger } from './deals-ledger.kysely';
 import { canMoveToSql } from '@aipowersalon/database';
 import { DEAL_REDEMPTION_HOLD, DEAL } from './deal-lifecycles';
+import { runScheduledPromotionChecks } from '../salon-promotions/coupon-center';
 
 const rowsOf = (r: any): any[] => (r && Array.isArray(r.rows) ? r.rows : []);
-export const DEALS_JOB = { lifecycle: 'deals.lifecycle', aggregate: 'deals.aggregate_daily' } as const;
+export const DEALS_JOB = { lifecycle: 'deals.lifecycle', aggregate: 'deals.aggregate_daily', promotionChecks: 'deals.promotion_checks_daily' } as const;
 const TICK_MS = 60_000;
 const AGGREGATE_EVERY_MS = 10 * 60_000;
 const BATCH = 500;
@@ -126,6 +128,8 @@ export function registerDealsJobHandlers(db: AppDatabase | null, outbox: OutboxW
     const day = typeof payload.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(payload.day) ? payload.day : utcDate();
     return { day, rows: await aggregateDealDay(db, day) };
   });
+  // extras Promotions Management 10: the daily reconciliation run (each salon at most once per 24 hours)
+  if (!jobHandlerFor(DEALS_JOB.promotionChecks)) registerJobHandler(DEALS_JOB.promotionChecks, async () => ({ salons: await runScheduledPromotionChecks(db) }));
 }
 
 /** On unless DEALS_LIFECYCLE_ENABLED is explicitly off. */
@@ -163,5 +167,8 @@ export class DealsLifecycleScheduler implements OnModuleInit, OnModuleDestroy {
     // re-rolling yesterday catches late refunds and events that arrived after its last run
     const now = Date.now();
     for (const at of [now - 86_400_000, now, now + 86_400_000]) await aggregateDealDay(this.db, utcDate(new Date(at)));
+    // extras Promotions Management 10: the daily promotion reconciliation (salons without a scheduled run in the last 23 hours)
+    const checked = await runScheduledPromotionChecks(this.db);
+    if (checked) this.log.log(`daily promotion reconciliation: ${checked} salon(s)`);
   }
 }

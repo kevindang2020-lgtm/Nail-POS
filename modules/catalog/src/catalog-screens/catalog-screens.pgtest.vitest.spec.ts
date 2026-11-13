@@ -97,6 +97,16 @@ describe('Service Menu / Service Pricing list', () => {
     expect(d.branches.map((b) => [b.name, b.current, b.offered, b.priceCents, b.differsFromThis])).toEqual([['Main', true, true, 5500, false], ['Uptown', false, true, 6000, true]]);
     expect(d.sales90d).toMatchObject({ lines: 1, cents: 5500, lastChargedCents: 5500 });
     await expect(repo.serviceDetail(ctx, id('d9'))).rejects.toThrow(/not found/i);
+    expect(d.salonDefault).toEqual({ source: 'none' });                                   // no template behind it → said so, never invented
+  });
+  it('SERVICES PRODUCTS 2 · 06 (round 10): the salon-wide default beside the branches is the platform template a branch row was copied from', async () => {
+    const tplId = '9b3c0000-0000-4000-8000-000000000001';
+    await q(`insert into service_templates (id, code, name, suggested_duration_minutes, suggested_price_min_cents, suggested_price_max_cents, status) values ($1, 'gel-950', 'Gel Manicure (template)', 45, 5000, 6500, 'published')`, [tplId]);
+    await q(`insert into service_template_deployments (template_id, tenant_id, copied_service_id) values ($1, $2, $3)`, [tplId, T, GEL]);
+    const d = await repo.serviceDetail(ctxAll, GEL);
+    expect(d.salonDefault).toMatchObject({ source: 'platform_template', templateName: 'Gel Manicure (template)', durationMinutes: 45, priceMinCents: 5000, priceMaxCents: 6500 });
+    const other = await repo.serviceDetail(ctx2, (await repo.services(ctx2, { q: 'gel', page: 1, pageSize: 10 })).items[0]!.serviceId);
+    expect(other.salonDefault).toEqual({ source: 'none' });                               // another salon never sees this deployment
   });
 });
 

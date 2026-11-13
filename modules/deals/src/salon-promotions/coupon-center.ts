@@ -10,10 +10,11 @@
 //   POST pos/coupons/assistant/draft    §16 the owner's edited suggestion saved as a DRAFT coupon + audit row; never
 //                                       activates, never sends — Publish (owner/manager) is the separate approval step
 // Tenant pinned in every statement; a branch user sees salon-wide coupons and their branch's. Money is integer cents.
+import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one system context
 import { sql, type Kysely } from 'kysely';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
-import { DATABASE, tenantTimeZone, ListQuery } from '@aipowersalon/database';
+import { tenantTimeZone, ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COUPON_ASSIST_BODY, COUPON_ASSIST_DRAFT_BODY, COUPON_CHECK_BODY } from '../request-schemas';
 import { DealsService, DealConflictError, DealForbiddenError, DealValidationError } from '../deals/deals.service';
@@ -164,11 +165,11 @@ export class CouponCenter {
   }
 
   /** audit B1–B4 (Nov 4 2026): a recorded run of the same read-only checks (who, when, what) — the history the screen shows */
-  async runHealth(ctx: DealContext) {
+  async runHealth(ctx: DealContext, trigger: 'manual' | 'scheduled' = 'manual') {
     const r = await this.health(ctx);
     const area = this.scope === 'coupon' ? 'coupons' : 'deals';
-    const row = (await sql<any>`insert into marketing_health_runs (tenant_id, branch_id, area, overall, checks, checked_by)
-        values (${ctx.tenantId}, ${ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null}, ${area}, ${r.overall}, ${JSON.stringify(r.checks)}::jsonb, ${UUID.test(String(ctx.userId)) ? ctx.userId : null})
+    const row = (await sql<any>`insert into marketing_health_runs (tenant_id, branch_id, area, overall, checks, checked_by, trigger_type)
+        values (${ctx.tenantId}, ${ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null}, ${area}, ${r.overall}, ${JSON.stringify(r.checks)}::jsonb, ${trigger === 'manual' && UUID.test(String(ctx.userId)) ? ctx.userId : null}, ${trigger})
         returning id, created_at`.execute(this.db)).rows[0];
     return { ...r, runId: String(row.id), checkedAt: iso(row.created_at) };
   }
@@ -178,11 +179,11 @@ export class CouponCenter {
     const bw = ctx.branchId && UUID.test(ctx.branchId) ? sql`and (h.branch_id = ${ctx.branchId} or h.branch_id is null)` : sql``;
     const total = N((await sql<any>`select count(*)::int as n from marketing_health_runs h where h.tenant_id = ${ctx.tenantId} and h.area = ${area} ${bw}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const page = Math.min(page0, totalPages);
-    const rows = (await sql<any>`select h.id, h.overall, h.checks, h.created_at, coalesce(nullif(u.full_name, ''), u.email) as by_name from marketing_health_runs h
+    const rows = (await sql<any>`select h.id, h.overall, h.checks, h.created_at, h.trigger_type, coalesce(nullif(u.full_name, ''), u.email) as by_name from marketing_health_runs h
         left join users u on u.id = h.checked_by and u.tenant_id = h.tenant_id
         where h.tenant_id = ${ctx.tenantId} and h.area = ${area} ${bw} order by h.created_at desc, h.id desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     return { items: rows.map((r: any) => { const checks = Array.isArray(r.checks) ? r.checks : [];
-      return { id: String(r.id), overall: String(r.overall), at: iso(r.created_at), by: r.by_name ?? null, attention: checks.filter((c: any) => c?.status !== 'ready').map((c: any) => String(c.key)), checks }; }),
+      return { id: String(r.id), overall: String(r.overall), at: iso(r.created_at), by: r.by_name ?? null, trigger: r.trigger_type === 'scheduled' ? 'scheduled' : 'manual', attention: checks.filter((c: any) => c?.status !== 'ready').map((c: any) => String(c.key)), checks }; }),
       page, pageSize, totalItems: total, totalPages };
   }
 
@@ -282,6 +283,20 @@ export class CouponCenter {
     }
     return { deal: view, status: view.status, editedFields: edited, suggestion: sug, note: 'Saved as a draft. Nothing is live and nothing was sent; an owner or manager activates it with Publish.' };
   }
+}
+
+/** extras Promotions Management 10 (round 10): the DAILY reconciliation. For every salon with a coupon / promotion, once per
+ *  24 hours, the same read-only checks the screen's "Run check" records (promotion usage vs finalized Checkout, counters,
+ *  holds, expiry) run salon-wide and are recorded as a 'scheduled' run (checked_by NULL). Nothing else is written; a salon
+ *  that already has a scheduled run in the last 23 hours is skipped, so the 10-minute tick never doubles it. Returns how
+ *  many salons were checked. CROSS-TENANT BY DESIGN (a platform sweep); each run names its own tenant. */
+export async function runScheduledPromotionChecks(db: Kysely<any>, limit = 200): Promise<number> {
+  const due = (await sql<{ tenant_id: string }>`select distinct d.tenant_id from deals d
+      where d.kind = 'coupon' and not exists (select 1 from marketing_health_runs h where h.tenant_id = d.tenant_id and h.area = 'coupons' and h.trigger_type = 'scheduled' and h.created_at > now() - interval '23 hours')
+      order by d.tenant_id limit ${limit}`.execute(db)).rows;
+  const center = new CouponCenter(db, null as unknown as DealsService, null, 'coupon');   // health() reads the database only
+  for (const t of due) await center.runHealth(systemContext({ tenantId: String(t.tenant_id), actor: 'deals.promotion_checks_daily' }), 'scheduled');
+  return due.length;
 }
 
 export const COUPON_CENTER = 'COUPON_CENTER';

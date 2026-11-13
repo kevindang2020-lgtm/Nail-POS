@@ -67,6 +67,17 @@ const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 // owner and manager was refused here although the route guard (the same rule) had let them in
 const has = (ctx: McCtx, p: string) => hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], p);
 const addDays = (d: string, k: number) => addYmdDays(d, k);
+/** extras (MONEY PROTECTION ALERTS 06): what a search matched on, masked — the raw value never leaves the server. */
+export function maskedMatch(field: unknown, value: unknown): { field: string; shown: string | null } | null {
+  if (typeof field !== 'string' || !field) return null;
+  const v = typeof value === 'string' ? value : '';
+  if (field === 'customer_phone') { const d = v.replace(/[^0-9]/g, ''); return { field, shown: d.length >= 4 ? '•••• ' + d.slice(-4) : null }; }
+  if (field === 'customer_name') { const [first, ...rest] = v.trim().split(/\s+/); const last = rest.length ? rest[rest.length - 1] : ''; return { field, shown: first ? first + (last ? ' ' + last[0].toUpperCase() + '.' : '') : null }; }
+  if (field === 'source_ref') return { field, shown: v.length > 4 ? '••••' + v.slice(-4) : v ? '••••' : null };
+  if (field === 'alert_id' || field === 'record_id') return { field, shown: v.slice(0, 8) || null };
+  if (field === 'rule') return { field, shown: null };
+  return { field, shown: v || null };   // hóa đơn number / staff name: shown as the list already shows them
+}
 const esc = (s: string) => '%' + s.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
 const arr = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 const RULE = new Map(RULE_CATALOG.map((r) => [r.id, r]));
@@ -82,6 +93,10 @@ export interface McDeps {
   scheduled: () => boolean;
   /** Threshold Change Preview (Rules 09): the service's dry run (service.previewThresholds) — never saves, never raises an alert */
   previewRule?: (ctx: McCtx, ruleId: string, thresholds: Record<string, unknown>) => Promise<unknown>;
+  /** extras (AI Fraud Money Protection 09): one branch's Net Sales for a salon-day window, read from the Sales REPORT
+   *  (ReportsService.getSales — its own definition, financial permission and branch access); 'forbidden' when the person
+   *  may not see financials. Absent → the per-branch summary carries no sales figure. */
+  branchNetSales?: (ctx: McCtx, branchId: string, from: string, to: string) => Promise<{ netSalesCents: number } | 'forbidden'>;
 }
 
 export class MoneyProtectionCenter {
@@ -178,9 +193,43 @@ export class MoneyProtectionCenter {
         created: N(run.created_alerts), updated: N(run.updated_alerts), errorCode: run.error_code ?? null } : null,
       lastSuccessAt: iso(ok?.at),
       notifications: await this.notificationLimits(T),
+      byBranch: await this.byBranch(ctx),
       canRunDetection: has(ctx, 'ai_money_protection.manage_rules'), canAct: has(ctx, 'ai_money_protection.investigate'),
       definitions: { valueUnderReview: 'sum of open alerts\' amounts under review — never a confirmed loss', open: MC_OPEN, dismissed: 'DISMISSED_FALSE_POSITIVE' },
     };
+  }
+
+  /** extras (AI Fraud Money Protection 09): the permitted multi-branch summary — one row per branch the session may see
+   *  (a branch-bound session: that branch only), the SAME definitions as the cards (open = MC_OPEN, value under review =
+   *  open alerts' amounts, never a loss), and beside it the branch's Net Sales for the last 30 salon days taken from the
+   *  Sales report itself (never re-summed here). Financials hidden → netSales null + financials 'forbidden'. Salon-wide
+   *  alerts with no branch are counted once in `unbranched`, never spread across branches. */
+  private async byBranch(ctx: McCtx) {
+    const T = ctx.tenantId;
+    const bound = isUuid(ctx.branchId) ? ctx.branchId : null;
+    const branches = (await sql<Row>`select b.id, b.name from branches b where b.tenant_id = ${T} and b.status = 'active' ${bound ? sql`and b.id = ${bound}::uuid` : sql``} order by b.name, b.id`.execute(this.db)).rows;
+    const counts = (await sql<Row>`select a.branch_id, count(*)::int as open_alerts, count(*) filter (where a.severity = 'CRITICAL')::int as critical,
+        coalesce(sum(a.amount_cents), 0)::bigint as under_review from money_protection_alerts a
+      where a.tenant_id = ${T} and a.status = any(${MC_OPEN}::text[]) and ${this.scope(sql`a.branch_id`, ctx).w} group by a.branch_id`.execute(this.db)).rows;
+    const by = new Map(counts.map((r) => [r.branch_id == null ? '' : String(r.branch_id), r]));
+    let financials: 'included' | 'forbidden' | 'not_connected' = this.deps.branchNetSales ? 'included' : 'not_connected';
+    const rows = [];
+    for (const b of branches) {
+      const c = by.get(String(b.id));
+      let netSalesCents: number | null = null; let window: { from: string; to: string } | null = null;
+      if (financials === 'included' && this.deps.branchNetSales) {
+        const tz = await branchTimeZone(this.db, T, String(b.id));
+        const to = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(this.now()));
+        window = { from: addYmdDays(to, -29), to };
+        const r = await this.deps.branchNetSales(ctx, String(b.id), window.from, window.to);
+        if (r === 'forbidden') { financials = 'forbidden'; window = null; } else netSalesCents = N(r.netSalesCents);
+      }
+      rows.push({ branchId: String(b.id), branch: b.name ?? null, openAlerts: N(c?.open_alerts), critical: N(c?.critical), valueUnderReviewCents: N(c?.under_review), netSalesCents, salesWindow: window });
+    }
+    if (financials === 'forbidden') for (const r of rows) { r.netSalesCents = null; r.salesWindow = null; }
+    const u = by.get('');
+    return { rows, financials, salesSource: financials === 'included' ? 'reports.sales.netSalesCents' : null,
+      unbranched: { openAlerts: N(u?.open_alerts), critical: N(u?.critical), valueUnderReviewCents: N(u?.under_review) } };
   }
 
   // ── alerts ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -209,29 +258,44 @@ export class MoneyProtectionCenter {
       const col = dateField === 'last_seen' ? sql`a.last_seen_at` : dateField === 'updated' ? sql`a.updated_at` : sql`a.first_seen_at`;
       where.push(sql`${col} >= ${per.start} and ${col} < ${per.end}`);
     }
+    // extras (MONEY PROTECTION ALERTS 06): one combined search — alert id, rule, hóa đơn number, staff name, the payment's
+    // processor / source reference, and customer name / phone (customers.view only) — each a named predicate so the row can
+    // say WHICH field matched; the matched value is masked before it leaves the server (phone → last 4, name → first name +
+    // initial, reference → last 4). Always this salon (tenant_id on every sub-read) and the branches the session may see.
+    let matchSel: RawBuilder<unknown> = sql`null::text as match_field, null::text as match_value`;
     if (q) {
       const like = esc(q);
       const idq = q.toLowerCase().replace(/[^0-9a-f-]/g, '');
       const ruleIds = RULE_CATALOG.filter((r) => r.name.toLowerCase().includes(q.toLowerCase()) || r.alertType.includes(q.toLowerCase().replace(/ /g, '_'))).map((r) => r.id);
       const digits = q.replace(/[^0-9]/g, '');
       const TK = sql`(select tk.id from tickets tk where tk.tenant_id = ${T} and tk.id::text in (select jsonb_array_elements_text(coalesce(a.related->'ticketIds', '[]'::jsonb))))`;
-      where.push(sql`(a.rule_id = any(${ruleIds}::text[])
-        or ${idq.length >= 6 && idq.length === q.length ? sql`a.id::text like ${idq + '%'} or a.related::text ilike ${'%' + idq + '%'}` : sql`false`}
-        or exists (select 1 from tickets tk where tk.tenant_id = ${T} and tk.id in ${TK} and tk.ticket_number ilike ${like})
-        or exists (select 1 from users u where u.tenant_id = ${T} and u.full_name ilike ${like} and (u.id::text in (select jsonb_array_elements_text(coalesce(a.related->'userIds', '[]'::jsonb)))
-          or u.id in (select p.created_by_user_id from payments p where p.tenant_id = ${T} and p.id::text in (select jsonb_array_elements_text(coalesce(a.related->'transactionIds', '[]'::jsonb))))))
-        ${customers ? sql`or exists (select 1 from tickets tk join customers c on c.id = tk.customer_id and c.tenant_id = tk.tenant_id where tk.tenant_id = ${T} and tk.id in ${TK}
-          and (c.full_name ilike ${like} or ${digits.length >= 4 ? sql`regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g') like ${'%' + digits + '%'}` : sql`false`}))` : sql``})`);
+      const PAY = sql`(select jsonb_array_elements_text(coalesce(a.related->'transactionIds', '[]'::jsonb)))`;
+      const pId = idq.length >= 6 && idq.length === q.length ? sql`(a.id::text like ${idq + '%'} or a.related::text ilike ${'%' + idq + '%'})` : sql`false`;
+      const pRule = sql`a.rule_id = any(${ruleIds}::text[])`;
+      const ticketNo = sql`(select tk.ticket_number from tickets tk where tk.tenant_id = ${T} and tk.id in ${TK} and tk.ticket_number ilike ${like} order by tk.ticket_number limit 1)`;
+      const staffName = sql`(select u.full_name from users u where u.tenant_id = ${T} and u.full_name ilike ${like} and (u.id::text in (select jsonb_array_elements_text(coalesce(a.related->'userIds', '[]'::jsonb)))
+          or u.id in (select p.created_by_user_id from payments p where p.tenant_id = ${T} and p.id::text in ${PAY})) order by u.full_name limit 1)`;
+      const sourceRef = q.length >= 4 ? sql`(select coalesce(case when p.processor_transaction_id ilike ${like} then p.processor_transaction_id end, p.processor_reference_id) from payments p
+          where p.tenant_id = ${T} and p.id::text in ${PAY} and (p.processor_transaction_id ilike ${like} or p.processor_reference_id ilike ${like}) order by p.created_at limit 1)` : sql`null::text`;
+      const custName = customers ? sql`(select c.full_name from tickets tk join customers c on c.id = tk.customer_id and c.tenant_id = tk.tenant_id where tk.tenant_id = ${T} and tk.id in ${TK} and c.full_name ilike ${like} order by c.full_name limit 1)` : sql`null::text`;
+      const custPhone = customers && digits.length >= 4 ? sql`(select c.normalized_phone from tickets tk join customers c on c.id = tk.customer_id and c.tenant_id = tk.tenant_id where tk.tenant_id = ${T} and tk.id in ${TK}
+          and regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g') like ${'%' + digits + '%'} order by c.normalized_phone limit 1)` : sql`null::text`;
+      where.push(sql`(${pRule} or ${pId} or ${ticketNo} is not null or ${staffName} is not null or ${sourceRef} is not null or ${custName} is not null or ${custPhone} is not null)`);
+      const pOwnId = idq.length >= 6 && idq.length === q.length ? sql`a.id::text like ${idq + '%'}` : sql`false`;
+      matchSel = sql`case when ${pOwnId} then 'alert_id' when ${pId} then 'record_id' when ${ticketNo} is not null then 'ticket' when ${sourceRef} is not null then 'source_ref'
+          when ${custPhone} is not null then 'customer_phone' when ${custName} is not null then 'customer_name' when ${staffName} is not null then 'staff' when ${pRule} then 'rule' end as match_field,
+        case when ${pOwnId} then a.id::text when ${pId} then ${idq} when ${ticketNo} is not null then ${ticketNo} when ${sourceRef} is not null then ${sourceRef}
+          when ${custPhone} is not null then ${custPhone} when ${custName} is not null then ${custName} when ${staffName} is not null then ${staffName} end as match_value`;
     }
     const W = sql.join(where, sql` and `);
     const order = sort === 'oldest' ? sql`a.first_seen_at asc, a.id asc`
       : sort === 'severity' ? sql`case a.severity when 'CRITICAL' then 5 when 'HIGH' then 4 when 'MEDIUM' then 3 when 'LOW' then 2 else 1 end desc, a.last_seen_at desc, a.id desc`
       : sort === 'value' ? sql`a.amount_cents desc, a.last_seen_at desc, a.id desc` : sql`a.last_seen_at desc, a.id desc`;
     const total = N((await sql<Row>`select count(*)::int as n from money_protection_alerts a where a.tenant_id = ${T} and ${W}`.execute(this.db)).rows[0]?.n);
-    const rows = (await sql<Row>`select a.id, a.rule_id, a.alert_type, a.severity, a.status, a.risk_score, a.confidence, a.amount_cents, a.event_count, a.first_seen_at, a.last_seen_at, a.updated_at, a.investigation_id, b.name as branch from money_protection_alerts a left join branches b on b.id = a.branch_id and b.tenant_id = a.tenant_id
+    const rows = (await sql<Row>`select a.id, a.rule_id, a.alert_type, a.severity, a.status, a.risk_score, a.confidence, a.amount_cents, a.event_count, a.first_seen_at, a.last_seen_at, a.updated_at, a.investigation_id, b.name as branch, ${matchSel} from money_protection_alerts a left join branches b on b.id = a.branch_id and b.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     return {
-      items: rows.map((r) => this.alertOut(r)),
+      items: rows.map((r) => (q ? { ...this.alertOut(r), match: maskedMatch(r.match_field, r.match_value) } : this.alertOut(r))),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, status: group, severity, category, rule, dateField, sort, preset: per.preset, from: per.from, to: per.to },
       period: { today: per.today, timeZone: per.tz }, customersVisible: customers,

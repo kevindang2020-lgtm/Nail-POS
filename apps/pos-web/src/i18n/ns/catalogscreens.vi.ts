@@ -514,4 +514,7 @@ export const CATALOGSCREENS_VI = {
   "cg.ao.pf.none": "Không có dịch vụ thêm nào được bán trên hóa đơn đã thanh toán trong thời gian này.", // DRAFT — Kevin reviews
   "cg.ao.pf.noRecipeN": "{n} dịch vụ thêm chưa có công thức nên không hiển thị chi phí cho {v} doanh thu (không tính vào tổng chi phí).", // DRAFT — Kevin reviews
   "cg.ao.pf.basis": "Cách tính: các dòng dịch vụ thêm trên hóa đơn đã thanh toán trong thời gian này (giờ của tiệm); bỏ qua hóa đơn đã hoàn tiền hoặc hủy. Chi phí công thức = số lượng bán × công thức theo giá vốn sản phẩm hôm nay (không phải lượng hàng thực dùng). Chưa trừ hoa hồng, thuế và công.", // DRAFT — Kevin reviews
+  "cg.def.title": "Mặc định toàn tiệm", // DRAFT — Kevin reviews
+  "cg.def.template": "Từ mẫu của nền tảng “{n}” (gợi ý)", // DRAFT — Kevin reviews
+  "cg.def.none": "Không có — mỗi chi nhánh giữ giá và thời lượng riêng", // DRAFT — Kevin reviews
 };

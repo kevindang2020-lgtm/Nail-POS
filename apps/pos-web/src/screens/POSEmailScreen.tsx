@@ -12,8 +12,9 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtMoney } from '../i18n/format';
 import { posSettingsApi } from '../api/posSettingsApi';
 import { posCustomersApi } from '../api/posCustomersApi';
-import { posEmailCenterApi, type EmSettings, type EmSummary, type EmHealth, type EmPage, type EmDetail, type EmStatus, type EmRecipientCheck } from '../api/posEmailCenterApi';
-import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
+import { posEmailCenterApi, type EmSettings, type EmSummary, type EmHealth, type EmPage, type EmDetail, type EmStatus, type EmRecipientCheck, type EmTestPreview } from '../api/posEmailCenterApi';
+import { posCustomerNotificationsApi } from '../api/posCustomerNotificationsApi';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId, downloadText } from '../components/FitKit';
 import { PeriodBar, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { reportError } from './reportsCommon';
 import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
@@ -42,6 +43,9 @@ export function POSEmailScreen() {
   const [pg, setPg] = useState(1); const [size, setSize] = useState<number>(20);
   const [checking, setChecking] = useState(false); const [healthMsg, setHealthMsg] = useState<string | null>(null);
   const [testTo, setTestTo] = useState(''); const [testOk, setTestOk] = useState(false); const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [testPv, setTestPv] = useState<EmTestPreview | null>(null);   // extras Email 06: the wizard's preview step (read only)
+  const [resending, setResending] = useState(false);   // extras Email 08: one Resend request at a time from this screen
+  const [exportMsg, setExportMsg] = useState<string | null>(null); const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState<EmDetail | null>(null); const [resendOk, setResendOk] = useState(false); const [detailMsg, setDetailMsg] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
 
@@ -74,12 +78,24 @@ export function POSEmailScreen() {
     } catch (e: any) { setSaveState('failed'); setSaveMsg(e?.message || null); }
   };
   const check = async () => { setChecking(true); setHealthMsg(null); try { setHealth(await posEmailCenterApi.check()); void loadTop(); } catch (e: any) { setHealthMsg(e?.message || t('emc.r.failed')); } finally { setChecking(false); } };
-  const sendTest = async () => { setTestMsg(null); try { const r = await posEmailCenterApi.test(testTo.trim(), requestId()); setTestMsg(outcome(r.outcome)); setTestOk(false); void refresh(); } catch (e: any) { setTestMsg(e?.message || t('emc.r.failed')); } };
+  const previewTest = async () => { setTestMsg(null); setTestOk(false); try { setTestPv(await posEmailCenterApi.testPreview(testTo.trim())); } catch (e: any) { setTestPv(null); setTestMsg(e?.message || t('emc.r.failed')); } };
+  const sendTest = async () => { setTestMsg(null); try { const r = await posEmailCenterApi.test(testTo.trim(), requestId()); setTestMsg(outcome(r.outcome)); setTestOk(false); setTestPv(await posEmailCenterApi.testPreview(testTo.trim()).catch(() => null)); void refresh(); } catch (e: any) { setTestMsg(e?.message || t('emc.r.failed')); } };
+  // the preview belongs to the address it was made for; typing another address asks for a new preview
+  const testReady = !!testPv && testPv.recipient?.address === testTo.trim().toLowerCase() && testPv.recipient?.staff === true;
+  // extras Email 15: the authorized, masked, audited notification-records export, narrowed to email and this screen's filters
+  const exportEmail = async () => {
+    setExporting(true); setExportMsg(null);
+    try { const csv = await posCustomerNotificationsApi.exportCsv({ channel: 'email', ...pq, q: q.trim() || undefined }); downloadText('email-records.csv', String(csv)); setExportMsg(t('emc.exp.done')); }
+    catch (e: any) { setExportMsg(e?.message || t('emc.r.failed')); }
+    finally { setExporting(false); }
+  };
   const openDetail = async (id: string) => { setDetailMsg(null); setResendOk(false); try { setDetail(await posEmailCenterApi.detail(id)); } catch (e: any) { setError(reportError(e, t('emc.d.title'))); } };
   const resend = async () => {
-    if (!detail) return;
+    if (!detail || resending) return;
+    setResending(true);
     try { const r = await posEmailCenterApi.resend(detail.id, requestId()); setDetailMsg(t('emc.d.resend.done', { o: r.refusalCode ? `${outcome('refused')} (${r.refusalCode})` : outcome(r.outcome) })); setResendOk(false); void loadHistory(); void loadTop(); setDetail(await posEmailCenterApi.detail(detail.id)); }
     catch (e: any) { setDetailMsg(e?.message || t('emc.r.failed')); }
+    finally { setResending(false); }
   };
 
   const server: ServerPeriod | null = summary?.window ? { preset: summary.window.preset as ServerPeriod['preset'], from: summary.window.from, to: summary.window.to, tz: summary.window.tz, today: summary.window.today } : null;
@@ -138,12 +154,28 @@ export function POSEmailScreen() {
             ))}
           </ul>
           <div className="sub">{t('emc.h.last')}: {health?.lastCheckedAt ? at(health.lastCheckedAt, tz) : t('emc.h.never')} · {t('emc.h.lastOk')}: {health?.lastSuccessAt ? at(health.lastSuccessAt, tz) : '—'}</div>
+          {health?.evidence ? <div className="emc-evidence" data-testid="emc-evidence">
+            <h4>{t('emc.ev.title')}</h4>
+            <div className="sub">{t('emc.ev.lastAccepted')}: {at(health.evidence.lastAcceptedAt, tz)} · {t('emc.ev.lastDelivered')}: {at(health.evidence.lastDeliveredAt, tz)}</div>
+            {health.evidence.events.length ? <ol className="emc-events" data-testid="emc-ev-list">{health.evidence.events.map((e, i) => <li key={`${e.emailId}-${i}`} data-testid="emc-ev">
+              {at(e.at, tz)} · {statusLabel('state', e.status)} · {e.verified ? t('emc.d.verified') : t('emc.ev.unsigned')}{e.applied ? ` · ${t('emc.d.applied')}` : ` · ${t('emc.ev.evidenceOnly')}`}
+              {' '}<button type="button" className="btn ghost sm" onClick={() => void openDetail(e.emailId)}>{t('emc.hist.view')}</button></li>)}</ol>
+              : <div className="sub" data-testid="emc-ev-none">{t('emc.ev.none')}</div>}
+          </div> : null}
           <div className="emc-save"><button type="button" className="btn ghost" disabled={checking} onClick={() => void check()} data-testid="emc-check">{checking ? t('emc.h.checking') : t('emc.h.check')}</button>{healthMsg ? <span className="sub" role="status">{healthMsg}</span> : null}</div>
           <details className="emc-test"><summary>{t('emc.h.test')}</summary>
             <div className="sub">{t('emc.h.test.help')}</div>
-            <input type="email" placeholder={t('emc.h.test.to')} aria-label={t('emc.h.test.to')} value={testTo} onChange={(e) => setTestTo(e.target.value)} data-testid="emc-test-to" />
-            <label className="emc-check"><input type="checkbox" checked={testOk} onChange={(e) => setTestOk(e.target.checked)} data-testid="emc-test-confirm" />{t('emc.h.test.confirm')}</label>
-            <button type="button" className="btn" disabled={!testOk || !testTo.trim()} onClick={() => void sendTest()} data-testid="emc-test-send">{t('emc.h.test.send')}</button>
+            <input type="email" placeholder={t('emc.h.test.to')} aria-label={t('emc.h.test.to')} value={testTo} onChange={(e) => { setTestTo(e.target.value); setTestOk(false); }} data-testid="emc-test-to" />
+            <button type="button" className="btn ghost sm" disabled={!testTo.trim()} onClick={() => void previewTest()} data-testid="emc-test-preview">{t('emc.tw.preview')}</button>
+            {testPv ? <div className="emc-preview" data-testid="emc-test-pv">
+              {testPv.recipient ? <div className={testPv.recipient.staff ? 'sub' : 'fk-note'} role="status" data-testid="emc-test-staff">{t(testPv.recipient.staff ? 'emc.tw.staff' : 'emc.tw.notStaff', { a: testPv.recipient.address })}</div> : null}
+              <b>{testPv.subject}</b><pre className="emc-body">{testPv.body}</pre>
+              <h4>{t('emc.tw.history')}</h4>
+              {testPv.history.length ? <ol className="emc-events" data-testid="emc-test-history">{testPv.history.map((h) => <li key={h.id}>{at(h.at, tz)} · {h.to} · {t('emc.st.' + h.status)}{h.reason ? ` — ${h.reason}` : ''}{h.deliveredAt ? ` · ${t('emc.d.delivered')} ${at(h.deliveredAt, tz)}` : ''}</li>)}</ol>
+                : <div className="sub" data-testid="emc-test-history-none">{t('emc.tw.noHistory')}</div>}
+            </div> : null}
+            <label className="emc-check"><input type="checkbox" checked={testOk} disabled={!testReady} onChange={(e) => setTestOk(e.target.checked)} data-testid="emc-test-confirm" />{t('emc.h.test.confirm')}</label>
+            <button type="button" className="btn" disabled={!testOk || !testReady} onClick={() => void sendTest()} data-testid="emc-test-send">{t('emc.h.test.send')}</button>
             {testMsg ? <div className="sub" role="status" data-testid="emc-test-msg">{testMsg}</div> : null}
           </details>
         </section>
@@ -152,7 +184,10 @@ export function POSEmailScreen() {
       <DeliveryHygiene summary={summary} tz={tz} />
 
       <section className="panel emc-history" data-testid="emc-history">
-        <div className="emc-row"><h3>{t('emc.hist.title')}</h3><span className="sub" data-testid="emc-count">{page ? t('emc.hist.count', { n: page.total }) : ''}</span></div>
+        <div className="emc-row"><h3>{t('emc.hist.title')}</h3><span className="sub" data-testid="emc-count">{page ? t('emc.hist.count', { n: page.total }) : ''}</span>
+          <button type="button" className="btn ghost sm" disabled={exporting} onClick={() => void exportEmail()} data-testid="emc-export">{exporting ? t('emc.exp.busy') : t('emc.exp.button')}</button>
+          {exportMsg ? <span className="sub" role="status" data-testid="emc-export-msg">{exportMsg}</span> : null}</div>
+        <div className="sub">{t('emc.exp.rule')}</div>
         <div className="emc-filters">
           <input className="fk-search emc-search" placeholder={t('emc.hist.search')} aria-label={t('emc.hist.search')} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="emc-search" />
           <select className="fk-select" aria-label={t('emc.hist.status')} value={status} onChange={(e) => setStatus(e.target.value)} data-testid="emc-f-status">
@@ -174,7 +209,8 @@ export function POSEmailScreen() {
                   <td>{at(r.createdAt, tz)}</td>
                   <td><div className="emc-strong">{r.customer?.name ?? '—'}</div><div className="sub">{r.to}</div>{r.subject ? <div className="sub emc-subject">{r.subject}</div> : null}</td>
                   <td>{t('emc.cat.' + r.category)}</td>
-                  <td><span className={`emc-badge ${tone(r.status) ?? ''}`} data-testid="emc-row-status">{t('emc.st.' + r.status)}</span>{r.reason ? <div className="sub emc-reason">{r.reason}</div> : null}</td>
+                  <td><span className={`emc-badge ${tone(r.status) ?? ''}`} data-testid="emc-row-status">{t('emc.st.' + r.status)}</span>{r.reason ? <div className="sub emc-reason">{r.reason}</div> : null}
+                    {r.nextAction ? <div className="emc-next" data-testid="emc-row-next">→ {t('emc.next2.' + r.nextAction)}</div> : null}</td>
                   <td><button type="button" className="btn ghost sm" onClick={() => void openDetail(r.id)} data-testid="emc-row-view">{t('emc.hist.view')}</button></td>
                 </tr>))}
               </tbody>
@@ -192,6 +228,7 @@ export function POSEmailScreen() {
           footer={<button type="button" className="btn ghost" onClick={() => setDetail(null)} data-testid="emc-d-close">{t('emc.d.close')}</button>}>
           <dl className="emc-dl">
             <dt>{t('emc.hist.statusCol')}</dt><dd><span className={`emc-badge ${tone(detail.status) ?? ''}`} data-testid="emc-d-status">{t('emc.st.' + detail.status)}</span>{detail.reason ? ` — ${detail.reason}` : ''}</dd>
+            {detail.nextAction ? <><dt>{t('emc.d.next')}</dt><dd data-testid="emc-d-next">{t('emc.next2.' + detail.nextAction)}</dd></> : null}
             <dt>{t('emc.d.from')}</dt><dd>{detail.from.name ? `${detail.from.name} <${detail.from.address}>` : detail.from.address}</dd>
             {detail.replyTo ? <><dt>{t('emc.d.reply')}</dt><dd>{detail.replyTo}</dd></> : null}
             <dt>{t('emc.d.to')}</dt><dd>{detail.to}</dd>
@@ -214,7 +251,7 @@ export function POSEmailScreen() {
           {detail.canResend ? (
             <div className="emc-resend">
               <label className="emc-check"><input type="checkbox" checked={resendOk} onChange={(e) => setResendOk(e.target.checked)} data-testid="emc-d-resend-confirm" />{t('emc.d.resend.confirm')}</label>
-              <button type="button" className="btn" disabled={!resendOk} onClick={() => void resend()} data-testid="emc-d-resend">{t('emc.d.resend')}</button>
+              <button type="button" className="btn" disabled={!resendOk || resending} onClick={() => void resend()} data-testid="emc-d-resend">{t('emc.d.resend')}</button>
             </div>
           ) : null}
           {detailMsg ? <div className="sub" role="status" data-testid="emc-d-msg">{detailMsg}</div> : null}

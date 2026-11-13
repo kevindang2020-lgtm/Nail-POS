@@ -815,6 +815,13 @@ export class CustomerPhoneUpdateService {
     if (!can(ctx.role, 'resolveDuplicate')) throw withCode(new PhoneUpdateError('Only a manager can retry a synchronisation.', 'forbidden'), 'MANAGER_ONLY');
     const s = await this.owned(ctx, sessionId, customerId, { allowClosed: true });
     if (s.state !== 'synchronization_failed') throw withCode(new PhoneUpdateError('This change has nothing left to synchronise.', 'invalid_state', { state: s.state }), 'PHONE_SYNC_NOTHING_LEFT');
+    // PHONE NUMBER MANAGEMENT 4 · 15 (round 10): every replay leaves its own audit row — who replayed which ONE change, written
+    // BEFORE the replay runs (if the audit cannot be written, nothing is replayed). Masked number only; never a batch.
+    await this.audit?.record({
+      tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role,
+      module: 'customer_phone', action: 'phone_sync_replayed', summary: 'Manager replayed a failed customer phone synchronisation (one change)',
+      metadata: { customerId, sessionId, newPhoneMasked: s.newPhoneMask, idempotencyKey: `sync:${sessionId}` },
+    });
     try {
       await this.store.runSync?.(ctx.tenantId, sessionId, this.sync);
       return { state: 'customer_records_synchronized' };

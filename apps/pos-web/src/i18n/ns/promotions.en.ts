@@ -93,4 +93,13 @@ export const PROMOTIONS_EN = {
   'promo.sim.case.split_tenders_short': 'Split payment short',
   'promo.sim.case.refund_one_line_partial': 'Refund one service (partial)',
   'promo.sim.case.refund_whole_ticket_reverses': 'Refund whole ticket',
+  'promo.healthDaily': 'These checks also run on their own once a day; scheduled runs appear in the history below.',
+  'promo.ver.title': 'Terms by version',
+  'promo.ver.rule': 'Each version keeps the exact terms customers got; versions are never edited. A redemption counts against the terms in force when it was made.',
+  'promo.ver.none': 'No stored versions.',
+  'promo.ver.used': '{n} redemption(s) · {v} off · {from} → {to}',
+  'promo.ver.unused': 'Not used',
+  'promo.ver.cap': 'cap {n}',
+  'promo.ver.ends': 'ends {d}',
+  'promo.ver.unversioned': '{n} older redemption(s) were made before versions were stored.',
 } as const;

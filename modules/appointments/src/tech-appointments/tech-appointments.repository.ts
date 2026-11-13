@@ -39,7 +39,8 @@ export interface TechApptRepositoryPort {
   existingForConflict(ctx: TechApptContext, date: string): Promise<{ appointmentId: string; technicianId: string; customerId?: string; startTime: string; endTime: string; status: TAStatus }[]>;
   create(ctx: TechApptContext, item: TAItem, opts?: TASlotOpts): Promise<POSTechAppointmentItem>;
   update(ctx: TechApptContext, id: string, patch: Partial<TAItem>, opts?: TASlotOpts): Promise<boolean>;
-  setStatus(ctx: TechApptContext, id: string, st: TAStatus): Promise<boolean>;
+  /** reason (TECH APPOINTMENTS 10): recorded beside the status change in the appointment change log (a cancel's required reason) */
+  setStatus(ctx: TechApptContext, id: string, st: TAStatus, reason?: string): Promise<boolean>;
   reschedule(ctx: TechApptContext, id: string, technicianId: string | undefined, startTime: string, date: string | undefined, opts?: TASlotOpts): Promise<boolean>;
   assign(ctx: TechApptContext, id: string, technicianId: string, opts?: TASlotOpts): Promise<boolean>;
   nextSeq(): number;

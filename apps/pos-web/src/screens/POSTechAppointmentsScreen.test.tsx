@@ -142,4 +142,32 @@ describe('Tech Appointments — pending verification (extras #08)', () => {
     await screen.findAllByTestId('appt-row');
     expect(screen.queryByTestId('pending-verification')).toBeNull();
   });
+  // extras round 10 (agent 5): TECH APPOINTMENTS 03 / 04 / 10
+  it('03: each technician card says why it reads as it does (recorded status and when, or none recorded) and opens the appointment being served', async () => {
+    ta.state.mockResolvedValue({ technicians: [
+      { technicianId: 't1', displayName: 'Mia', workingStatus: 'in_service', appointmentCount: 1, scheduledMinutes: 45, availableMinutes: 400, serviceSkillGroups: [], statusWhy: { source: 'technician_status', since: `${DAY}T14:05:00Z`, recorded: 'in_service', servingAppointmentId: 'a1' } },
+      { technicianId: 't2', displayName: 'Leo', workingStatus: 'available', appointmentCount: 0, scheduledMinutes: 0, availableMinutes: 400, serviceSkillGroups: [], statusWhy: { source: 'not_recorded', since: null, recorded: null, servingAppointmentId: null } }],
+      appointments: [], lanes: { page: 1, pageSize: 12, total: 2, totalPages: 1 } });
+    mount();
+    const why = await screen.findAllByTestId('tech-status-why');
+    expect(why[0]).toHaveTextContent(/set /); expect(why[1]).toHaveTextContent('No status recorded today — shown as Available');
+    fireEvent.click(screen.getByTestId('tech-serving'));
+    await waitFor(() => expect(ta.appointment).toHaveBeenCalledWith('a1'));
+  });
+  it('04: the gap finder highlights open gaps at least as long as the chosen service and lists them; shorter gaps are dimmed', async () => {
+    live.board.mockResolvedValue({ technicians: [{ technicianId: 't1', fullName: 'Mia', status: 'available', shift: { startTime: '09:00', endTime: '17:00' }, appointments: [], blocks: [],
+      openSlots: [{ slotId: 't1:540', startTime: '09:00', endTime: '09:30', durationMinutes: 30 }, { slotId: 't1:600', startTime: '10:00', endTime: '11:30', durationMinutes: 90 }] }] });
+    mount();
+    fireEvent.change(await screen.findByTestId('gap-len'), { target: { value: '60' } });
+    expect(await screen.findByTestId('gap-count')).toHaveTextContent('1 open gap(s) of at least 60 min · Mia 10:00 AM–11:30 AM');
+    expect(screen.getAllByTestId('gap-fit')).toHaveLength(1);
+    expect(screen.getAllByTestId('gap-short')).toHaveLength(1);
+    fireEvent.change(screen.getByTestId('gap-len'), { target: { value: '120' } });
+    expect(await screen.findByTestId('gap-count')).toHaveTextContent('No open gap of 120 min or longer today');
+  });
+  it('10: a change recorded with its reason shows the reason in Recent booking changes', async () => {
+    scr.history.mockResolvedValue(page([{ id: 'h2', at: `${DAY}T15:00:00Z`, changeType: 'status_changed', field: 'status', oldValue: 'booked', newValue: 'cancelled', reason: 'Customer called — flu', customer: 'Mai Pham', technician: 'Mia', apptDate: DAY, apptStart: '10:30', actor: 'Pat Owner' }]));
+    mount();
+    expect(await screen.findByTestId('history-reason')).toHaveTextContent('Reason: Customer called — flu');
+  });
 });

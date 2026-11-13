@@ -135,6 +135,11 @@ describe('Smart Priority + Duplicate Message Protection (guide §10, §11)', () 
     const ok = await task(23);
     expect((await fq.contactCheck(T, B, TODAY, ok, 24, false))!.category).toBe('eligible');
     expect((await fq.contactCheck(T, B, TODAY, ok, 24, true))!.category).toBe('needs_approval');
+    // FOLLOW-UP QUEUE 07 (round 10): the permitted purpose and quiet hours are stated by the server
+    const st = (await fq.contactCheck(T, B, TODAY, ok, 24, false))!;
+    expect(st.purpose).toEqual({ code: 'service_follow_up', marketingConsentRequired: false, blockedBySmsStop: true });
+    expect(st.quietHours).toEqual({ applies: false, reason: 'in_app_inbox_only' });
+    expect(st.channel).toBe('customer_app');
   });
   it('an open low-rating concern raises priority with its source timestamp; an upcoming booking lowers it', async () => {
     await q(`insert into reviews (tenant_id, branch_id, customer_id, rating, comment, created_at) values ($1,$2,$3,2,'chipped', now() - interval '3 days')`, [T, B, C(24)]);
@@ -224,5 +229,23 @@ describe('tenant isolation (guide §16, §17)', () => {
     expect(await fq.contactCheck(T, B, TODAY, other, 24, false)).toBeNull();
     expect((await fq.customerHistory(T, B, id('dae')))!.total).toBe(0);
     expect((await fq.missedCalls(T, B, TZ, { q: '1027' })).items.every((i) => i.customerId !== null)).toBe(true);
+  });
+});
+
+// FOLLOW-UP QUEUE 12 (round 10) — the Safe Retry Console: only the failed attempts the send path would accept again
+describe('Safe Retry Console (FOLLOW-UP QUEUE 12)', () => {
+  it('status=retryable lists only "customer not available" tasks that are sendable now; no app / archived / STOP / other salon never; reading writes nothing', async () => {
+    const ok = await task(25, { status: 'customer_not_available' });                       // the customer now has the app
+    await task(26, { status: 'customer_not_available', app: false });                      // still no app
+    await task(29, { status: 'customer_not_available' });                                  // archived customer
+    await task(27, { status: 'customer_not_available' });                                  // texted STOP
+    await q(`insert into notification_opt_outs (tenant_id, channel, address) values ($1, 'sms', '+16095551027')`, [T]);
+    await task(28, { status: 'expired' });                                                 // not a failed attempt
+    const before = (await q(`select count(*)::int as n, max(updated_at) as u from service_follow_up_tasks`))[0];
+    const r = await fq.list(T, B, TZ, TODAY, 24, { view: 'history', status: 'retryable', basis: 'created', page: 1, pageSize: 50 });
+    expect(r.items.map((i: any) => i.id)).toEqual([ok]);
+    const x = await fq.list(TX, BX, TZ, TODAY, 24, { view: 'history', status: 'retryable', basis: 'created', page: 1, pageSize: 50 });
+    expect(x.items).toEqual([]);
+    expect((await q(`select count(*)::int as n, max(updated_at) as u from service_follow_up_tasks`))[0]).toEqual(before);
   });
 });

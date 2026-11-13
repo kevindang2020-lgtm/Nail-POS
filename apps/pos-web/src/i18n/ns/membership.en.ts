@@ -159,4 +159,11 @@ export const MEMBERSHIP_EN = {
   'mpc.benefitsCount': 'Benefits: {a} now → {b} in the new version.',
   'mpc.publish': 'Publish version {v}',
   'mpc.published': '{name}: version {v} published. Current members keep their terms.',
+  'mos.stmt.title': 'Monthly statement',
+  'mos.stmt.rule': 'Every payment of each month in this period (any status), split by how it was collected. Invoice collections count as confirmed only while their invoice is paid in Invoices.',
+  'mos.stmt.month': 'Month',
+  'mos.stmt.card': 'Card',
+  'mos.stmt.recorded': 'Recorded by staff',
+  'mos.stmt.invoice': 'Invoice',
+  'mos.stmt.unconfirmed': '{amount} not confirmed by Invoices',
 };

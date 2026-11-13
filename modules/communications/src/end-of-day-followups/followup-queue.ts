@@ -31,7 +31,7 @@ export const FUQ_KPI_BASIS = 'due_date';                  // every counter is on
 export const REBOOK_WINDOW_DAYS = 30;                     // a booking / return visit counts when made within 30 days of the send
 export const QUEUE_BASES = ['created', 'due', 'sent', 'last_visit', 'rebooked'] as const;
 export const QUEUE_VIEWS = ['queue', 'history'] as const;
-export const QUEUE_STATUS = ['all', 'unsent', 'pending', 'pending_manager_approval', 'rejected', 'sent', 'skipped', 'closed', 'expired', 'customer_not_available', 'rebooked'] as const;
+export const QUEUE_STATUS = ['all', 'unsent', 'pending', 'pending_manager_approval', 'rejected', 'sent', 'skipped', 'closed', 'expired', 'customer_not_available', 'rebooked', 'retryable'] as const;
 export const QUEUE_PRIORITY = ['high', 'normal', 'low'] as const;
 export const QUEUE_DUE = ['overdue', 'due_today', 'upcoming'] as const;
 export const SKIP_REASONS = ['customer_declined', 'contacted_another_way', 'already_booked', 'no_follow_up_needed', 'wrong_customer', 'other'] as const;
@@ -153,6 +153,12 @@ export class FollowUpQueue {
     else if (st === 'closed') conds.push(sql`f.status = any(${['skipped', 'dismissed', 'expired', 'customer_not_available', 'failed']}::text[])`);
     else if (st === 'rebooked') conds.push(sql`f.sent_at is not null and exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id
         and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show'))`);
+    // FOLLOW-UP QUEUE 12 (round 10) — the Safe Retry Console: ONLY the failed attempts the send path would accept again — a
+    // "customer not available" task whose customer now has the app, whose visit still stands, who is not archived and has not
+    // texted STOP; the original attempt stays as it is (Retry is the same claimAndSendTask, one task, one message)
+    else if (st === 'retryable') conds.push(sql`f.status = 'customer_not_available' and f.customer_app_user_id is not null and not (${sourceCancelledSql('f')})
+        and exists (select 1 from customers rc where rc.tenant_id = f.tenant_id and rc.id = f.customer_id and coalesce(rc.status, 'active') <> 'archived'
+          and not exists (select 1 from notification_opt_outs ro where ro.tenant_id = f.tenant_id and ro.channel = 'sms' and coalesce(rc.normalized_phone, '') <> '' and ro.address = rc.normalized_phone))`);
     else if (st !== 'all') conds.push(sql`f.status = ${st}`);
     if (f.technicianId && UUID.test(f.technicianId)) conds.push(sql`f.technician_id = ${f.technicianId}::uuid`);
     if (f.due === 'overdue') conds.push(sql`f.status = any(${UNSENT}::text[]) and f.business_date < ${today}::date`);
@@ -229,6 +235,11 @@ export class FollowUpQueue {
       otherChannel: lastMessage ? { channel: lastMessage.channel, purpose: lastMessage.purpose ?? null, status: lastMessage.status, at: iso(lastMessage.created_at), enforced: false } : null,
       optOuts: optOuts.map((o: any) => ({ channel: o.channel, at: iso(o.opted_out_at), enforced: o.channel === 'sms' })),
       marketing: { sms: r.marketing_sms_opt_in === true, email: r.marketing_email_opt_in === true },
+      // FOLLOW-UP QUEUE 07 (round 10): the permitted purpose and quiet hours, stated by the server rather than implied — a service
+      // follow-up about a visit the customer had is a service message (marketing consent is not what permits it; an SMS STOP still
+      // blocks it, above), and it is written only to the Customer App inbox, which sends no text or call, so quiet hours do not apply
+      purpose: { code: 'service_follow_up', marketingConsentRequired: false, blockedBySmsStop: true },
+      quietHours: { applies: false, reason: 'in_app_inbox_only' },
       upcomingBooking: r.bk_d ?? null,
       priority: priorityOf((UNSENT.includes(r.status) && r.business_date < today ? 2 : 0) + (r.cn_at ? 2 : 0) - (r.bk_d ? 2 : 0) - (r.rc_at ? 1 : 0) - (n(r.un_n) >= 2 ? 1 : 0)),
       priorityReasons: this.reasonsOf(r, today), priorityVersion: FUQ_PRIORITY_VERSION,

@@ -258,7 +258,9 @@ export function Financial({ x }: { x: any }) {
  *  associated revenue (sales the offer was used on, not caused by it), discount cost, campaign spend (only when the provider
  *  reported every message's cost) and incremental lift (always unverified) — and the same counts per location. Read-only. */
 type OfferRoiView = { associatedRevenueCents: number; associatedTickets: number; discountCostCents: number; redemptions: number;
-  campaignSpend: { campaigns: number; messagesSent: number; messagesCosted: number; spendCents: number | null; state: 'no_campaign' | 'cost_unknown' | 'known' }; incrementalLift: 'unverified' };
+  campaignSpend: { campaigns: number; messagesSent: number; messagesCosted: number; spendCents: number | null; state: 'no_campaign' | 'cost_unknown' | 'known' }; incrementalLift: 'unverified';
+  /** extras Promotions Management 12 — revenue − discount − reported spend, computed by the server; never incremental (older servers: absent) */
+  measuredContribution?: { cents: number | null; basis: 'revenue_minus_discount' | 'revenue_minus_discount_and_spend' | 'spend_unknown'; incremental: false } };
 type OfferBranchRow = { branchId: string | null; branchName: string | null; redemptions: number; uniqueCustomers: number; discountCents: number; associatedTickets: number; associatedRevenueCents: number };
 export function RoiExplained({ roi, byBranch }: { roi: OfferRoiView; byBranch: OfferBranchRow[] }) {
   const sp = roi.campaignSpend;
@@ -270,6 +272,8 @@ export function RoiExplained({ roi, byBranch }: { roi: OfferRoiView; byBranch: O
       <dt>{tx('cp.roi.spend')}</dt><dd data-testid="roi-spend">{sp.state === 'known' && sp.spendCents != null ? tx('cp.roi.spendKnown', { a: fmtMoney(sp.spendCents), n: nf(sp.campaigns), m: nf(sp.messagesSent) })
         : sp.state === 'cost_unknown' ? tx('cp.roi.spendUnknown', { c: nf(sp.messagesCosted), m: nf(sp.messagesSent) }) : tx('cp.roi.noCampaign')}</dd>
       <dt>{tx('cp.roi.lift')}</dt><dd data-testid="roi-lift">{tx('cp.roi.liftUnverified')}</dd>
+      {roi.measuredContribution ? <><dt>{tx('cp.roi.contribution')}</dt><dd data-testid="roi-contribution">{roi.measuredContribution.cents == null ? tx('cp.roi.contributionUnknown') : fmtMoney(roi.measuredContribution.cents)}
+        <div className="fk-hint">{tx('cp.roi.contrib.' + roi.measuredContribution.basis)} {tx('cp.roi.notIncremental')}</div></dd></> : null}
     </dl>
     {byBranch.length ? <>
       <h4 className="fk-sub">{tx('cp.roi.branches')}</h4>
@@ -347,6 +351,15 @@ export function CheckDialog({ dealId, name, services, onClose, check = posCoupon
       {res.eligible ? <b data-testid="check-discount">{tx('cp.wouldTake', { v: fmtMoney(res.discountPreviewCents), b: fmtMoney(res.eligibleBaseCents) })}</b> : null}
       <div className="fk-hint">{tx('cp.va.' + res.verdict)}</div>
       {res.reasons.length ? <ul className="fk-list dense">{res.reasons.map((r, i) => <li key={i} className="fk-li"><span className="fk-li-t">{tx('cp.v.' + r.code)}</span><span className="fk-li-s">{r.message}</span></li>)}</ul> : null}
+      {res.terms ? <dl className="fk-dl mo-dl" data-testid="check-terms">
+        <dt>{tx('cp.terms.version')}</dt><dd>v{res.terms.version}</dd>
+        <dt>{tx('cp.terms.value')}</dt><dd data-testid="check-terms-value">{res.terms.discountType === 'percent' ? `${res.terms.discountPercent ?? '—'}%` : res.terms.discountCents != null ? fmtMoney(res.terms.discountCents) : '—'}{res.terms.maxDiscountCents != null ? ` · ${tx('cp.terms.cap', { v: fmtMoney(res.terms.maxDiscountCents) })}` : ''}</dd>
+        <dt>{tx('cp.terms.dates')}</dt><dd>{res.terms.startsAt ? fmtInZone(res.terms.startsAt, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'} → {res.terms.endsAt ? fmtInZone(res.terms.endsAt, { month: 'short', day: 'numeric', year: 'numeric' }) : tx('cp.terms.noEnd')}</dd>
+        <dt>{tx('cp.terms.minSpend')}</dt><dd>{res.terms.minSpendCents != null ? fmtMoney(res.terms.minSpendCents) : '—'}</dd>
+        <dt>{tx('cp.terms.uses')}</dt><dd data-testid="check-terms-uses">{res.terms.maxRedemptions != null ? tx('cp.terms.usesOf', { n: nf(res.terms.redemptionCount), m: nf(res.terms.maxRedemptions) }) : nf(res.terms.redemptionCount)}{res.terms.maxPerCustomer != null ? ` · ${tx('cp.terms.perCustomer', { n: nf(res.terms.maxPerCustomer) })}` : ''}</dd>
+        <dt>{tx('cp.terms.who')}</dt><dd>{[res.terms.newCustomersOnly ? tx('cp.terms.newOnly') : null, res.terms.memberOnly ? tx('cp.terms.memberOnly') : null, res.terms.requiresCode ? tx('cp.terms.code') : null, res.terms.serviceIds.length ? tx('cp.terms.services', { n: nf(res.terms.serviceIds.length) }) : null].filter(Boolean).join(' · ') || tx('cp.terms.everyone')}</dd>
+        <dd className="fk-hint" style={{ gridColumn: '1 / -1' }}>{tx('cp.terms.note')}</dd>
+      </dl> : null}
       {res.stacking ? <div data-testid="check-stacking">
         <div className="fk-li-t" style={{ marginTop: 8 }}>{tx('cp.stk.title', { m: tx('cp.stk.mode.' + res.stacking.mode) })}</div>
         <ul className="fk-list dense">{res.stacking.rows.map((r) => (

@@ -94,4 +94,13 @@ export const PROMOTIONS_VI: Record<keyof typeof PROMOTIONS_EN, string> = {
   'promo.sim.case.split_tenders_short': 'Trả nhiều cách nhưng thiếu', // DRAFT — Kevin reviews
   'promo.sim.case.refund_one_line_partial': 'Hoàn một dịch vụ (một phần)', // DRAFT — Kevin reviews
   'promo.sim.case.refund_whole_ticket_reverses': 'Hoàn cả vé', // DRAFT — Kevin reviews
+  'promo.healthDaily': 'Các kiểm tra này cũng tự chạy mỗi ngày một lần; các lần chạy theo lịch hiện trong lịch sử bên dưới.', // DRAFT — Kevin reviews
+  'promo.ver.title': 'Điều khoản theo phiên bản', // DRAFT — Kevin reviews
+  'promo.ver.rule': 'Mỗi phiên bản giữ đúng điều khoản khách đã nhận; phiên bản không bao giờ bị sửa. Mỗi lượt dùng được tính theo điều khoản có hiệu lực lúc đó.', // DRAFT — Kevin reviews
+  'promo.ver.none': 'Không có phiên bản nào được lưu.', // DRAFT — Kevin reviews
+  'promo.ver.used': '{n} lượt dùng · giảm {v} · {from} → {to}', // DRAFT — Kevin reviews
+  'promo.ver.unused': 'Chưa dùng', // DRAFT — Kevin reviews
+  'promo.ver.cap': 'giới hạn {n}', // DRAFT — Kevin reviews
+  'promo.ver.ends': 'kết thúc {d}', // DRAFT — Kevin reviews
+  'promo.ver.unversioned': '{n} lượt dùng cũ được thực hiện trước khi có lưu phiên bản.', // DRAFT — Kevin reviews
 };

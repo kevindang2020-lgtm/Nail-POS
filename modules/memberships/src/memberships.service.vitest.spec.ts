@@ -84,3 +84,27 @@ describe('publish immutable version', () => {
     await expect(svc.getPlan(ctx, 'nope')).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+// extras Membership Overview 16 · 08 (round 10): per-branch access + the PII audit event on the three exports
+describe('membership exports — location access and audit', () => {
+  it('a whole-salon user exports any or every location; each export writes one audit row (list, location, rows, actor)', async () => {
+    const repo = new InMemoryMembershipsRepository(); const s = new MembershipsService(repo);
+    await s.exportMembers(ctx); await s.exportPayments(ctx, 'b2'); await s.exportRedemptions(ctx);
+    expect(repo.exportAudit).toEqual([
+      { kind: 'members', branchId: null, rows: 0, userId: 'u1' }, { kind: 'payments', branchId: 'b2', rows: 0, userId: 'u1' }, { kind: 'redemptions', branchId: null, rows: 0, userId: 'u1' }]);
+  });
+  it('a user with location grants is confined: another location → BRANCH_ACCESS_DENIED (no audit, no rows); none chosen → their one location', async () => {
+    const repo = new InMemoryMembershipsRepository(); const s = new MembershipsService(repo);
+    const one: MembershipsContext = { ...ctx, authz: { scope: 'TENANT', branchIds: ['b1'] } };
+    await expect(s.exportMembers(one, 'b2')).rejects.toMatchObject({ name: 'ForbiddenError', apiCode: 'BRANCH_ACCESS_DENIED' });
+    expect(repo.exportAudit).toEqual([]);
+    await s.exportPayments(one);
+    expect(repo.exportAudit).toEqual([{ kind: 'payments', branchId: 'b1', rows: 0, userId: 'u1' }]);
+    const two: MembershipsContext = { ...ctx, authz: { scope: 'SELECTED_BRANCHES', branchIds: ['b1', 'b3'] } };
+    await expect(s.exportRedemptions(two)).rejects.toMatchObject({ apiCode: 'BRANCH_ACCESS_DENIED' });   // must choose one
+    await s.exportRedemptions(two, 'b3');
+    const scoped: MembershipsContext = { ...ctx, branchId: 'b9', authz: { scope: 'BRANCH', branchIds: null } };
+    await s.exportMembers(scoped);
+    expect(repo.exportAudit.slice(1).map((a) => a.branchId)).toEqual(['b3', 'b9']);
+  });
+});

@@ -120,6 +120,7 @@ describe('POSCouponsScreen', () => {
     v.unmount();
     render(<MemoryRouter><Financial x={{ ...x, roi: { ...x.roi, campaignSpend: { campaigns: 1, messagesSent: 3, messagesCosted: 1, spendCents: null, state: 'cost_unknown' } }, byBranch: [] }} /></MemoryRouter>);
     expect(await screen.findByTestId('roi-spend')).toHaveTextContent('Not known yet — the provider has reported the cost of 1 of 3 messages.');
+    expect(screen.queryByTestId('roi-contribution')).toBeNull();   // an older server sends no contribution — nothing is computed here
     expect(screen.queryByTestId('roi-branches')).toBeNull();
   });
   it('Extras Coupons & Promotions 02: Related offers lists the server same-benefit offers of any kind; only a coupon opens here; empty says so', async () => {
@@ -140,5 +141,16 @@ describe('POSCouponsScreen', () => {
     v.unmount();
     render(<MemoryRouter><RelatedOffers x={{ related: { campaigns: 0, sameBenefit: [] } }} onOpen={onOpen} /></MemoryRouter>);
     expect(screen.getByText('No other live or upcoming offer gives the same benefit.')).toBeTruthy();
+  });
+  it('extras Promotions Management 12: the measured contribution is the server figure, labelled as NOT incremental; unknown spend → unknown, never guessed', async () => {
+    disc.performance.mockResolvedValue({ items: [] });
+    const base = { associatedRevenueCents: 22000, associatedTickets: 4, discountCostCents: 4500, redemptions: 4, campaignSpend: { campaigns: 1, messagesSent: 2, messagesCosted: 2, spendCents: 2, state: 'known' }, incrementalLift: 'unverified' };
+    const x = { id: 'd1', usage: { confirmed: 4, savingsCents: 4500, reversed: 0, pendingAtCheckout: 0 }, byBranch: [], roi: { ...base, measuredContribution: { cents: 17498, basis: 'revenue_minus_discount_and_spend', incremental: false } } };
+    const v = render(<MemoryRouter><Financial x={x} /></MemoryRouter>);
+    expect(await screen.findByTestId('roi-contribution')).toHaveTextContent('$174.98');
+    expect(screen.getByTestId('roi-contribution')).toHaveTextContent(/not an incremental return/);
+    v.unmount();
+    render(<MemoryRouter><Financial x={{ ...x, roi: { ...base, measuredContribution: { cents: null, basis: 'spend_unknown', incremental: false } } }} /></MemoryRouter>);
+    expect(await screen.findByTestId('roi-contribution')).toHaveTextContent(/Unknown — a campaign's spend is not fully reported/);
   });
 });

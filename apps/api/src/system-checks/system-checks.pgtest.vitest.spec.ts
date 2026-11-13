@@ -620,6 +620,133 @@ describe('shared read-only Check … System', () => {
     expect(count(b2, 'live_membership_archived_customer').count).toBe(1);
     expect((await q(tally)).rows).toEqual(before);
   });
+  it('extras Membership Overview 16·01 / 16·02 / 16·06 (round 10) — accuracy, KPI-to-ledger and Discounts / Booking / Reports wiring; branch-scoped; never another salon; writes nothing', async () => {
+    // own salon pair (ids 5500..5599, agent-5 round-10 range)
+    const T5 = id(5500), X5 = id(5501), B51 = id(5502), B52 = id(5503), BX5 = id(5504), C1 = id(5505), C2 = id(5506), CX = id(5507);
+    const PL = id(5508), PV = id(5509), PL2 = id(5510), PV2 = id(5511), PLB = id(5512), PVB = id(5513), PLX = id(5514), PVX = id(5515);
+    const M1 = id(5520), M1D = id(5521), M2 = id(5522), M3 = id(5523), M4 = id(5524), MB = id(5525), MX = id(5526), MXD = id(5527);
+    const K1 = id(5530), K2 = id(5531), KX = id(5532), D1 = id(5533), DX = id(5534);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T5}, 'A5', 'Accuracy5', 'sc-5500', 'SC5500', 'active'), (${X5}, 'AX5', 'OtherA5', 'sc-5501', 'SC5501', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B51}, ${T5}, 'Main'), (${B52}, ${T5}, 'Second'), (${BX5}, ${X5}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C1}, ${T5}, ${B51}, 'Ann', 'One', 'Ann One', '+15550055001'), (${C2}, ${T5}, ${B52}, 'Bea', 'Two', 'Bea Two', '+15550055002'), (${CX}, ${X5}, ${BX5}, 'Oth', 'Er', 'Oth Er', '+15550055003')`);
+    await q(sql`insert into membership_plans (id, tenant_id, branch_id, name, status) values (${PL}, ${T5}, null, 'Gold', 'active'), (${PL2}, ${T5}, null, 'Silver', 'active'),
+      (${PLB}, ${T5}, ${B51}, 'Main only', 'active'), (${PLX}, ${X5}, null, 'Gold X', 'active')`);
+    await q(sql`insert into membership_plan_versions (id, plan_id, tenant_id, version_number, price_cents) values (${PV}, ${PL}, ${T5}, 1, 4900), (${PV2}, ${PL2}, ${T5}, 1, 2900),
+      (${PVB}, ${PLB}, ${T5}, 1, 3900), (${PVX}, ${PLX}, ${X5}, 1, 4900)`);
+    // M1 + M1D: Ann twice on Gold (duplicate, B1). M2: Bea on Silver with Gold's terms (B2). M3: Bea, period ends before it starts
+    // and cancelled with no cancel time (B2). M4: Ann on Silver, audit says 'paused' but status is active (B1). MB: Ann on the
+    // Main-only plan. The other salon holds the same duplicate (never counted).
+    await q(sql`insert into customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, auto_renew, auto_renew_consent_at, started_at, current_period_start, current_period_end, canceled_at) values
+      (${M1}, ${T5}, ${B51}, ${C1}, ${PL}, ${PV}, 'active', false, now(), now() - interval '20 days', now() - interval '20 days', now() + interval '10 days', null),
+      (${M1D}, ${T5}, ${B51}, ${C1}, ${PL}, ${PV}, 'trial', false, now(), now() - interval '2 days', now() - interval '2 days', now() + interval '28 days', null),
+      (${M2}, ${T5}, ${B52}, ${C2}, ${PL2}, ${PV}, 'active', false, now(), now() - interval '5 days', now() - interval '5 days', now() + interval '25 days', null),
+      (${M3}, ${T5}, ${B52}, ${C2}, ${PL}, ${PV}, 'canceled', false, now(), now() - interval '40 days', now() - interval '10 days', now() - interval '20 days', null),
+      (${M4}, ${T5}, ${B51}, ${C1}, ${PL2}, ${PV2}, 'active', false, now(), now() - interval '9 days', now() - interval '9 days', now() + interval '21 days', null),
+      (${MB}, ${T5}, ${B51}, ${C1}, ${PLB}, ${PVB}, 'active', false, now(), now() - interval '9 days', now() - interval '9 days', now() + interval '21 days', null),
+      (${MX}, ${X5}, ${BX5}, ${CX}, ${PLX}, ${PVX}, 'active', false, now(), now(), now(), now() + interval '30 days', null),
+      (${MXD}, ${X5}, ${BX5}, ${CX}, ${PLX}, ${PVX}, 'canceled', false, now(), now(), now() + interval '30 days', now(), null)`);
+    // M4: the last recorded transition says 'paused' (active → paused) — the row says active; M1 matches its last transition
+    await q(sql`insert into membership_audit (tenant_id, branch_id, customer_membership_id, action, prev_state, new_state, created_at) values
+      (${T5}, ${B51}, ${M4}, 'membership.paused', 'active', 'paused', now() - interval '1 day'),
+      (${T5}, ${B51}, ${M1}, 'membership.enrolled', null, 'active', now() - interval '20 days')`);
+    // payments: M1 succeeded but never settled (in no KPI month); M2's collection filed under branch 1; M4's settled fine;
+    // the other salon's unsettled one (never counted)
+    await q(sql`insert into membership_payments (tenant_id, branch_id, customer_membership_id, customer_id, kind, amount_cents, status, idempotency_key, settled_at) values
+      (${T5}, ${B51}, ${M1}, ${C1}, 'renewal', 4900, 'succeeded', 'sc5500-unsettled', null),
+      (${T5}, ${B51}, ${M2}, ${C2}, 'enrollment', 2900, 'succeeded', 'sc5500-otherbranch', now()),
+      (${T5}, ${B51}, ${M4}, ${C1}, 'renewal', 2900, 'succeeded', 'sc5500-fine', now()),
+      (${X5}, ${BX5}, ${MX}, ${CX}, 'renewal', 4900, 'succeeded', 'sc5500-x', null)`);
+    // wiring: K1 (B1, paid) carries M1's benefit AND a live deal while stacking is off, the benefit's allocated value is over its
+    // standard price and no technician is named; K2 (B2) carries the Main-only plan's benefit. The other salon has the same (never).
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, paid_at) values
+      (${K1}, ${T5}, ${B51}, ${C1}, 'paid', 4900, now()), (${K2}, ${T5}, ${B52}, ${C1}, 'open', 3900, null), (${KX}, ${X5}, ${BX5}, ${CX}, 'paid', 4900, now())`);
+    await q(sql`insert into deal_settings (tenant_id, allow_stack_membership) values (${T5}, false), (${X5}, false)`);
+    await q(sql`insert into deals (id, tenant_id, branch_id, owner_type, title, discount_type, discount_percent, status) values
+      (${D1}, ${T5}, ${B51}, 'salon', 'Fall 10%', 'percent', 10, 'active'), (${DX}, ${X5}, ${BX5}, 'salon', 'Fall X', 'percent', 10, 'active')`);
+    await q(sql`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, ticket_id, deal_version, status) values
+      (${D1}, ${T5}, ${B51}, ${C1}, ${K1}, 1, 'redeemed'), (${DX}, ${X5}, ${BX5}, ${CX}, ${KX}, 1, 'redeemed')`);
+    await q(sql`insert into membership_redemptions (tenant_id, branch_id, customer_membership_id, ticket_id, standard_value_cents, allocated_value_cents, technician_id) values
+      (${T5}, ${B51}, ${M1}, ${K1}, 4900, 5200, null), (${T5}, ${B52}, ${MB}, ${K2}, 3900, 3900, ${id(5540)}), (${X5}, ${BX5}, ${MX}, ${KX}, 4900, 5200, null)`);
+    const tally = sql`select (select count(*) from customer_memberships) + (select count(*) from membership_payments) + (select count(*) from membership_redemptions) + (select count(*) from membership_audit) as n`;
+    const before = (await q(tally)).rows;
+    const all = await svc.run('memberships', { tenantId: T5 });
+    expect(count(all, 'duplicate_live_membership')).toMatchObject({ state: 'WARNING', count: 1 });       // Ann on Gold twice; the other salon's pair never
+    expect(count(all, 'plan_version_other_plan')).toMatchObject({ state: 'FAILED', count: 1 });          // M2 (Silver with Gold's terms)
+    expect(count(all, 'period_window_inverted')).toMatchObject({ state: 'WARNING', count: 1 });          // M3
+    expect(count(all, 'cancelled_without_time')).toMatchObject({ state: 'WARNING', count: 1 });          // M3; the other salon's MXD never
+    expect(count(all, 'status_not_last_transition')).toMatchObject({ state: 'WARNING', count: 1 });      // M4 (audit 'paused', row 'active')
+    expect(count(all, 'collected_missing_from_kpi')).toMatchObject({ state: 'WARNING', count: 1 });      // M1's unsettled renewal
+    expect(count(all, 'payment_scope_differs')).toMatchObject({ state: 'WARNING', count: 1 });           // M2's collection filed under branch 1
+    expect(count(all, 'stacked_with_deal_not_allowed')).toMatchObject({ state: 'WARNING', count: 1 });   // K1
+    expect(count(all, 'redeemed_outside_plan_branch')).toMatchObject({ state: 'WARNING', count: 1 });    // K2 (B2) for the Main-only plan
+    expect(count(all, 'redemption_value_over_standard')).toMatchObject({ state: 'FAILED', count: 1 });   // K1's 5200 over 4900
+    expect(count(all, 'paid_redemption_no_technician')).toMatchObject({ state: 'WARNING', count: 1 });   // K1 paid, nobody named; K2 is unpaid
+    // drill-down: the duplicate pair opens BOTH memberships; the KPI miss opens the payment
+    const dup = await svc.rows('memberships', 'duplicate_live_membership', { tenantId: T5 });
+    expect(dup.rows.map((r: any) => r.membershipId).sort()).toEqual([M1, M1D].sort());
+    const b2 = await svc.run('memberships', { tenantId: T5, branchId: B52 });
+    expect(count(b2, 'duplicate_live_membership').count).toBe(0);
+    expect(count(b2, 'period_window_inverted').count).toBe(1);
+    expect(count(b2, 'payment_scope_differs').count).toBe(1);   // scoped by the MEMBERSHIP's branch (M2 is B2)
+    expect(count(b2, 'collected_missing_from_kpi').count).toBe(0);
+    expect(count(b2, 'stacked_with_deal_not_allowed').count).toBe(0);
+    expect((await q(tally)).rows).toEqual(before);
+  });
+  it('extras Membership Overview 16·07 (round 10) — member reminder texts the provider failed or never acknowledged; other reminders, old rows and another salon never; writes nothing', async () => {
+    const T5 = id(5580), X5 = id(5581), B51 = id(5582), B52 = id(5583), BX5 = id(5584), C1 = id(5585), C2 = id(5586), CX = id(5587), PL = id(5588), PV = id(5589), PLX = id(5590), PVX = id(5591);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T5}, 'R5', 'Receipt5', 'sc-5580', 'SC5580', 'active'), (${X5}, 'RX5', 'OtherR5', 'sc-5581', 'SC5581', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B51}, ${T5}, 'Main'), (${B52}, ${T5}, 'Second'), (${BX5}, ${X5}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values
+      (${C1}, ${T5}, ${B51}, 'Ra', 'One', 'Ra One', '+15550055801'), (${C2}, ${T5}, ${B52}, 'Rb', 'Two', 'Rb Two', '+15550055802'), (${CX}, ${X5}, ${BX5}, 'Rx', 'X', 'Rx X', '+15550055803')`);
+    await q(sql`insert into membership_plans (id, tenant_id, name, status) values (${PL}, ${T5}, 'Gold', 'active'), (${PLX}, ${X5}, 'Gold X', 'active')`);
+    await q(sql`insert into membership_plan_versions (id, plan_id, tenant_id, version_number, price_cents) values (${PV}, ${PL}, ${T5}, 1, 4900), (${PVX}, ${PLX}, ${X5}, 1, 4900)`);
+    await q(sql`insert into customer_memberships (tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, auto_renew, auto_renew_consent_at) values
+      (${T5}, ${B51}, ${C1}, ${PL}, ${PV}, 'active', false, now()), (${T5}, ${B52}, ${C2}, ${PL}, ${PV}, 'active', false, now()), (${X5}, ${BX5}, ${CX}, ${PLX}, ${PVX}, 'active', false, now())`);
+    const renew = 'Pilot: your Gold membership renews on Nov 20. Reply STOP to opt out.', ends = 'Pilot: your Gold membership ends on Nov 20. Ask us if you\'d like to renew. Reply STOP to opt out.';
+    // C1 (B1): a failed renewal text, a 2-day-old 'sent' one with no receipt, a delivered one; a failed BOOKING reminder (not a
+    // member text); a failed member text 40 days old. C2 (B2): an expiry text sent 3 hours ago (too early to expect a receipt).
+    // The other salon: a failed member text (never counted here).
+    await q(sql`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, purpose, created_at, delivered_at) values
+      (${T5}, 'sms', '+15550055801', ${renew}, ${C1}, 'failed', 'reminder', now() - interval '1 day', null),
+      (${T5}, 'sms', '+15550055801', ${renew}, ${C1}, 'sent', 'reminder', now() - interval '2 days', null),
+      (${T5}, 'sms', '+15550055801', ${ends}, ${C1}, 'delivered', 'reminder', now() - interval '2 days', now() - interval '2 days'),
+      (${T5}, 'sms', '+15550055801', 'Pilot: see you tomorrow at 10:00', ${C1}, 'failed', 'reminder', now() - interval '1 day', null),
+      (${T5}, 'sms', '+15550055801', ${renew}, ${C1}, 'failed', 'reminder', now() - interval '40 days', null),
+      (${T5}, 'sms', '+15550055802', ${ends}, ${C2}, 'sent', 'reminder', now() - interval '3 hours', null),
+      (${X5}, 'sms', '+15550055803', ${renew}, ${CX}, 'failed', 'reminder', now() - interval '1 day', null)`);
+    const before = (await q(sql`select count(*) as n from notifications`)).rows;
+    const all = await svc.run('memberships', { tenantId: T5 });
+    expect(count(all, 'member_text_failed')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(all, 'member_text_no_receipt')).toMatchObject({ state: 'WARNING', count: 1 });
+    const b2 = await svc.run('memberships', { tenantId: T5, branchId: B52 });
+    expect(count(b2, 'member_text_failed').count).toBe(0);
+    expect(count(b2, 'member_text_no_receipt').count).toBe(0);
+    expect((await q(sql`select count(*) as n from notifications`)).rows).toEqual(before);
+  });
+  it('extras Discounts #12 (round 10) — a replayed provider callback on a discounted ticket is counted; a single one, an undiscounted ticket and another salon never; writes nothing', async () => {
+    const T5 = id(5560), X5 = id(5561), B5 = id(5562), BX5 = id(5563), C5 = id(5564), CX = id(5565), K1 = id(5566), K2 = id(5567), K3 = id(5568), KX = id(5569), D1 = id(5570), DX = id(5571);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T5}, 'D5', 'Disc5', 'sc-5560', 'SC5560', 'active'), (${X5}, 'DX5', 'OtherD5', 'sc-5561', 'SC5561', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B5}, ${T5}, 'Main'), (${BX5}, ${X5}, 'Other')`);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values (${C5}, ${T5}, ${B5}, 'D', 'One', 'D One', '+15550055601'), (${CX}, ${X5}, ${BX5}, 'D', 'X', 'D X', '+15550055602')`);
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, paid_at) values
+      (${K1}, ${T5}, ${B5}, ${C5}, 'paid', 4500, now()), (${K2}, ${T5}, ${B5}, ${C5}, 'paid', 4500, now()), (${K3}, ${T5}, ${B5}, ${C5}, 'paid', 4500, now()), (${KX}, ${X5}, ${BX5}, ${CX}, 'paid', 4500, now())`);
+    await q(sql`insert into deals (id, tenant_id, branch_id, owner_type, title, discount_type, discount_percent, status) values (${D1}, ${T5}, ${B5}, 'salon', 'Ten', 'percent', 10, 'active'), (${DX}, ${X5}, ${BX5}, 'salon', 'TenX', 'percent', 10, 'active')`);
+    await q(sql`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, ticket_id, deal_version, status) values
+      (${D1}, ${T5}, ${B5}, ${C5}, ${K1}, 1, 'redeemed'), (${D1}, ${T5}, ${B5}, ${C5}, ${K2}, 1, 'redeemed'), (${DX}, ${X5}, ${BX5}, ${CX}, ${KX}, 1, 'redeemed')`);
+    // K1: the same transaction recorded twice (replayed callback); K2: one payment; K3: duplicated but no deal; KX: other salon
+    await q(sql`insert into payments (tenant_id, branch_id, ticket_id, method, amount_cents, surcharge_cents, tip_cents, tax_cents, discount_cents, change_due_cents, status, processor, processor_transaction_id) values
+      (${T5}, ${B5}, ${K1}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-a'), (${T5}, ${B5}, ${K1}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-a'),
+      (${T5}, ${B5}, ${K2}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-b'),
+      (${T5}, ${B5}, ${K3}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-c'), (${T5}, ${B5}, ${K3}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-c'),
+      (${X5}, ${BX5}, ${KX}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-x'), (${X5}, ${BX5}, ${KX}, 'card', 4500, 0, 0, 0, 0, 0, 'approved', 'clover', 'sc5560-x')`);
+    const before = (await q(sql`select (select count(*) from payments) + (select count(*) from deal_redemptions) as n`)).rows;
+    const r = await svc.run('discounts', { tenantId: T5 });
+    expect(count(r, 'discounted_ticket_duplicate_callback')).toMatchObject({ state: 'FAILED', count: 1 });
+    expect(count(r, 'coupon_use_count_drift').count).toBe(0);
+    expect((await svc.run('discounts', { tenantId: X5 }) as any).checks.find((c: any) => c.key === 'discounted_ticket_duplicate_callback').count).toBe(1);
+    expect((await q(sql`select (select count(*) from payments) + (select count(*) from deal_redemptions) as n`)).rows).toEqual(before);
+  });
 });
 
 // extras Technicians Management Center 07 — Booking / Queue / Technician App sync. Own salon (ids 670–689) so no other

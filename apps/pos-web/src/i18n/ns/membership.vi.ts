@@ -159,4 +159,11 @@ export const MEMBERSHIP_VI = {
   'mpc.benefitsCount': 'Quyền lợi: hiện có {a} → {b} trong phiên bản mới.', // DRAFT — Kevin reviews
   'mpc.publish': 'Phát hành phiên bản {v}', // DRAFT — Kevin reviews
   'mpc.published': '{name}: đã phát hành phiên bản {v}. Hội viên hiện tại giữ điều khoản của họ.', // DRAFT — Kevin reviews
+  'mos.stmt.title': 'Bảng kê theo tháng', // DRAFT — Kevin reviews
+  'mos.stmt.rule': 'Mọi khoản thanh toán của từng tháng trong khoảng thời gian này (mọi trạng thái), chia theo cách thu. Khoản thu qua hóa đơn chỉ được tính là đã xác nhận khi hóa đơn đó đang ở trạng thái đã thanh toán trong mục Hóa đơn.', // DRAFT — Kevin reviews
+  'mos.stmt.month': 'Tháng', // DRAFT — Kevin reviews
+  'mos.stmt.card': 'Thẻ', // DRAFT — Kevin reviews
+  'mos.stmt.recorded': 'Nhân viên ghi nhận', // DRAFT — Kevin reviews
+  'mos.stmt.invoice': 'Hóa đơn', // DRAFT — Kevin reviews
+  'mos.stmt.unconfirmed': '{amount} chưa được mục Hóa đơn xác nhận', // DRAFT — Kevin reviews
 };

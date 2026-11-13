@@ -233,4 +233,22 @@ export const AISETUP_VI: Record<string, string> = {
   "aiset.ev.readiness": "Đổi trạng thái", // DRAFT — Kevin reviews
   "aiset.readinessBy": "người chạy kiểm tra: {by}", // DRAFT — Kevin reviews
   "aiset.readinessSource": "nguồn: {s}", // DRAFT — Kevin reviews
+  "aiset.fresh.updated": "Nguồn thay đổi lần cuối {at}", // DRAFT — Kevin reviews
+  "aiset.fresh.never": "Nguồn chưa từng được lưu", // DRAFT — Kevin reviews
+  "aiset.fresh.live": "đọc trực tiếp lúc có cuộc gọi (không bản sao, không trễ đồng bộ)", // DRAFT — Kevin reviews
+  "aiset.scope.label": "Kiểm tra cho {salon} · {branch}", // DRAFT — Kevin reviews
+  "aiset.scope.unknown": "Không đọc được tiệm và chi nhánh (mã {trace}). Không có gì được giả định.", // DRAFT — Kevin reviews
+  "aiset.scope.otherFaqs": "{n} câu hỏi đã duyệt thuộc chi nhánh khác và không dùng ở đây", // DRAFT — Kevin reviews
+  "aiset.scope.mismatch.branch_not_in_salon": "Chi nhánh bạn đang đăng nhập không thuộc tiệm này. Mức sẵn sàng ở trên có thể không khớp với những gì AI trả lời — hãy đăng nhập vào một chi nhánh của bạn.", // DRAFT — Kevin reviews
+  "aiset.scope.mismatch.branch_removed": "Chi nhánh bạn đang đăng nhập đã bị xóa. AI không phục vụ gì ở đó.", // DRAFT — Kevin reviews
+  "aiset.scope.mismatch.branch_inactive": "Chi nhánh bạn đang đăng nhập không hoạt động. AI có thể không trả lời cho chi nhánh này.", // DRAFT — Kevin reviews
+  "aiset.diff.title": "Thay đổi đang chờ so với câu trả lời hiện hành", // DRAFT — Kevin reviews
+  "aiset.diff.field": "Mục", // DRAFT — Kevin reviews
+  "aiset.diff.live": "Hiện hành (bản {n})", // DRAFT — Kevin reviews
+  "aiset.diff.proposed": "Đề xuất (bản {n})", // DRAFT — Kevin reviews
+  "aiset.diff.f.question": "Câu hỏi", // DRAFT — Kevin reviews
+  "aiset.diff.f.answer": "Câu trả lời", // DRAFT — Kevin reviews
+  "aiset.diff.f.category": "Danh mục", // DRAFT — Kevin reviews
+  "aiset.diff.changed": "đã đổi", // DRAFT — Kevin reviews
+  "aiset.diff.note": "Duyệt sẽ đăng cột đề xuất. Cho đến lúc đó AI vẫn dùng cột hiện hành.", // DRAFT — Kevin reviews
 };

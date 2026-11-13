@@ -6,12 +6,17 @@ import type {
   MemberExportRow, PaymentExportRow, RedemptionExportRow, VersionChangeFacts,
 } from './memberships.dto';
 
+export type MembershipExportKind = 'members' | 'payments' | 'redemptions';
+
 export interface MembershipsContext {
   tenantId: string;
   branchId: string;
   userId: string;
   role: string;
   permissions: string[];
+  /** extras Membership Overview 16 · 08 (round 10): the actor's location grants from the session (authz) — a user with
+   *  explicit grants or a BRANCH / SELECTED_BRANCHES scope is confined to them (same rule as tenant messaging). */
+  authz?: { scope?: string | null; branchIds?: readonly (string | null)[] | null } | null;
 }
 
 export interface MembershipsRepositoryPort {
@@ -25,6 +30,8 @@ export interface MembershipsRepositoryPort {
   exportMembers(ctx: MembershipsContext, branchId?: string): Promise<MemberExportRow[]>;
   exportPayments(ctx: MembershipsContext, branchId?: string): Promise<PaymentExportRow[]>;
   exportRedemptions(ctx: MembershipsContext, branchId?: string): Promise<RedemptionExportRow[]>;
+  /** extras Membership Overview 16 · 08 (round 10): the PII audit event of one export — who, what, which location, how many rows */
+  auditExport?(ctx: MembershipsContext, kind: MembershipExportKind, branchId: string | null, rows: number): Promise<void>;
 }
 
 function emptyKpis(windowDays: number) {
@@ -118,4 +125,6 @@ export class InMemoryMembershipsRepository implements MembershipsRepositoryPort 
   async exportMembers(): Promise<MemberExportRow[]> { return []; }
   async exportPayments(): Promise<PaymentExportRow[]> { return []; }
   async exportRedemptions(): Promise<RedemptionExportRow[]> { return []; }
+  readonly exportAudit: { kind: MembershipExportKind; branchId: string | null; rows: number; userId: string }[] = [];
+  async auditExport(ctx: MembershipsContext, kind: MembershipExportKind, branchId: string | null, rows: number): Promise<void> { this.exportAudit.push({ kind, branchId, rows, userId: ctx.userId }); }
 }

@@ -23,6 +23,8 @@ export interface ContactCheck {
   lastFollowUp: { taskId: string; at: string | null; technicianName: string } | null;
   otherChannel: { channel: string; purpose: string | null; status: string; at: string | null; enforced: boolean } | null;
   optOuts: { channel: string; at: string | null; enforced?: boolean }[]; marketing: { sms: boolean; email: boolean }; upcomingBooking: string | null;
+  /** FOLLOW-UP QUEUE 07 — the server's statement of why this message is permitted and whether quiet hours apply (older servers: absent) */
+  purpose?: { code: string; marketingConsentRequired: boolean; blockedBySmsStop: boolean }; quietHours?: { applies: boolean; reason: string };
   priority: Priority; priorityReasons: FollowUpPriorityReason[]; priorityVersion: string;
 }
 export interface MissedCallRow { id: string; type: 'missed_call'; customerId: string | null; customerName: string | null; callerLast4: string | null; at: string | null; aiHandled: boolean; state: 'recovered' | 'replied' | 'awaiting_callback'; recoveredAppointmentId: string | null }

@@ -30,7 +30,8 @@
     "@aipowersalon/config": "*",
     "@aipowersalon/observability": "*",
     "@aipowersalon/date-time": "*",
-    "@aipowersalon/security": "*"
+    "@aipowersalon/security": "*",
+    "@aipowersalon/tenant-context": "*"
   },
   "devDependencies": {
     "@aipowersalon/testing": "*",

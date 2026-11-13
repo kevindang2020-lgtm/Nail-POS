@@ -179,4 +179,13 @@ export const FUQ_VI = {
   'fuq.cd.note': 'Từ dòng thời gian của khách (tin nhắn, email, nhắc hẹn, hóa đơn, chăm sóc sau dịch vụ). Chỉ xem — không gửi gì từ đây.', // DRAFT — Kevin reviews
   'fuq.cc.source_cancelled': 'Lượt khách đã hủy (phiếu bị hủy, mở lại hoặc dịch vụ bị gỡ) — không thể gửi', // DRAFT — Kevin reviews
   'fuq.cc.optOutSms': 'Đã nhắn STOP ngày {time} — không gửi tin theo dõi cho khách này qua bất kỳ kênh nào, và không thể bỏ qua', // DRAFT — Kevin reviews
+  'fuq.run.last': 'Lần tạo gần nhất: {date} · {status} · {trigger} · {time}', // DRAFT — Kevin reviews
+  'fuq.run.counts': '{found} tìm thấy · {created} đã tạo · {skipped} bỏ qua', // DRAFT — Kevin reviews
+  'fuq.run.idem': 'Chạy lại cho cùng ngày sẽ không tạo trùng.', // DRAFT — Kevin reviews
+  'fuq.run.none': 'Chưa có lần tạo nào.', // DRAFT — Kevin reviews
+  'fuq.cc.purpose.service_follow_up': 'Mục đích: hỏi thăm sau dịch vụ của lần ghé này', // DRAFT — Kevin reviews
+  'fuq.cc.noMarketingConsent': 'không cần đồng ý nhận tiếp thị; tin nhắn STOP vẫn chặn', // DRAFT — Kevin reviews
+  'fuq.cc.quietApplies': 'Giờ yên lặng áp dụng cho tin này.', // DRAFT — Kevin reviews
+  'fuq.cc.quiet.in_app_inbox_only': 'Giờ yên lặng không áp dụng: tin chỉ vào hộp thư Ứng dụng Khách — không gửi tin nhắn hay gọi điện.', // DRAFT — Kevin reviews
+  'fuq.f.retryable': 'Sẵn sàng gửi lại (đã lỗi, nay gửi được)', // DRAFT — Kevin reviews
 };

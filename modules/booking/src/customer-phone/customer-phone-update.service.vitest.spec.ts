@@ -301,3 +301,32 @@ describe('a code that was never SENT cannot be verified', () => {
     expect(calls).not.toContain('ACTIVATE');
   });
 });
+
+// PHONE NUMBER MANAGEMENT 4 · 15 (round 10): the safe sync replay leaves its own audit row BEFORE it runs
+describe('retrySync — one change, audited first', () => {
+  const failedStore = (calls: string[], audits: any[], auditFails = false) => {
+    const sync: SyncPort = { async synchronize() { calls.push('sync'); return true; } };
+    const store = {
+      async settings() { return { ...SETTINGS }; },
+      async session() { return { id: 'sess-9', customerId: 'c1', state: 'synchronization_failed', newPhoneHash: HASH, newPhoneMask: '••••4567', oldPhoneId: 'old-1', source: 'staff_pos', customerVersion: 1, newPhoneId: 'new-1', closed: true, expired: false }; },
+      async runSync() { calls.push('runSync'); return true; },
+      async scheduleSyncRetry() { calls.push('scheduleSyncRetry'); },
+    } as unknown as PhoneStore;
+    const audit = { async record(a: any) { calls.push('audit'); if (auditFails) throw new Error('audit down'); audits.push(a); } };
+    return new CustomerPhoneUpdateService(store, { async send() { return { status: 'code_sent', message: '' }; }, async check() { return { status: 'phone_verified', message: '' }; } } as VerificationPort, sync, audit, { async phoneChanged() { /* none */ } });
+  };
+  it('writes one phone_sync_replayed audit row (masked number, the change\'s durable key) before the replay runs', async () => {
+    const calls: string[] = []; const audits: any[] = [];
+    const r = await failedStore(calls, audits).retrySync(ctx(), 'sess-9', 'c1');
+    expect(r.state).toBe('customer_records_synchronized');
+    expect(calls.indexOf('audit')).toBeLessThan(calls.indexOf('runSync'));
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({ action: 'phone_sync_replayed', module: 'customer_phone', metadata: { sessionId: 'sess-9', customerId: 'c1', newPhoneMasked: '••••4567', idempotencyKey: 'sync:sess-9' } });
+    expect(JSON.stringify(audits)).not.toMatch(/\d{7,}/);
+  });
+  it('if the audit row cannot be written, nothing is replayed', async () => {
+    const calls: string[] = [];
+    await expect(failedStore(calls, [], true).retrySync(ctx(), 'sess-9', 'c1')).rejects.toThrow(/audit down/);
+    expect(calls).not.toContain('runSync');
+  });
+});

@@ -101,4 +101,26 @@ describe('tech-appointments slot guard (create / move / reassign / service chang
     expect((await rowOf(id)).start_time).toBe('18:00');
     expect((await repo.detail(ctx as any, id))?.version).toBe(v1 + 1);   // the DTO carries it for the client
   });
+  it('TECH APPOINTMENTS 10 (round 10): a cancel with its reason writes the status change and the reason in ONE change-log statement (same time), so History Diff can show it', async () => {
+    const id = await mk(TECH2, 15 * 60, 30);
+    expect(await repo.setStatus(ctx as any, id, 'cancelled', '  Customer called — flu  ')).toBe(true);
+    const rows = (await pg.query(`select change_type, field, old_value, new_value, created_at from appointment_change_log where tenant_id = $1 and appointment_id = $2 and change_type = 'status_changed' order by field`, [T, id])).rows as any[];
+    expect(rows.map((r) => [r.field, r.old_value, r.new_value])).toEqual([['reason', null, 'Customer called — flu'], ['status', 'booked', 'cancelled']]);
+    expect(String(rows[0].created_at)).toBe(String(rows[1].created_at));
+    const id2 = await mk(TECH2, 16 * 60, 30);
+    await repo.setStatus(ctx as any, id2, 'no_show');            // no reason given → no reason row
+    expect((await pg.query(`select count(*)::int as n from appointment_change_log where appointment_id = $1 and field = 'reason'`, [id2])).rows[0].n).toBe(0);
+  });
+  it('TECH APPOINTMENTS 03 (round 10): each technician card says WHY it reads as it does — the latest recorded status and when, or that none was recorded; the appointment being served', async () => {
+    await pg.query(`insert into technician_statuses (tenant_id, branch_id, technician_id, status, changed_at) values ($1,$2,$3,'on_break', now() - interval '2 hours'), ($1,$2,$3,'in_service', now() - interval '5 minutes')`, [T, B, TECH1]);
+    const serving = await mk(TECH1, 20 * 60, 30);
+    await pg.query(`update pos_tech_appointments set status = 'in_service' where id = $1`, [serving]);
+    const st: any = await repo.query(ctx as any, { date: DATE } as any);
+    const mia = st.technicians.find((x: any) => x.technicianId === TECH1), leo = st.technicians.find((x: any) => x.technicianId === TECH2);
+    expect(mia.workingStatus).toBe('in_service');                                  // the LATEST status, not the older break
+    expect(mia.statusWhy).toMatchObject({ source: 'technician_status', recorded: 'in_service', servingAppointmentId: serving });
+    expect(new Date(mia.statusWhy.since).getTime()).toBeGreaterThan(Date.now() - 10 * 60_000);
+    expect(leo.workingStatus).toBe('available');
+    expect(leo.statusWhy).toMatchObject({ source: 'not_recorded', since: null, recorded: null, servingAppointmentId: null });
+  });
 });

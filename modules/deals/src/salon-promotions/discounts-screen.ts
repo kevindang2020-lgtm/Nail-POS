@@ -404,6 +404,14 @@ export class DiscountsScreenRepository {
         campaignSpend: { campaigns, messagesSent: submitted, messagesCosted: costed, spendCents,
           state: campaigns === 0 ? 'no_campaign' as const : spendCents == null ? 'cost_unknown' as const : 'known' as const },
         incrementalLift: 'unverified' as const,
+        // extras Promotions Management 12 (round 10): the measured contribution — associated ticket revenue minus the discount
+        // given minus campaign spend when the provider reported it. It is NOT an incremental return (those sales may have
+        // happened anyway); unknown (null) whenever a campaign's spend is not fully known — never a guessed figure.
+        measuredContribution: {
+          cents: campaigns > 0 && spendCents == null ? null : sum('sales') - sum('saved') - (spendCents ?? 0),
+          basis: campaigns === 0 ? 'revenue_minus_discount' as const : spendCents == null ? 'spend_unknown' as const : 'revenue_minus_discount_and_spend' as const,
+          incremental: false as const,
+        },
       },
       byBranch: rows.map((x) => ({ branchId: x.branch_id ? String(x.branch_id) : null, branchName: x.branch_name ?? null, redemptions: N(x.n), uniqueCustomers: N(x.customers),
         discountCents: N(x.saved), associatedTickets: N(x.tickets), associatedRevenueCents: N(x.sales) })),

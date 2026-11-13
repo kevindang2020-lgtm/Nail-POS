@@ -171,4 +171,14 @@ export const TEAMAPPOINTMENTS_VI = {
   'tm.gq.fits': '{n} trên {t} dịch vụ vừa — dài nhất: {s} ({m} phút) · sau {b} phút đệm giữa các lịch', // DRAFT — Kevin reviews
   'tm.gq.none': 'Không dịch vụ nào vừa: còn {u} phút sau {b} phút đệm', // DRAFT — Kevin reviews
   'tm.gq.note': 'Thời gian đệm theo cài đặt đặt lịch của tiệm. Thợ có được làm dịch vụ đó hay không sẽ được kiểm tra khi đặt giờ.', // DRAFT — Kevin reviews
+  'tm.why.recorded': '{s} — đặt lúc {at}', // DRAFT — Kevin reviews
+  'tm.why.unmapped': 'Trạng thái đã ghi “{s}” không có trên bảng — hiển thị là Rảnh', // DRAFT — Kevin reviews
+  'tm.why.none': 'Hôm nay chưa ghi trạng thái — hiển thị là Rảnh', // DRAFT — Kevin reviews
+  'tm.why.serving': 'đang phục vụ — mở', // DRAFT — Kevin reviews
+  'tm.why.reason': 'Lý do: {r}', // DRAFT — Kevin reviews
+  'tm.gap.label': 'Tìm khoảng trống — thời lượng dịch vụ', // DRAFT — Kevin reviews
+  'tm.gap.off': 'Tắt', // DRAFT — Kevin reviews
+  'tm.gap.min': '{n} phút', // DRAFT — Kevin reviews
+  'tm.gap.found': '{n} khoảng trống dài ít nhất {m} phút', // DRAFT — Kevin reviews
+  'tm.gap.none': 'Hôm nay không có khoảng trống từ {m} phút trở lên', // DRAFT — Kevin reviews
 };

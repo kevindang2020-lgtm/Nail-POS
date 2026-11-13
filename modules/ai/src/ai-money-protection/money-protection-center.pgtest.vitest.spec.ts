@@ -10,6 +10,8 @@ import { InMemoryEntitlement } from './ai-money-protection-entitlement';
 import { InvestigationService } from './ai-money-protection-investigations.service';
 import { KyselyInvestigationRepository } from './ai-money-protection-investigations.kysely.repository';
 import type { MoneyProtectionFlags } from './ai-money-protection-flags';
+import { KyselyReportsRepository, ReportsService } from '@aipowersalon/reports';
+import { reportsBranchNetSales } from './ai-money-protection.module';
 
 const id = (n: number) => `77780000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const T = id(1), B = id(2), B2 = id(3), X = id(4), BX = id(5), OWNER = id(10), CASHIER = id(11), TK = id(20), TK2 = id(21), C1 = id(30);
@@ -119,6 +121,72 @@ describe('Alerts', () => {
     expect((await mc.alerts(ctx({ permissions: ALL.filter((p) => p !== 'customers.view') }), { q: 'Linh Pham' }) as any).total).toBe(0);
     expect((await mc.alerts(ctx(), { q: A1 }) as any).items.map((a: any) => a.id)).toEqual([A1]);
     expect((await mc.alerts(ctx(), { q: 'T-2001' }) as any).total).toBe(0);   // the other branch's hóa đơn
+  });
+  it('extras MONEY PROTECTION ALERTS 06: one combined search adds the source reference and says which field matched — masked, this salon / branch only', async () => {
+    const byRef: any = await mc.alerts(ctx(), { q: 'ptx-1' });
+    const a = byRef.items.find((x: any) => x.id === A1);
+    expect(a.match).toEqual({ field: 'source_ref', shown: '••••tx-1' });
+    expect((await mc.alerts(ctx(), { q: 'ptx-2' }) as any).total).toBe(0);                     // the other branch's payment
+    const phone: any = (await mc.alerts(ctx(), { q: '5550142' }) as any).items.find((x: any) => x.id === A1);
+    expect(phone.match).toEqual({ field: 'customer_phone', shown: '•••• 0142' });
+    expect(JSON.stringify(phone)).not.toContain('8565550142');                                   // the full phone never leaves
+    const name: any = (await mc.alerts(ctx(), { q: 'Linh Pham' }) as any).items.find((x: any) => x.id === A1);
+    expect(name.match).toEqual({ field: 'customer_name', shown: 'Linh P.' });
+    expect((await mc.alerts(ctx(), { q: 'T-1042' }) as any).items.find((x: any) => x.id === A1).match).toEqual({ field: 'ticket', shown: 'T-1042' });
+    expect((await mc.alerts(ctx(), { q: 'Cashier Lan' }) as any).items.find((x: any) => x.id === A1).match).toEqual({ field: 'staff', shown: 'Cashier Lan' });
+    expect((await mc.alerts(ctx(), { q: A1 }) as any).items[0].match).toEqual({ field: 'alert_id', shown: A1.slice(0, 8) });
+    expect((await mc.alerts(ctx(), { q: 'Exact duplicate' }) as any).items.find((x: any) => x.id === A1).match).toEqual({ field: 'rule', shown: null });
+    expect((await mc.alerts(ctx({ permissions: ALL.filter((p) => p !== 'customers.view') }), { q: '5550142' }) as any).total).toBe(0);
+    expect((await mc.alerts(ctx(), {}) as any).items[0].match).toBeUndefined();                 // no search → no match field
+    expect((await mc.alerts({ ...ctx(), tenantId: X } as any, { q: 'ptx-1' }) as any).total).toBe(0);   // another salon never sees it
+  });
+  it('extras AI MONEY PROTECTION 5 · 13: heavy lists page stably — rows sharing one timestamp never repeat or vanish across pages (id breaks ties)', async () => {
+    const at = '2026-10-01T12:00:00Z';
+    for (let i = 0; i < 7; i++) await q(`insert into money_protection_alerts (tenant_id, branch_id, rule_id, alert_type, severity, status, amount_cents, entity_fingerprint, first_seen_at, last_seen_at, updated_at) values ($1,$2,'MP_X_PAGE','test','LOW','NEW',100,$3,$4,$4,$4)`,
+      [T, B, 'fp-page-' + i, at]);
+    for (const sort of ['newest', 'oldest', 'severity', 'value']) {
+      const seen: string[] = [];
+      for (let page = 1; page <= 4; page++) {
+        const l: any = await mc.alerts(ctx(), { status: 'all', rule: undefined, preset: 'custom', from: '2026-10-01', to: '2026-10-01', sort, page, pageSize: 2 });
+        seen.push(...l.items.map((a: any) => a.id));
+        const again: any = await mc.alerts(ctx(), { status: 'all', preset: 'custom', from: '2026-10-01', to: '2026-10-01', sort, page, pageSize: 2 });
+        expect(again.items.map((a: any) => a.id)).toEqual(l.items.map((a: any) => a.id));   // the same page reads the same rows
+      }
+      expect(seen).toHaveLength(7);
+      expect(new Set(seen).size).toBe(7);
+    }
+    await q(`delete from money_protection_alerts where tenant_id = $1 and rule_id = 'MP_X_PAGE'`, [T]);
+  });
+  it('extras AI Fraud Money Protection 09: the per-branch summary — permitted branches only, card definitions, Net Sales from the Sales report itself', async () => {
+    const reports = new ReportsService(new KyselyReportsRepository(db));
+    const FIN = [...ALL, 'pos.reports.view', 'pos.reports.financial_view'];
+    const salesCenter = new MoneyProtectionCenter(db, { ...(mc as any).deps, branchNetSales: reportsBranchNetSales(reports) });
+    await q(`insert into money_protection_alerts (tenant_id, branch_id, rule_id, alert_type, severity, status, amount_cents, entity_fingerprint) values
+      ($1,$2,'MP_X_BR','test','CRITICAL','NEW',700,'fp-br-1'), ($1,$3,'MP_X_BR','test','LOW','NEW',300,'fp-br-2'), ($1,null,'MP_X_BR','test','LOW','NEW',50,'fp-br-3'), ($4,$5,'MP_X_BR','test','CRITICAL','NEW',9999,'fp-br-x')`, [T, B, B2, X, BX]);
+    const owner: any = (await salesCenter.summary(ctx({ branchId: null, permissions: FIN }))).byBranch;
+    expect(owner.rows.map((r: any) => r.branch)).toEqual(['Main', 'North']);                     // this salon's branches; never 'Other'
+    expect(owner.financials).toBe('included');
+    expect(owner.salesSource).toBe('reports.sales.netSalesCents');
+    const main = owner.rows.find((r: any) => r.branch === 'Main');
+    const today = (await mc.alerts(ctx(), {}) as any).period.today;
+    expect(main.salesWindow.to).toBe(today);
+    const fromReport = (await reports.getSales({ tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: FIN }, main.salesWindow)).kpis.netSalesCents;
+    expect(main.netSalesCents).toBe(fromReport);                                                  // the report's own number, not re-summed
+    expect(main.netSalesCents).toBeGreaterThan(0);
+    const before: any = (await mc.summary(ctx({ branchId: null }))).cards;
+    const sumOpen = owner.rows.reduce((a: number, r: any) => a + r.openAlerts, 0) + owner.unbranched.openAlerts;
+    expect(sumOpen).toBe(before.openAlerts);                                                      // the same definition as the cards
+    expect(owner.unbranched.valueUnderReviewCents).toBeGreaterThanOrEqual(50);
+    const bound: any = (await salesCenter.summary(ctx({ permissions: FIN }))).byBranch;             // a session bound to Main
+    expect(bound.rows.map((r: any) => r.branch)).toEqual(['Main']);
+    const noFin: any = (await salesCenter.summary(ctx({ branchId: null, permissions: [...ALL, 'pos.reports.view'] }))).byBranch;
+    expect(noFin.financials).toBe('forbidden');
+    expect(noFin.rows.every((r: any) => r.netSalesCents === null && r.salesWindow === null)).toBe(true);
+    expect(noFin.rows.find((r: any) => r.branch === 'Main').openAlerts).toBe(main.openAlerts);      // alerts still shown
+    const plain: any = (await mc.summary(ctx({ branchId: null }))).byBranch;
+    expect(plain.financials).toBe('not_connected');
+    expect(plain.rows[0].netSalesCents).toBeNull();
+    await q(`delete from money_protection_alerts where rule_id = 'MP_X_BR'`);
   });
   it('AL-03 filters, dates, sort, pages; From after To refused', async () => {
     expect((await mc.alerts(ctx(), { severity: 'CRITICAL', category: 'duplicate_charge' }) as any).items.every((a: any) => a.severity === 'CRITICAL')).toBe(true);

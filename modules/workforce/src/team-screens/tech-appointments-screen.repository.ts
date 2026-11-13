@@ -171,16 +171,19 @@ export class TechAppointmentsScreenRepository {
     const T = ctx.tenantId; const { page, pageSize } = paging(f.page, f.pageSize, 10); const per = await teamPeriod(this.db, ctx, f, 'week');
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw);
     const kind = ['created', 'updated', 'cancelled', 'rescheduled', 'all'].includes(String(f.changeType)) ? String(f.changeType) : 'all';
-    const w = sql`h.tenant_id = ${T} and ${inPeriod(sql`h.created_at`, per)} and (${kind} = 'all' or h.change_type ilike ${'%' + kind.replace(/ed$/, '') + '%'})
+    // TECH APPOINTMENTS 10 (round 10): a 'reason' row is the reason OF the change written with it (same appointment, same
+    // statement time) — it is shown on that change, never as a change of its own
+    const w = sql`h.tenant_id = ${T} and coalesce(h.field, '') <> 'reason' and ${inPeriod(sql`h.created_at`, per)} and (${kind} = 'all' or h.change_type ilike ${'%' + kind.replace(/ed$/, '') + '%'})
       and (${raw} = '' or h.change_type ilike ${l} or coalesce(h.field, '') ilike ${l} or coalesce(a.customer_name, '') ilike ${l} or coalesce(te.full_name, '') ilike ${l} or coalesce(u.full_name, '') ilike ${l})`;
     const from = sql`from appointment_change_log h left join pos_tech_appointments a on a.id = h.appointment_id and a.tenant_id = h.tenant_id left join technicians te on te.id = a.technician_id and te.tenant_id = a.tenant_id
       left join users u on u.id = h.actor_id and u.tenant_id = h.tenant_id`;
     const total = N((await sql<any>`select count(*)::int as n ${from} where h.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
-    const rows = (await sql<any>`select h.id, h.appointment_id, h.change_type, h.field, h.old_value, h.new_value, h.actor_type, h.source, h.created_at, a.customer_name, a.appt_date, a.start_time, te.full_name as tech, coalesce(nullif(u.full_name, ''), u.email) as actor
+    const rows = (await sql<any>`select h.id, h.appointment_id, h.change_type, h.field, h.old_value, h.new_value, h.actor_type, h.source, h.created_at, a.customer_name, a.appt_date, a.start_time, te.full_name as tech, coalesce(nullif(u.full_name, ''), u.email) as actor,
+        (select rr.new_value from appointment_change_log rr where rr.tenant_id = h.tenant_id and rr.appointment_id = h.appointment_id and rr.field = 'reason' and rr.created_at = h.created_at limit 1) as reason
       ${from} where h.tenant_id = ${T} and ${w} order by h.created_at desc, h.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     const customers = can(ctx, 'customers.view');
     return { period: per, items: rows.map((r: any) => ({ id: String(r.id), appointmentId: r.appointment_id ? String(r.appointment_id) : null, changeType: String(r.change_type ?? ''), field: r.field ?? null,
-      oldValue: r.old_value ?? null, newValue: r.new_value ?? null, actor: r.actor ?? (r.actor_type ? String(r.actor_type) : null), source: r.source ?? null, at: iso(r.created_at),
+      oldValue: r.old_value ?? null, newValue: r.new_value ?? null, actor: r.actor ?? (r.actor_type ? String(r.actor_type) : null), source: r.source ?? null, at: iso(r.created_at), reason: r.reason ?? null,
       customer: customers ? r.customer_name ?? null : null, technician: r.tech ?? null, apptDate: ymd(r.appt_date), apptStart: r.start_time ?? null })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
 }

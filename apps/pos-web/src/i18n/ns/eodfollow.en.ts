@@ -169,4 +169,5 @@ export const EODFOLLOW_EN = {
   'eod.rec.archived': '{n}: the customer is archived or no longer on file — it can never be sent.',
   'eod.rec.booked': '{n}: the customer already has an upcoming booking — held back unless a manager overrides.',
   'eod.rec.tech': '{n}: the technician is no longer active — it is in no technician’s list.',
+  'eod.rec.inbox': '{n}: the customer has texted the salon since the visit — read the SMS Inbox before sending.',
 } as const;

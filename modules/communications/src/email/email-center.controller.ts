@@ -62,7 +62,7 @@ export class EmailCenterController {
 
   @Post('test') @RequirePermission('pos.communications.manage')
   test(@Req() r: any, @Headers('idempotency-key') key: string | undefined, @Body(ValidatedBody(EMAIL_TEST_BODY, { strict: true })) b: any) {
-    return run(() => this.c().test(ctxOf(r), { to: b?.to, idempotencyKey: key ?? b?.idempotencyKey, confirm: b?.confirm }));
+    return run(() => this.c().test(ctxOf(r), { to: b?.to, idempotencyKey: key ?? b?.idempotencyKey, confirm: b?.confirm, preview: b?.preview }));
   }
 
   @Post('compose') @RequirePermission('pos.communications.manage')

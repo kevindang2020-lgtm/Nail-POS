@@ -5,8 +5,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { api, navigate } = vi.hoisted(() => ({
-  api: { summary: vi.fn(), customers: vi.fn(), options: vi.fn(), profile: vi.fn(), check: vi.fn() }, navigate: vi.fn() }));
+const { api, navigate, ret } = vi.hoisted(() => ({
+  api: { summary: vi.fn(), customers: vi.fn(), options: vi.fn(), profile: vi.fn(), check: vi.fn() }, navigate: vi.fn(), ret: { customer: vi.fn() } }));
+vi.mock('../api/posRetentionApi', () => ({ posRetentionApi: ret }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
 vi.mock('../api/posCustomerSearchApi', () => ({ posCustomerSearchApi: api }));
 vi.mock('./AICustomerProfilePanel', () => ({ AICustomerProfilePanel: ({ customerId }: { customerId: string }) => <div data-testid="ai-panel">{customerId}</div> }));
@@ -84,6 +85,25 @@ describe('POSAICustomerSearchScreen', () => {
     fireEvent.click(screen.getByTestId('ov-close'));
     await waitFor(() => expect(screen.queryByTestId('csx-overlay')).toBeNull());
     expect(screen.getAllByTestId('csx-row')).toHaveLength(2);
+  });
+  it('Customer Search 10 · 03: the 360° overlay has a Retention tab read from Customer Retention (loaded on open, never re-derived); a 403 says so', async () => {
+    ret.customer.mockResolvedValueOnce({ customerId: 'c1', segment: 'at_risk', segmentReason: { code: 'away_past_threshold' }, daysAway: 75, thresholds: { riskDays: 60, approachingDays: 45 },
+      lastVisitAt: '2026-08-19T15:00:00Z', visits: 4, priority: { score: 82, band: 'high' }, upcomingBookings: [], outreach: [{ campaignId: 'k1', at: '2026-10-01T15:00:00Z', status: 'delivered' }], asOf: '2026-11-02' })
+      .mockRejectedValueOnce({ status: 403 });
+    mount();
+    fireEvent.click((await screen.findAllByTestId('csx-row'))[0]);
+    await screen.findByTestId('csx-overlay');
+    expect(ret.customer).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('ov-tab-retention'));
+    expect(await screen.findByTestId('ov-ret-segment')).toHaveTextContent('At Risk 60+ days — 75 days since the last completed visit (At Risk from 60).');
+    expect(ret.customer).toHaveBeenCalledWith('c1');
+    expect(screen.getByTestId('ov-ret-priority')).toHaveTextContent('82 · High');
+    expect(screen.getByTestId('ov-ret')).toHaveTextContent(/Nothing here sends a message/);
+    fireEvent.click(screen.getByTestId('ov-ret-open'));
+    expect(navigate).toHaveBeenLastCalledWith('/tenant/customers/retention');
+    fireEvent.click(screen.getByTestId('ov-tab-identity'));
+    fireEvent.click(screen.getByTestId('ov-tab-retention'));
+    expect(await screen.findByTestId('ov-ret-error')).toHaveTextContent('You cannot view Customer Retention for this salon.');
   });
   it('Check Customer Search System shows each area with its state and next step — localized from the numbers, never the server\'s English', async () => {
     api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', rateLimited: false, checks: [
