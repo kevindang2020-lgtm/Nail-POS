@@ -3,7 +3,7 @@
 // sent; a branch is named only in the PATH (the session middleware strips scope from bodies and queries).
 import { api } from "./client";
 import type { TenantTwilioCredentialsView } from '@aipowersalon/api-contracts';
-import type { Caps, StatusOf, TestDisplayState, TestEvent, RegItem, TollFree, ConfigItem, NumberInbound, CheckEvent, MessagingReadiness, AvailableNumber, NumberQuote, TestSendResult } from '@aipowersalon/api-contracts/tenant';
+import type { Caps, StatusOf, TestDisplayState, TestEvent, RegItem, TollFree, ConfigItem, NumberInbound, CheckEvent, MessagingReadiness, AvailableNumber, NumberQuote, TestSendResult, MessagingCredentialPreflight } from '@aipowersalon/api-contracts/tenant';
 // the wire shapes live in the contracts package (one definition); re-exported for this app's screens
 export type { Caps, StatusOf, TestDisplayState, TestEvent, RegItem, TollFree, ConfigItem, NumberInbound, CheckEvent, MessagingReadiness, AvailableNumber, NumberQuote, TestSendResult };
 export type CredsBody = { accountSid: string; authToken?: string; fromNumber?: string; verifyServiceSid: string; apiKeySid: string; apiKeySecret?: string; confirmUnverified?: boolean };

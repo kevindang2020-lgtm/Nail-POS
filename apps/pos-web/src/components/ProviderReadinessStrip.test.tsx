@@ -30,7 +30,7 @@ describe('ProviderReadinessStrip (extras Communications 04)', () => {
   });
   it('a toll-free sender reads its toll-free verification instead of A2P; a failed read is said, never "ready"', async () => {
     const r = readinessFixture({ a2p: { ...readinessFixture().a2p, applicable: false } });
-    r.tollFree = { ...r.tollFree!, state: 'rejected', reasonCode: 'TF_REJECTED', fixLink: '/tenant/communications/messaging-setup#toll-free' } as typeof r.tollFree;
+    r.tollFree = { ...r.tollFree!, state: 'rejected', reasonCode: 'TF_REJECTED' } as typeof r.tollFree;
     expect(readinessItems(r)[2]).toMatchObject({ key: 'registration', state: 'rejected', reasonCode: 'TF_REJECTED' });
     phone.readiness.mockRejectedValue(new Error('down'));
     render(<MemoryRouter><ProviderReadinessStrip /></MemoryRouter>);

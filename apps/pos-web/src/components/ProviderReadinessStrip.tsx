@@ -20,7 +20,7 @@ export function readinessItems(r: MessagingReadiness): Item[] {
   return [
     { key: 'account', state: r.account.state, reasonCode: r.account.reasonCode, fixLink: r.account.fixLink, at: r.account.lastCheckedAt },
     { key: 'sender', state: r.sender.state, reasonCode: r.sender.reasonCode, fixLink: r.sender.fixLink, at: r.sender.lastCheckedAt },
-    { key: 'registration', state: r.a2p.applicable ? r.a2p.state : r.tollFree ? r.tollFree.state : 'not_applicable', reasonCode: r.a2p.applicable ? r.a2p.reasonCode : r.tollFree?.reasonCode ?? null, fixLink: r.a2p.applicable ? r.a2p.fixLink : r.tollFree?.fixLink ?? r.a2p.fixLink, at: r.a2p.lastCheckedAt },
+    { key: 'registration', state: r.a2p.applicable ? r.a2p.state : r.tollFree ? r.tollFree.state : 'not_applicable', reasonCode: r.a2p.applicable ? r.a2p.reasonCode : r.tollFree?.reasonCode ?? null, fixLink: r.a2p.fixLink, at: r.a2p.lastCheckedAt },
     { key: 'inbound', state: r.inbound.state, reasonCode: r.inbound.reasonCode, fixLink: r.inbound.fixLink, at: r.inbound.lastVerifiedEventAt },
     { key: 'status', state: r.inbound.statusCallback.state, reasonCode: r.inbound.statusCallback.reasonCode, fixLink: r.inbound.statusCallback.fixLink, at: r.inbound.statusCallback.lastVerifiedEventAt },
   ];
