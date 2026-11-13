@@ -2128,4 +2128,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "dfx.scope.one": "Đang hiện thiết bị của {name} (và thiết bị chưa gắn chi nhánh).", // DRAFT — Kevin reviews
   "dfx.scope.all": "Đang hiện thiết bị của mọi chi nhánh trong tiệm.", // DRAFT — Kevin reviews
   "dfx.scope.noBranch": "{n} chưa gán chi nhánh", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_orphan_service": "Mọi dịch vụ thêm đều gắn với một dịch vụ còn tồn tại", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_orphan_service.fix": "Xóa liên kết dịch vụ thêm có dịch vụ đã bị xóa, hoặc thêm dịch vụ thêm vào một dịch vụ còn tồn tại.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_duplicate_active_offering": "Không dịch vụ nào có cùng một dịch vụ thêm hai lần", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_duplicate_active_offering.fix": "Tắt một trong hai bản trên dịch vụ đó.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_category_mismatch": "Không có dịch vụ thêm cho móng nằm trên dịch vụ tóc", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_category_mismatch.fix": "Xem các dịch vụ thêm được đánh dấu trong danh sách và chuyển sang đúng dịch vụ.", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_live_on_voided_ticket": "Không dịch vụ thêm đã bán nào còn trên hóa đơn đã hủy", // DRAFT — Kevin reviews
+  "syschk.catalog.addon_live_on_voided_ticket.fix": "Mở hóa đơn đã hủy và kiểm tra dòng dịch vụ thêm đã được đảo ngược.", // DRAFT — Kevin reviews
 };

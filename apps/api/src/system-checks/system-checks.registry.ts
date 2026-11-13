@@ -186,6 +186,20 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
         AND NOT EXISTS (SELECT 1 FROM ticket_service_lines k WHERE k.tenant_id = t.tenant_id AND k.ticket_id = t.id AND ${LIVE_LINE} AND k.is_taxable)`) },
     { key: 'addon_on_archived_service', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM service_add_ons a JOIN services s ON s.tenant_id = a.tenant_id AND s.id = a.service_id
         WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.is_active AND (s.archived_at IS NOT NULL OR s.status <> 'active')`) },
+    // round 10 (ADD-ONS 03 service assignment integrity): service_add_ons has no foreign key, so a link can outlive its service;
+    // one service can carry the same add-on twice; a nail add-on can sit on a hair service (the list flags it). Counted, never
+    // changed — a person fixes them on Add-Ons Management.
+    { key: 'addon_orphan_service', severity: 'FAILED', count: (t, b) => n(sql`SELECT 1 FROM service_add_ons a WHERE a.tenant_id = ${t}::uuid ${br('a', b)}
+        AND NOT EXISTS (SELECT 1 FROM services s WHERE s.tenant_id = a.tenant_id AND s.id = a.service_id)`) },
+    { key: 'addon_duplicate_active_offering', severity: 'WARNING', count: (t, b) => n(sql`SELECT a.service_id FROM service_add_ons a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.is_active
+        GROUP BY a.service_id, lower(btrim(a.name)) HAVING count(*) > 1`) },
+    { key: 'addon_category_mismatch', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM service_add_ons a JOIN services s ON s.tenant_id = a.tenant_id AND s.id = a.service_id
+        WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.is_active
+          AND a.name ~* '\\m(tip|tips|nail|french|gel|polish|chrome|art)\\M' AND s.name ~* '\\m(hair|haircut|cut|color|colour|blowout)\\M'`) },
+    // round 10 (ADD-ONS 05 refund / void wiring): a sold add-on line still live on a ticket that was voided / cancelled / removed —
+    // the void did not reach the line (refunds are per tender, so a line-level refund has no row to compare)
+    { key: 'addon_live_on_voided_ticket', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM ticket_service_lines k JOIN tickets tk ON tk.tenant_id = k.tenant_id AND tk.id = k.ticket_id
+        WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ${ADDON_LINE} AND (tk.removed_at IS NOT NULL OR tk.status IN ('void', 'voided', 'cancelled', 'canceled'))`) },
   ] },
 
   // ── Inventory / Products / Stock Alerts (/tenant/inventory) ───────────────────────────────────────────────────────

@@ -2129,4 +2129,12 @@ export const OPS_EN = {
   "dfx.scope.one": "Showing devices of {name} (and devices not tied to a location).",
   "dfx.scope.all": "Showing devices of every location of the salon.",
   "dfx.scope.noBranch": "{n} not assigned to a location",
+  "syschk.catalog.addon_orphan_service": "Every add-on is linked to a service that exists",
+  "syschk.catalog.addon_orphan_service.fix": "Remove the add-on link whose service was deleted, or add the add-on to an existing service.",
+  "syschk.catalog.addon_duplicate_active_offering": "No service offers the same add-on twice",
+  "syschk.catalog.addon_duplicate_active_offering.fix": "Turn off one of the two copies on that service.",
+  "syschk.catalog.addon_category_mismatch": "No nail add-on is offered on a hair service",
+  "syschk.catalog.addon_category_mismatch.fix": "Review the flagged add-ons in the list and move them to the right service.",
+  "syschk.catalog.addon_live_on_voided_ticket": "No sold add-on stays on a voided ticket",
+  "syschk.catalog.addon_live_on_voided_ticket.fix": "Open the voided ticket and check the add-on line was reversed.",
 };
