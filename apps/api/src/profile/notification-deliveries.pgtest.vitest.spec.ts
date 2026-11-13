@@ -45,3 +45,29 @@ describe('my notification deliveries', () => {
     expect(r.page).toBe(1);
   });
 });
+
+// extras round 11: the panel's GET and every staff send path read the switches through the ONE reader
+// (communications readStaffNotificationPrefs) — what the panel shows is what the senders obey; a held push lands in my
+// own delivery list as 'suppressed' with reason staff_pref_off.
+describe('my notification switches — one reader for the panel and the senders', () => {
+  it('a saved row: the GET and staffSendDecision agree; no row → defaults on both sides', async () => {
+    const { staffSendDecision, readStaffNotificationPrefs } = await import('@aipowersalon/communications');
+    const fresh = id(9620);
+    expect(await svc.getNotificationPrefs({ tenantId: T, userId: fresh })).toMatchObject({ bookingAlerts: true, smsNotifications: true });
+    expect((await readStaffNotificationPrefs(db, T, fresh)).state).toBe('default');
+    await q(sql`insert into user_notification_prefs (tenant_id, user_id, booking_alerts, sms_notifications) values (${T}, ${fresh}, false, false)`);
+    expect(await svc.getNotificationPrefs({ tenantId: T, userId: fresh })).toMatchObject({ bookingAlerts: false, smsNotifications: false, emailNotifications: true });
+    expect(await staffSendDecision(db, T, fresh, 'push', 'booking')).toMatchObject({ allowed: false, reason: 'staff_pref_off', switchOff: 'bookingAlerts', prefsState: 'saved' });
+    expect(await staffSendDecision(db, T, fresh, 'sms', 'general')).toMatchObject({ allowed: false, switchOff: 'smsNotifications' });
+    expect(await staffSendDecision(db, T, fresh, 'email', 'general')).toMatchObject({ allowed: true });
+    expect(await staffSendDecision(db, T, fresh, 'sms', 'security')).toMatchObject({ allowed: true });
+    expect(await staffSendDecision(db, X, fresh, 'push', 'booking')).toMatchObject({ allowed: true, prefsState: 'default' });   // another salon's switches are not these
+  });
+  it('an unreadable row sends and reports it (never silences an alert)', async () => {
+    const { staffSendDecision } = await import('@aipowersalon/communications');
+    const broken = { executeQuery: async () => { throw new Error('db down'); }, getExecutor: () => { throw new Error('db down'); } };
+    const seen: string[] = [];
+    expect(await staffSendDecision(broken, T, U, 'sms', 'general', (m) => seen.push(m))).toMatchObject({ allowed: true, prefsState: 'unreadable' });
+    expect(seen[0]).toMatch(/unreadable; sending/);
+  });
+});

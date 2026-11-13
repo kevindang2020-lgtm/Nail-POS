@@ -8,16 +8,20 @@
 //     (owner_alerts); email / SMS go to the rule's recipients (default: the salon's active owners and managers) through the
 //     salon's own messenger. Cooldown: a rule that re-triggers within its cooldown is recorded, not re-sent. Quiet hours (the
 //     salon's local time): email / SMS are SKIPPED with that reason, in-app still lands. Every attempt is a delivery row —
-//     sent, skipped (why) or failed (why); nothing is reported as sent that the messenger did not take.
+//     sent, skipped (why) or failed (why); nothing is reported as sent that the messenger did not take. A recipient who
+//     switched that channel off in My Account → Notifications is SKIPPED with reason staff_pref_off (extras round 11 — the
+//     shared rule staffNotificationAllowed; in-app still lands; an unreadable preference sends and is logged).
 //   • ESCALATION — a CRITICAL incident still open (not acknowledged, assigned-and-investigating, snoozed or resolved) 30
 //     minutes after it opened is sent once more to the salon's owners (kind 'escalation'), outside quiet hours.
 // Nothing here changes a sale, an appointment, a price or a schedule.
 import { sql, type Kysely } from 'kysely';
+import { Logger } from '@nestjs/common';
 import { hasPermission } from '@aipowersalon/permissions';
 import { assertTransition, branchTimeZone, canMoveToSql, defineStateMachine } from '@aipowersalon/database';
 import { localHour } from '@aipowersalon/date-time';
 import type { AiBusinessContext } from './ai-business.dto';
 import { estimateSmsSegments } from '@aipowersalon/api-contracts';
+import { staffSendDecision } from '@aipowersalon/communications';   // extras round 11: the ONE staff notification-preference reader + rule
 
 type Row = Record<string, any>;
 export const BUSINESS_ALERT_INCIDENTS = 'BusinessAlertIncidents';
@@ -79,6 +83,8 @@ export function alertMessage(r: { title: string; metric_id: string; operator: st
 
 export class BusinessAlertIncidents {
   constructor(private readonly db: Kysely<any>, private readonly messenger: AlertMessenger | null = null, private readonly now: () => number = () => Date.now()) {}
+  private readonly logger = new Logger('BusinessAlertIncidents');
+  private warn(m: string) { this.logger.warn(m); }
 
   private need(ctx: AiBusinessContext) {
     if (!ctx?.tenantId || !ctx?.userId) throw new AlertIncidentError('Not signed in.', 'AUTH_REQUIRED', 401);
@@ -160,7 +166,11 @@ export class BusinessAlertIncidents {
    */
   private async smsPlan(tenantId: string, r: Row) {
     const people = await this.recipients(tenantId, (r.recipient_user_ids ?? []).map(String), 'trigger');
-    const withPhone = people.filter((p) => !!p.normalized_phone).length;
+    const phones = people.filter((p) => !!p.normalized_phone);
+    // extras round 11: a recipient who switched SMS off is skipped by the send path (staff_pref_off) — not counted as a text
+    let smsOff = 0;
+    for (const p of phones) if (!(await staffSendDecision(this.db, tenantId, String(p.id), 'sms', 'general', (m) => this.warn(m))).allowed) smsOff++;
+    const withPhone = phones.length - smsOff;
     const msg = alertMessage({ title: String(r.title ?? ''), metric_id: String(r.metric_id ?? ''), operator: String(r.operator ?? ''), threshold: r.threshold, value: r.threshold, severity: String(r.severity ?? 'warning') });
     const seg = estimateSmsSegments(msg.body);
     const cost = (await sql<{ micros: string | null; segs: string | null }>`select sum(n.provider_cost_micros)::text as micros, sum(n.segment_count)::text as segs from notifications n
@@ -174,7 +184,7 @@ export class BusinessAlertIncidents {
     const lim = (await sql<Row>`select l.daily_limit, l.monthly_sms, l.enforcement, l.status from tenant_messaging_limits l where l.tenant_id = ${tenantId}`.execute(this.db)).rows[0];
     const cooldown = Number(r.cooldown_minutes);
     return {
-      recipients: people.length, recipientsWithPhone: withPhone, recipientsWithoutPhone: people.length - withPhone,
+      recipients: people.length, recipientsWithPhone: withPhone, recipientsWithoutPhone: people.length - phones.length, recipientsSmsOff: smsOff,
       segmentsPerMessage: seg.segments, encoding: seg.encoding, segmentsPerTrigger: withPhone * seg.segments,
       costBasis: 'salon_provider_average_30d' as const, perSegmentMicros,
       /** integer cents, rounded UP (an estimate never under-states) */
@@ -230,6 +240,8 @@ export class BusinessAlertIncidents {
         for (const ch of (['email', 'sms'] as const).filter((c) => (c === 'email' ? wantEmail : wantSms))) {
           const to = ch === 'email' ? p.email : p.normalized_phone;
           if (!to) { await record(ch, 'skipped', ch === 'email' ? 'no_email' : 'no_phone', String(p.id)); continue; }
+          const pref = await staffSendDecision(this.db, tenantId, String(p.id), ch, 'general', (m) => this.warn(m));
+          if (!pref.allowed) { await record(ch, 'skipped', pref.reason, String(p.id), to); continue; }
           if (quiet) { await record(ch, 'skipped', 'quiet_hours', String(p.id), to); continue; }
           if (!this.messenger || (ch === 'email' && !this.messenger.sendEmail)) { await record(ch, 'failed', 'messaging_not_available', String(p.id), to); continue; }
           try {

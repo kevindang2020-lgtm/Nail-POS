@@ -44,7 +44,7 @@ vi.mock('../api/client', () => ({
         billing: { plan: 'Premium', renewal: '2026-05-28T00:00:00Z', renewalShort: 'Next: 2026-05-28', method: null, expires: null, fee: '$499.00', locations: '3', users: '8', features: [] },
         role: { level: 'Owner', scope: 'All assigned locations', branches: [], totals: { users: 8, admins: 1, managers: 2, staff: 5 } },
         backup: { last: null, status: null, next: null },
-        notifications: [{ l: 'SMS Notifications', d: 'Receipts, reminders & alerts' }, { l: 'Weekly Report Summaries', d: 'Performance summary emails' }],
+        notifications: [{ l: 'SMS Notifications', d: 'Alert texts to your phone (business alerts)' }, { l: 'Weekly Report Summaries', d: 'Performance summary emails' }],
       });
       // noon UTC: the same calendar day in every US time zone (midnight UTC dates rendered as Jan 11 under TZ=America/New_York)
       if (url === '/pos/me/profile') return Promise.resolve({ userId: 'u1', role: 'OWNER', avatarUrl: null, email: 'sophia@luxenails.com', fullName: 'Sophia Nguyen', memberSince: '2024-01-12T12:00:00Z', passwordChangedAt: '2026-04-18T12:00:00Z', lastLoginAt: '2026-05-06T14:21:00Z' });
@@ -162,6 +162,29 @@ describe('POSAccountScreen', () => {
     await waitFor(() => expect(screen.getByTestId('acx-quiet-state')).toHaveTextContent('Off'));
     fireEvent.change(screen.getByTestId('acx-quiet-end'), { target: { value: '21:30' } });   // same as start → cannot save
     expect(screen.getByTestId('acx-quiet-save')).toBeDisabled();
+  });
+  it('extras round 11: the panel says honestly which switches a real send path obeys today, and a held push reads as held', async () => {
+    const get = vi.mocked(api.get);
+    const base = get.getMockImplementation()!;
+    const prefs = { smsNotifications: true, emailNotifications: true, pushNotifications: true, missedCallAlerts: true, bookingAlerts: false, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true, quietHoursStart: null, quietHoursEnd: null };
+    get.mockImplementation((url: string, q?: Record<string, unknown>) => (url === '/pos/me/notification-prefs' ? Promise.resolve(prefs) as never
+      : url === '/pos/me/notification-deliveries' ? Promise.resolve({ items: [{ id: 'h1', channel: 'push', targetMasked: '***abc123', template: 'owner_booked:x', status: 'suppressed', error: 'staff_pref_off', createdAt: '2026-11-13T15:00:00Z' }], page: 1, pageSize: 10, total: 1, totalPages: 1 }) as never
+      : base(url, q) as never));
+    render(<MemoryRouter><POSAccountScreen /></MemoryRouter>);
+    // compact rows: only the switches with no sender yet carry the "Not sent yet" tag
+    const missed = await screen.findByTestId('acx-nrow-missedCallAlerts');
+    expect(within(missed).getByTestId('acx-applies')).toHaveTextContent('Not sent yet');
+    expect(within(screen.getByTestId('acx-nrow-weeklyReportSummaries')).getByTestId('acx-applies')).toHaveAttribute('data-state', 'no_sender');
+    expect(within(screen.getByTestId('acx-nrow-lowStockAlerts')).getByTestId('acx-applies')).toHaveAttribute('data-state', 'no_sender');
+    expect(within(screen.getByTestId('acx-nrow-bookingAlerts')).queryByTestId('acx-applies')).toBeNull();
+    // the SMS line no longer promises receipts / reminders (those go to customers)
+    expect(within(screen.getByTestId('acx-nrow-smsNotifications')).getByText('Alert texts to your phone (business alerts)')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('acx-notif-manage'));
+    const booking = await screen.findByTestId('acx-ncard-bookingAlerts');
+    expect(within(booking).getByTestId('acx-applies')).toHaveTextContent('Applies now — while Off, these messages to you are held');
+    expect(within(screen.getByTestId('acx-ncard-missedCallAlerts')).getByTestId('acx-applies')).toHaveTextContent('Nothing of this kind is sent yet');
+    expect(screen.getByTestId('acx-notif-always')).toHaveTextContent('Security and sign-in messages always go');
+    expect(await screen.findByTestId('acx-dh-error')).toHaveTextContent('Held — you switched this kind of message off');
   });
   it('Account Finder (extras Account Claude Guide 15): finds Account panels and pages by keyword, gated like the sidebar', async () => {
     render(<MemoryRouter><POSAccountScreen /></MemoryRouter>);

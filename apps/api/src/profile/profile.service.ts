@@ -6,6 +6,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
+import { readStaffNotificationPrefs } from '@aipowersalon/communications';   // extras round 11: the one reader of a staff member's own switches
 import { validateAvatarDataUrl, sniffAvatarType } from './avatar-validate';
 import { planPricesFromEnv } from '@aipowersalon/super-admin';
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
@@ -33,7 +34,7 @@ export class AvatarError extends Error {
 // accessed via raw sql (no kysely.types entry needed). Defaults are security-forward (every alert on);
 // the pure helpers below are unit-tested directly so the mapping/merge logic is covered without a live db. ----
 import type { LoginAlertPrefs, NotificationPrefs, NotificationDeliveryPage } from '@aipowersalon/api-contracts/tenant';
-import { isQuietHoursTime } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
+import { isQuietHoursTime, DEFAULT_NOTIFICATION_PREFS, rowToNotificationPrefs, NOTIFICATION_PREF_COLUMNS } from '@aipowersalon/api-contracts/tenant';   // the wire shapes live in api-contracts
 export type { LoginAlertPrefs, NotificationPrefs };
 export const DEFAULT_LOGIN_ALERTS: LoginAlertPrefs = {
   enabled: true, newDevice: true, newLocation: true, passwordChanged: true, emailChanged: true,
@@ -66,26 +67,12 @@ export function mergeLoginAlerts(base: LoginAlertPrefs, patch: Partial<LoginAler
 // ---- Notification preferences (Account → Notifications, §20). The user's own personal alert
 // channels/categories — per-user, tenant-scoped, distinct from salon customer-comms config (§21).
 // Same raw-sql + pure-helper shape as login alerts; helpers are unit-tested directly. ----
-export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
-  smsNotifications: true, emailNotifications: true, pushNotifications: true, missedCallAlerts: true,
-  bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true, quietHoursStart: null, quietHoursEnd: null,
-};
-const NOTIF_COLS: Array<[keyof NotificationPrefs, string]> = [
-  ['smsNotifications', 'sms_notifications'], ['emailNotifications', 'email_notifications'], ['pushNotifications', 'push_notifications'],
-  ['missedCallAlerts', 'missed_call_alerts'], ['bookingAlerts', 'booking_alerts'], ['lowStockAlerts', 'low_stock_alerts'],
-  ['payrollApprovals', 'payroll_approvals'], ['weeklyReportSummaries', 'weekly_report_summaries'],
-];
-export function rowToNotificationPrefs(row: Record<string, any>): NotificationPrefs {
-  const out = { ...DEFAULT_NOTIFICATION_PREFS };
-  for (const [field, col] of NOTIF_COLS) if (row[col] != null) (out as Record<string, unknown>)[field] = !!row[col];
-  // extras Customer Notifications 08: personal quiet hours (both or neither)
-  const qs = isQuietHoursTime(row['quiet_start']) ? row['quiet_start'] : null, qe = isQuietHoursTime(row['quiet_end']) ? row['quiet_end'] : null;
-  out.quietHoursStart = qs && qe ? qs : null; out.quietHoursEnd = qs && qe ? qe : null;
-  return out;
-}
+// extras round 11: the defaults, the column mapping and the row reader moved beside the ONE staff-notification rule in
+// api-contracts (tenant/me-prefs.ts) so the send paths' reader (packages/database readStaffNotificationPrefs) uses the same.
+export { DEFAULT_NOTIFICATION_PREFS, rowToNotificationPrefs };
 export function sanitizeNotificationPrefsPatch(patch: unknown): Partial<NotificationPrefs> {
   const out: Partial<NotificationPrefs> = {};
-  if (patch && typeof patch === 'object') for (const [field] of NOTIF_COLS) {
+  if (patch && typeof patch === 'object') for (const [field] of NOTIFICATION_PREF_COLUMNS) {
     const v = (patch as any)[field];
     if (typeof v === 'boolean') (out as Record<string, unknown>)[field] = v;
   }
@@ -380,14 +367,10 @@ export class ProfileService {
   // to "all on" defaults so the panel always renders.
   async getNotificationPrefs(ctx: MeCtx): Promise<NotificationPrefs> {
     if (!this.db || !ctx.tenantId || !ctx.userId) return { ...DEFAULT_NOTIFICATION_PREFS };
-    try {
-      const r = await sql<Record<string, any>>`
-        SELECT * FROM user_notification_prefs WHERE tenant_id = ${ctx.tenantId} AND user_id = ${ctx.userId} LIMIT 1
-      `.execute(this.db);
-      return r.rows[0] ? rowToNotificationPrefs(r.rows[0]) : { ...DEFAULT_NOTIFICATION_PREFS };
-    } catch {
-      return { ...DEFAULT_NOTIFICATION_PREFS };
-    }
+    // extras round 11: the SAME reader every staff send path uses (communications readStaffNotificationPrefs), so the panel
+    // shows exactly the switches the senders obey; unreadable → the defaults (the panel always renders)
+    const read = await readStaffNotificationPrefs(this.db, ctx.tenantId, ctx.userId);
+    return read.prefs ?? { ...DEFAULT_NOTIFICATION_PREFS };
   }
 
   // Upsert the user's own notification prefs from a sanitized patch (unknown keys ignored). Idempotent;

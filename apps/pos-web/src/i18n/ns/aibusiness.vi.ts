@@ -752,4 +752,5 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.word.state.rejected_numbers": "Không hiện bản diễn đạt: có số không nằm trong số liệu đã xác minh ({n}).", // DRAFT — Kevin reviews
   "bzx.word.state.provider_error": "Không kết nối được AI. Các số liệu ở trên là bản tóm tắt.", // DRAFT — Kevin reviews
   "bzx.word.state.unavailable": "Báo cáo này không có số liệu đã xác minh để diễn đạt.", // DRAFT — Kevin reviews
+  "bzx.sp.smsOff": "{n} người đã tắt SMS trong tài khoản của mình — không nhắn (không tính)", // DRAFT — Kevin reviews
 };

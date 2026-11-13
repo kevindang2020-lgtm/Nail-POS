@@ -2270,4 +2270,9 @@ export const OPS_EN = {
   "syschk.device-logs.device_event_unregistered_source.fix": "Events arrive from a device that is not registered here. Register it in Devices or remove the old device.",
   "syschk.device-logs.job_stuck_running": "No background job is stuck",
   "syschk.device-logs.job_stuck_running.fix": "A background job is still running after its worker stopped. Retry it from the Retries panel or contact support.",
+  "acx.applies.enforced": "Applies now — while Off, these messages to you are held",
+  "acx.applies.no_sender": "Nothing of this kind is sent yet — the switch applies once it is",
+  "acx.applies.short_no_sender": "Not sent yet",
+  "acx.notif.always": "Security and sign-in messages always go, whatever these switches say; the in-app alerts inbox always shows your alerts.",
+  "acx.dh.err.staff_pref_off": "Held — you switched this kind of message off",
 };

@@ -242,3 +242,39 @@ describe('extras AI BUSINESS ALERTS 05 — per-person unread, separate from the 
     expect((await row(ctx(), ev.eventId)).readState).toBeNull();
   });
 });
+
+// extras round 11 — staff notification preferences are ENFORCED here through the ONE rule (api-contracts
+// staffNotificationAllowed) and the ONE reader (communications staffSendDecision): a recipient who switched SMS or Email
+// off in My Account → Notifications is skipped with reason staff_pref_off (in-app still lands); the SMS plan counts only the
+// texts that would go. Own users (id 9610+) so the tests above are unaffected.
+describe('A2 — staff notification switches (extras round 11)', () => {
+  const OFF = id(9610), ON = id(9611);
+  beforeAll(async () => {
+    await q(`insert into users (id, tenant_id, full_name, email, normalized_phone, status, role) values
+      ($1,$3,'Mgr Off','off@bc.test','+16095559610','active','MANAGER'), ($2,$3,'Mgr On','on@bc.test','+16095559611','active','MANAGER')`, [OFF, ON, T]);
+    await q(`insert into user_notification_prefs (tenant_id, user_id, sms_notifications, email_notifications) values ($1,$2,false,true)`, [T, OFF]);
+  });
+  it('SN-01 SMS switched off → that person\'s text is SKIPPED (staff_pref_off) and never handed to the messenger; their email and the other person\'s text still go', async () => {
+    const a = await rule({ title: 'Pref watch' });
+    await inc.setDelivery(ctx(), a, { channels: ['in_app', 'email', 'sms'], recipientUserIds: [OFF, ON], cooldownMinutes: 0 });
+    const r: any = await bc.alertEvaluate(ctx(), a);
+    expect(sent.map((s) => [s.ch, s.to]).sort()).toEqual([['email', 'off@bc.test'], ['email', 'on@bc.test'], ['sms', '+16095559611']]);
+    expect(r.deliveries).toEqual(expect.arrayContaining([expect.objectContaining({ channel: 'sms', status: 'skipped', reason: 'staff_pref_off', recipient: '+16095559610' }), expect.objectContaining({ channel: 'in_app', status: 'sent' })]));
+    const row = (await q(`select status, reason, recipient_user_id from ai_business_alert_deliveries where event_id = $1 and channel = 'sms' and recipient_user_id = $2`, [r.eventId, OFF]))[0];
+    expect(row).toMatchObject({ status: 'skipped', reason: 'staff_pref_off' });
+  });
+  it('SN-02 Email switched off too → their email is skipped the same way; a person with no saved row gets everything (defaults on)', async () => {
+    await q(`update user_notification_prefs set email_notifications = false where tenant_id = $1 and user_id = $2`, [T, OFF]);
+    const a = await rule({ title: 'Pref watch 2' });
+    await inc.setDelivery(ctx(), a, { channels: ['in_app', 'email', 'sms'], recipientUserIds: [OFF, ON], cooldownMinutes: 0 });
+    const r: any = await bc.alertEvaluate(ctx(), a);
+    expect(sent.map((s) => s.to).sort()).toEqual(['+16095559611', 'on@bc.test']);
+    expect(r.deliveries.filter((d: any) => d.reason === 'staff_pref_off').map((d: any) => d.channel).sort()).toEqual(['email', 'sms']);
+  });
+  it('SN-03 the SMS plan counts only texts that would go: the switched-off person is reported, not costed', async () => {
+    const a = await rule({ title: 'Pref plan' });
+    await inc.setDelivery(ctx(), a, { channels: ['in_app', 'sms'], recipientUserIds: [OFF, ON] });
+    const d: any = await inc.delivery(ctx(), a);
+    expect(d.smsPlan).toMatchObject({ recipients: 2, recipientsWithPhone: 1, recipientsWithoutPhone: 0, recipientsSmsOff: 1, segmentsPerTrigger: d.smsPlan.segmentsPerMessage });
+  });
+});

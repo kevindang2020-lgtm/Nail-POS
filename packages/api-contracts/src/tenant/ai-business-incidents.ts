@@ -22,6 +22,9 @@ export interface AlertDeliverySettings { alertId: string; severity: AlertSeverit
 /** extras AI Business Alerts 08 — what one trigger would text and cost with the SAVED settings (read-only estimate) */
 export interface AlertSmsPlan {
   recipients: number; recipientsWithPhone: number; recipientsWithoutPhone: number;
+  /** extras round 11: recipients with a phone who switched SMS off in My Account (the send path skips them — staff_pref_off);
+   *  recipientsWithPhone / segmentsPerTrigger / the estimate count only the texts that would actually go */
+  recipientsSmsOff?: number;
   segmentsPerMessage: number; encoding: 'GSM-7' | 'UCS-2'; segmentsPerTrigger: number;
   /** the salon's own average provider cost per segment over its last 30 days of texts; null = none reported */
   costBasis: 'salon_provider_average_30d'; perSegmentMicros: number | null; estimatedCostCentsPerTrigger: number | null;

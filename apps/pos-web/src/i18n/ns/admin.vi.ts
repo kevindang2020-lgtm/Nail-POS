@@ -56,9 +56,9 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   'admin.account.nextRenewalShort': 'Kỳ tới: {date}',
   'admin.account.scope.allAssigned': 'Tất cả chi nhánh được giao',
   'admin.account.notif.sms': 'Thông báo SMS',
-  'admin.account.notif.smsDesc': 'Hóa đơn, nhắc lịch & cảnh báo',
+  'admin.account.notif.smsDesc': 'Tin nhắn cảnh báo đến điện thoại của bạn (cảnh báo kinh doanh)', // DRAFT — Kevin reviews
   'admin.account.notif.email': 'Thông báo email',
-  'admin.account.notif.emailDesc': 'Hóa đơn, báo cáo & cập nhật',
+  'admin.account.notif.emailDesc': 'Email cảnh báo gửi cho bạn (cảnh báo kinh doanh)', // DRAFT — Kevin reviews
   'admin.account.notif.push': 'Thông báo đẩy',
   'admin.account.notif.pushDesc': 'Thông báo đẩy trên ứng dụng di động',
   'admin.account.notif.missedCall': 'Cảnh báo cuộc gọi nhỡ',

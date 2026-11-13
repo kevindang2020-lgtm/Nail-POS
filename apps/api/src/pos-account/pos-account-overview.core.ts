@@ -29,9 +29,11 @@ const joinAddr = (b: { address: string | null; city: string | null; state: strin
   return s || null;
 };
 
+// extras round 11: the SMS / Email lines used to promise receipts, reminders and reports — those go to CUSTOMERS; the staff
+// member's own SMS / Email switches govern the business-alert texts and e-mails sent to them (enforced since round 11)
 export const NOTIFICATION_CATEGORIES: { l: string; d: string }[] = [
-  { l: 'SMS Notifications', d: 'Receipts, reminders & alerts' },
-  { l: 'Email Notifications', d: 'Receipts, reports & updates' },
+  { l: 'SMS Notifications', d: 'Alert texts to your phone (business alerts)' },
+  { l: 'Email Notifications', d: 'Alert e-mails to you (business alerts)' },
   { l: 'Push Notifications', d: 'Mobile app push alerts' },
   { l: 'Missed Call Alerts', d: 'Instant alerts for missed calls' },
   { l: 'Booking Alerts', d: 'New & updated bookings' },

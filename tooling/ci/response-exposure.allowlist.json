@@ -30,7 +30,7 @@
     "apps/api/src/events/event-replay.service.ts": 1,
     "apps/api/src/logs/logs.kysely.repository.ts": 2,
     "apps/api/src/observability/tenant-health.ts": 1,
-    "apps/api/src/profile/profile.service.ts": 3,
+    "apps/api/src/profile/profile.service.ts": 2,
     "modules/ai/src/ai-center/ai-follow-up-center.ts": 1,
     "modules/ai/src/ai-inventory/ai-inventory-recipe.kysely.repository.ts": 8,
     "modules/ai/src/ai-marketing/ai-marketing-send.adapters.ts": 1,

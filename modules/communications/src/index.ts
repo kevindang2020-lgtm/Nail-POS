@@ -20,7 +20,8 @@ export { SmsTenantPlanService } from './sms-packages/sms-tenant-plan.service';  
 // joined by --into (notifications):
 export { NotificationsModule, MessengerModule } from './notifications/notifications.module';
 export * from './notifications/notifications.dto';
-export { NotificationsService } from './notifications/notifications.service';   // used by the API today
+export { NotificationsService } from './notifications/notifications.service';
+export { readStaffNotificationPrefs, staffSendDecision, type StaffPrefsRead, type StaffSendDecision } from './notifications/staff-notification-prefs';   // extras round 11: the one reader of a staff member's own notification switches   // used by the API today
 // joined by --into (communications, tenant-messaging):
 export { CommunicationsModule } from './communications/communications.module';
 export { TenantMessagingModule } from './tenant-messaging/tenant-messaging.module';

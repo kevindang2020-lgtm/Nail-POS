@@ -17,6 +17,77 @@ export function inQuietHours(m: number, start: string | null | undefined, end: s
   const a = toMin(start), b = toMin(end);
   return a < b ? m >= a && m < b : m >= a || m < b;
 }
+/** The eight saved switches (everything in NotificationPrefs but the quiet-hours window). */
+export type NotificationSwitch = Exclude<keyof NotificationPrefs, 'quietHoursStart' | 'quietHoursEnd'>;
+/** user_notification_prefs column for each switch — the ONE mapping the API's reader and writer use. */
+export const NOTIFICATION_PREF_COLUMNS: ReadonlyArray<readonly [NotificationSwitch, string]> = [
+  ['smsNotifications', 'sms_notifications'], ['emailNotifications', 'email_notifications'], ['pushNotifications', 'push_notifications'],
+  ['missedCallAlerts', 'missed_call_alerts'], ['bookingAlerts', 'booking_alerts'], ['lowStockAlerts', 'low_stock_alerts'],
+  ['payrollApprovals', 'payroll_approvals'], ['weeklyReportSummaries', 'weekly_report_summaries'],
+];
+/** No saved row = every switch on, no quiet hours (migration 134's column defaults). */
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  smsNotifications: true, emailNotifications: true, pushNotifications: true, missedCallAlerts: true,
+  bookingAlerts: true, lowStockAlerts: true, payrollApprovals: true, weeklyReportSummaries: true, quietHoursStart: null, quietHoursEnd: null,
+};
+/** A user_notification_prefs row (snake_case columns) → NotificationPrefs. Missing / null column → default (on); quiet
+ *  hours are both read or neither. */
+export function rowToNotificationPrefs(row: Record<string, unknown>): NotificationPrefs {
+  const out: NotificationPrefs = { ...DEFAULT_NOTIFICATION_PREFS };
+  for (const [field, col] of NOTIFICATION_PREF_COLUMNS) if (row[col] != null) out[field] = !!row[col];
+  const qs = isQuietHoursTime(row['quiet_start']) ? row['quiet_start'] : null, qe = isQuietHoursTime(row['quiet_end']) ? row['quiet_end'] : null;
+  out.quietHoursStart = qs && qe ? qs : null; out.quietHoursEnd = qs && qe ? qe : null;
+  return out;
+}
+
+// ── extras round 11 (Nov 13 2026): staff notification preferences are ENFORCED, through this one rule ─────────────────
+/** The channel a staff-directed message travels on. (The in-app feed is not a send: it always lands, like quiet hours.) */
+export type StaffNotifyChannel = 'sms' | 'email' | 'push';
+/** What a staff-directed message is about.
+ *  • 'security' — sign-in, MFA, password, new-device notices: ALWAYS sent (never held by a switch).
+ *  • 'account_notice' — the platform telling a salon owner about the salon's own account (Super Admin warnings): ALWAYS sent.
+ *  • a category with its own switch (booking, missed_call, low_stock, payroll_approval, weekly_report): channel switch AND
+ *    category switch must both be on.
+ *  • 'general' — every other staff alert (queue, payment, business alerts…): only the channel switch applies. */
+export const STAFF_NOTIFY_CATEGORIES = ['security', 'account_notice', 'booking', 'missed_call', 'low_stock', 'payroll_approval', 'weekly_report', 'general'] as const;
+export type StaffNotifyCategory = (typeof STAFF_NOTIFY_CATEGORIES)[number];
+/** The reason a held staff send is recorded with, wherever that send path already records outcomes. */
+export const STAFF_PREF_HOLD_REASON = 'staff_pref_off' as const;
+const CHANNEL_SWITCH: Record<StaffNotifyChannel, NotificationSwitch> = { sms: 'smsNotifications', email: 'emailNotifications', push: 'pushNotifications' };
+const CATEGORY_SWITCH: Partial<Record<StaffNotifyCategory, NotificationSwitch>> = {
+  booking: 'bookingAlerts', missed_call: 'missedCallAlerts', low_stock: 'lowStockAlerts', payroll_approval: 'payrollApprovals', weekly_report: 'weeklyReportSummaries',
+};
+export interface StaffNotifyDecision { allowed: boolean; reason: typeof STAFF_PREF_HOLD_REASON | null; switchOff: NotificationSwitch | null }
+/** THE rule: may this staff member be sent this message on this channel? `prefs` null/undefined = no saved row (defaults:
+ *  all on) — the caller decides what "unreadable" means (every send path: send, and log). Pure; the API and the POS read it. */
+export function staffNotificationAllowed(prefs: Partial<NotificationPrefs> | null | undefined, channel: StaffNotifyChannel, category: StaffNotifyCategory): StaffNotifyDecision {
+  const ok: StaffNotifyDecision = { allowed: true, reason: null, switchOff: null };
+  if (category === 'security' || category === 'account_notice' || !prefs) return ok;
+  const ch = CHANNEL_SWITCH[channel];
+  if (!ch) return ok;
+  if (prefs[ch] === false) return { allowed: false, reason: STAFF_PREF_HOLD_REASON, switchOff: ch };
+  const cat = CATEGORY_SWITCH[category];
+  if (cat && prefs[cat] === false) return { allowed: false, reason: STAFF_PREF_HOLD_REASON, switchOff: cat };
+  return ok;
+}
+const PAYROLL_APPROVAL_KINDS = new Set(['payroll_ready_for_review', 'payroll_submitted', 'payroll_returned', 'payroll_rejected']);
+/** A typed push (mobile-push PUSH_CATEGORIES name + the payload's data.kind) → what it is about, for staffNotificationAllowed. */
+export function staffCategoryForPush(pushCategory: string | null | undefined, kind?: unknown): StaffNotifyCategory {
+  const k = typeof kind === 'string' ? kind : '';
+  if (pushCategory === 'SECURITY') return 'security';
+  if (pushCategory === 'APPOINTMENT_CONFIRMATION' || pushCategory === 'BOOKING_CHANGE' || pushCategory === 'NEW_CUSTOMER') return 'booking';
+  if (pushCategory === 'BUSINESS_ALERT' && k.startsWith('appointment_')) return 'booking';   // owner/manager "new / moved / cancelled booking"
+  if (pushCategory === 'APPROVAL_REQUIRED' && k === 'schedule_proposal') return 'booking';  // a customer answered a proposed new appointment time
+  if (pushCategory === 'PAYROLL' && PAYROLL_APPROVAL_KINDS.has(k)) return 'payroll_approval';
+  return 'general';
+}
+/** Which switches a real send path obeys today ('enforced') and which have no sender in the product yet ('no_sender' — no
+ *  missed-call, low-stock or weekly-summary message is sent to staff today; the rule already covers them for when one is).
+ *  Kept beside the rule so the My Account panel never claims more than the server does. */
+export const NOTIFICATION_SWITCH_EFFECT: Record<NotificationSwitch, 'enforced' | 'no_sender'> = {
+  smsNotifications: 'enforced', emailNotifications: 'enforced', pushNotifications: 'enforced', bookingAlerts: 'enforced', payrollApprovals: 'enforced',
+  missedCallAlerts: 'no_sender', lowStockAlerts: 'no_sender', weeklyReportSummaries: 'no_sender',
+};
 export interface LoginAlertPrefs {
   enabled: boolean; newDevice: boolean; newLocation: boolean; passwordChanged: boolean; emailChanged: boolean;
   phoneChanged: boolean; twofaChanged: boolean; recoveryCodesChanged: boolean; sessionRevoked: boolean; suspiciousBlocked: boolean;

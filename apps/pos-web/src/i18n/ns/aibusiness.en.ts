@@ -751,4 +751,5 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bzx.word.state.rejected_numbers": "The AI wording was not shown: it contained numbers that are not in the verified figures ({n}).",
   "bzx.word.state.provider_error": "The AI could not be reached. The figures above are the summary.",
   "bzx.word.state.unavailable": "There are no verified figures to word for this report.",
+  "bzx.sp.smsOff": "{n} switched SMS off in their own account — not texted (not counted)",
 };

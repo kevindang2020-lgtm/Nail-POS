@@ -191,14 +191,15 @@ describe('POSAiAlertsScreen', () => {
     await vi.waitFor(() => expect(c.alertSetDelivery).toHaveBeenCalledWith('a1', { severity: 'critical', channels: ['in_app', 'sms'], recipientUserIds: ['u1'], quietHoursStart: 21, quietHoursEnd: 8, cooldownMinutes: 60 }));
   });
   it('extras 08 — SMS budget: the server plan for the saved settings (recipients, segments, cost, sender, limits, loop guards, warnings); a change says save to update; read-only', async () => {
-    const plan = { recipients: 2, recipientsWithPhone: 1, recipientsWithoutPhone: 1, segmentsPerMessage: 1, encoding: 'GSM-7', segmentsPerTrigger: 1, costBasis: 'salon_provider_average_30d', perSegmentMicros: 7900,
+    const plan = { recipients: 3, recipientsWithPhone: 1, recipientsWithoutPhone: 1, recipientsSmsOff: 1, segmentsPerMessage: 1, encoding: 'GSM-7', segmentsPerTrigger: 1, costBasis: 'salon_provider_average_30d', perSegmentMicros: 7900,
       estimatedCostCentsPerTrigger: 1, senderConfigured: true, senderValidatedAt: '2026-11-03T14:00:00Z', limits: { dailyLimit: 50, monthlySms: null, enforcement: 'hard', active: true },
       loopGuards: { cooldownMinutes: 0, escalateOnceAfterMinutes: 30, quietHours: true, sentByRuleLast24h: 4, alertSmsSentLast24h: 9 }, warnings: ['no_cooldown'] };
     c.alertDelivery.mockResolvedValue({ ...DELIVERY, channels: ['in_app', 'sms'], cooldownMinutes: 0, smsPlan: plan });
     wrap();
     fireEvent.click(await screen.findByTestId('bzx-a-notify'));
     const p = await screen.findByTestId('bzx-sms-plan');
-    expect(screen.getByTestId('bzx-sp-recipients')).toHaveTextContent('Texts per trigger: 1 of 2 recipients have a mobile number');
+    expect(screen.getByTestId('bzx-sp-recipients')).toHaveTextContent('Texts per trigger: 1 of 3 recipients have a mobile number');
+    expect(screen.getByTestId('bzx-sp-smsoff')).toHaveTextContent('1 switched SMS off in their own account — not texted (not counted)');   // extras round 11
     expect(screen.getByTestId('bzx-sp-segments')).toHaveTextContent('1 segment(s) per text · 1 segment(s) per trigger');
     expect(screen.getByTestId('bzx-sp-cost')).toHaveTextContent('Estimated cost per trigger: $0.01');
     expect(screen.getByTestId('bzx-sp-sender')).toHaveTextContent('SMS sender: set up (last checked');
