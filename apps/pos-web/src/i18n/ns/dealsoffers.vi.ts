@@ -81,4 +81,6 @@ export const DEALSOFFERS_VI = {
   'do.ci.st.scheduled': 'Đã lên lịch', // DRAFT — Kevin reviews
   'do.ci.st.active': 'Đang hoạt động', // DRAFT — Kevin reviews
   'do.ci.st.paused': 'Tạm dừng', // DRAFT — Kevin reviews
+  'do.check.ticket_repeat_use': 'Không có phiếu nào dùng cùng một ưu đãi hai lần', // DRAFT — Kevin reviews
+  'do.check.version_not_frozen': 'Mỗi lần dùng hoàn tất đều giữ điều kiện của nó', // DRAFT — Kevin reviews
 } as const;

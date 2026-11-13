@@ -36,7 +36,7 @@ export const REASON_BODY: BodySchema = S.object({ reason: str(1000) });
 // Coupons & Promotions guide (Oct 30 2026): duplicate (a new draft — title / its own code), the read-only check, and the
 // assistant's draft (goal + the owner-edited terms; it never activates or sends anything)
 export const DEAL_DUPLICATE_BODY: BodySchema = S.object({ title: str(120), code: str(40) });
-export const COUPON_CHECK_BODY: BodySchema = S.object({ ticketId: id, ticketNumber: str(20), customerId: id, serviceIds: S.nullable(S.array({ type: 'string', maxLength: 64 }, { maxItems: 50 })), spendCents: numeric, codeEntered: flag });
+export const COUPON_CHECK_BODY: BodySchema = S.object({ ticketId: id, ticketNumber: str(20), customerId: id, serviceIds: S.nullable(S.array({ type: 'string', maxLength: 64 }, { maxItems: 50 })), spendCents: numeric, codeEntered: flag, branchId: id });   // round 10: branchId = check as at this location
 export const COUPON_ASSIST_BODY: BodySchema = S.object({ goal: str(32) });
 export const COUPON_ASSIST_DRAFT_BODY: BodySchema = S.object({
   goal: str(32), suggestionId: id, title: str(120), code: str(40), discountType: str(16), discountPercent: numeric, discountCents: numeric,

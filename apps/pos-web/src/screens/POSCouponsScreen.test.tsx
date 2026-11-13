@@ -66,6 +66,20 @@ describe('POSCouponsScreen', () => {
     renderScreen('/tenant/marketing/coupons?tab=health');
     expect(await screen.findByTestId('health-overall')).toHaveTextContent('Ready');
   });
+  it('round 10 (Coupons 04): a check that needs attention says how to investigate and opens the flagged offer on its redemptions (or Redemption History); nothing is edited', async () => {
+    cp.health.mockResolvedValue({ overall: 'attention', checkedAt: '2026-10-30T20:00:00Z', checks: [
+      { key: 'ticket_repeat_use', status: 'attention', count: 1, detail: '1 coupon(s) were completed twice on the same ticket', sample: ['d-77'] },
+      { key: 'paid_not_marked', status: 'attention', count: 1, detail: 'x', sample: ['r-1'] },
+      { key: 'counters', status: 'ready', count: 0, detail: 'ok', sample: [] }] });
+    renderScreen('/tenant/marketing/coupons?tab=health');
+    const g = await screen.findByTestId('guide-ticket_repeat_use');
+    expect(g.textContent).toMatch(/find the ticket with two completed uses/);
+    expect(screen.queryByTestId('guide-counters')).toBeNull();
+    disc.detail.mockReturnValue(new Promise(() => undefined));   // the overlay's own load; it stays loading here
+    fireEvent.click(screen.getByTestId('guide-open-ticket_repeat_use'));
+    await waitFor(() => expect(disc.detail).toHaveBeenCalledWith('d-77'));
+    expect(screen.getByTestId('guide-open-paid_not_marked')).toHaveTextContent('Open Redemption History');
+  });
   it('location filter, expiring window, redemption basis and export go to the server; a redemption opens its ticket', async () => {
     disc.exportList.mockResolvedValue('Code,Name\n');
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:x') as any; globalThis.URL.revokeObjectURL = vi.fn() as any;
@@ -102,6 +116,18 @@ describe('POSCouponsScreen', () => {
     expect(screen.getByTestId('check-customer')).toHaveTextContent('Mai Le');
     fireEvent.click(screen.getByTestId('check-run'));
     await waitFor(() => expect(cp.check).toHaveBeenCalledWith('d1', expect.objectContaining({ customerId: 'c-7', spendCents: 1000 })));
+  });
+  it('round 10 (Coupons 07): a hypothetical check can be judged as at another location of this salon (branchId sent; default = this location)', async () => {
+    cp.check.mockResolvedValue({ verdict: 'INELIGIBLE_BRANCH', eligible: false, action: '', reasons: [{ code: 'wrong_branch', message: 'Not valid at this location.' }], dealId: 'd1', title: 'vishal', status: 'active', discountPreviewCents: 0, eligibleBaseCents: 0, context: {} });
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('coupon-check'));
+    fireEvent.change(screen.getByTestId('check-spend'), { target: { value: '10.00' } });
+    fireEvent.click(screen.getByTestId('check-run'));
+    await waitFor(() => expect(cp.check).toHaveBeenCalledTimes(1));
+    expect(cp.check.mock.calls[0][1]).not.toHaveProperty('branchId');
+    fireEvent.change(await screen.findByTestId('check-branch'), { target: { value: 'b2' } });
+    fireEvent.click(screen.getByTestId('check-run'));
+    await waitFor(() => expect(cp.check).toHaveBeenLastCalledWith('d1', expect.objectContaining({ branchId: 'b2', spendCents: 1000 })));
   });
   it('Extras Coupons 13/14: Financial shows the server ROI parts separately and the per-location scorecard (never one ROI figure)', async () => {
     disc.performance.mockResolvedValue({ items: [{ id: 'd1', linkedTicketSalesCents: 22000, avgDiscountCents: 1125 }] });

@@ -14,7 +14,7 @@ import { OutboxWriter } from '@aipowersalon/events';
 import { KyselyDealsRepository } from '../deals/deals.kysely.repository';
 import { DealsService } from '../deals/deals.service';
 import { DealsCheckoutService } from './deals-checkout.service';
-import { runDealsLifecycle, aggregateDealDay } from './deals-lifecycle.scheduler';
+import { runDealsLifecycle, aggregateDealDay, alertUpcomingDealChanges } from './deals-lifecycle.scheduler';
 import { businessDate } from '@aipowersalon/date-time';
 import { hashCode, LOOKUP_FAILURES_PER_ACTOR, walletQrPayload } from './coupons';
 
@@ -320,5 +320,31 @@ describe('Deals & Offers 08 — preview vs paid', () => {
     expect(comparePreviewToPaid(snap, { discountCents: 1000, allocations: [{ lineId: 'a', cents: 1000 }], lines: [{ lineId: 'a', priceCents: 5000 }] })!.unchanged).toBe(true);
     expect(comparePreviewToPaid(readEstimateSnapshot(null), { discountCents: 1, allocations: [], lines: [] })).toBeNull();
     expect(readEstimateSnapshot({ nope: 1 })).toBeNull();
+  });
+});
+
+describe('round 10 — Deals & Offers 06: upcoming start / end / few-left alerts for managers', () => {
+  it('one alert per offer and kind in the salon alert feed; a second sweep adds nothing; deals themselves are untouched', async () => {
+    const soon = await deal({ status: 'scheduled', startsAt: new Date(Date.now() + 3 * 3600_000).toISOString() });
+    const ending = await deal({ endsAt: new Date(Date.now() + 20 * 3600_000).toISOString() });
+    const few = await deal({ max: 10 });
+    await sql`update deals set redemption_count = 9 where id = ${few}`.execute(db);
+    const later = await deal({ endsAt: new Date(Date.now() + 10 * 86400_000).toISOString(), max: 100 });   // nothing to say yet
+    const before = (await sql`select id, status, version from deals where id = any(${[soon, ending, few, later]}::uuid[]) order by id`.execute(db)).rows;
+    await alertUpcomingDealChanges(db);
+    const alerts = async () => (await sql`select metadata->>'dealId' as d, metadata->>'kind' as k, audience, status, title from owner_alerts where tenant_id = ${T} and category = 'deal_schedule' order by 2, 1`.execute(db)).rows as any[];
+    const a1 = await alerts();
+    const kinds = Object.fromEntries(a1.map((x) => [x.d, x.k]));
+    expect(kinds[soon]).toBe('starting_soon'); expect(kinds[ending]).toBe('ending_soon'); expect(kinds[few]).toBe('few_left'); expect(kinds[later]).toBeUndefined();
+    expect(a1.every((x) => x.audience === 'all' && x.status === 'new')).toBe(true);
+    expect(a1.find((x) => x.d === few).title).toMatch(/^Few uses left: /);
+    await alertUpcomingDealChanges(db);
+    expect((await alerts()).length).toBe(a1.length);              // deduped
+    // moving the end date is a new fact → one new alert
+    await sql`update deals set ends_at = now() + interval '30 hours' where id = ${ending}`.execute(db);
+    await alertUpcomingDealChanges(db);
+    expect((await alerts()).filter((x) => x.d === ending)).toHaveLength(2);
+    const after = (await sql`select id, status, version from deals where id = any(${[soon, few, later]}::uuid[]) order by id`.execute(db)).rows;
+    expect(after).toEqual(before.filter((r: any) => r.id !== ending));
   });
 });

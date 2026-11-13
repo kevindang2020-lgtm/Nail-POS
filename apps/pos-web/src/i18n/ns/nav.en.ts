@@ -98,4 +98,5 @@ export const NAV_EN = {
   'nav.badgesync.fix.broken': 'That device is in use but has not refreshed its badges for over {min} minutes: reload the page on it; if that does not help, sign it out in Account → Security and sign in again.',
   'nav.badgesync.fix.never': 'Open the POS on that device once; if it still does not report, reload the page or update the app.',
   'nav.badgesync.how': 'A device is stale or not refreshing after {min} minutes without a badge refresh. Counts only — no alert text is shown here.',
+  'nav.alertreads.cat.deal_schedule': 'Deals & coupons',
 };

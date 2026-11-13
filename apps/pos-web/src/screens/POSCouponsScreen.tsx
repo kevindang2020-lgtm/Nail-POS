@@ -177,7 +177,8 @@ export function POSCouponsScreen() {
         {health.error ? <StateBlock error={health.error} onRetry={health.reload} /> : !health.data ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
           <ul className="fk-list" data-testid="health-checks">{health.data.checks.map((c: any) => <li key={c.key} className="fk-li" data-testid={'health-' + c.key}>
             <span className={'fk-chip ' + healthTone(c.status)}>{tx('cp.health.' + c.status)}</span>
-            <span className="fk-li-t">{tx('cp.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span></li>)}</ul>
+            <span className="fk-li-t">{tx('cp.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span>
+            <HealthGuide c={c} onDeal={(id) => setDetail({ id, tab: 'redemptions' })} onRedemptions={() => setTab('redemptions')} /></li>)}</ul>
           <div className="fk-hint">{tx('cp.healthNote', { t: whenTime(health.data.checkedAt) })}</div>
           <HealthRunHistory run={() => posCouponsApi.runHealth()} list={(q) => posCouponsApi.healthRuns(q)} checkLabel={(k) => tx('cp.check.' + k)} onRan={() => health.reload()} /></>}
       </FitPanel> : null}
@@ -197,7 +198,7 @@ export function POSCouponsScreen() {
             onDone={(text, tone) => { setNote({ tone, text }); refresh(); }} />,
         }} /> : null}
 
-      {checking ? <CheckDialog dealId={checking.id} name={checking.name} services={services} onClose={() => setChecking(null)} /> : null}
+      {checking ? <CheckDialog dealId={checking.id} name={checking.name} services={services} onClose={() => setChecking(null)} branches={(branches.data ?? []).map((b: any) => ({ id: String(b.id), name: String(b.name) }))} /> : null}
       {wizard ? <FitDialog wide title={wizard.editing ? tx('cp.editTitle', { name: wizard.editing.title }) : tx('cp.newCoupon')} onClose={() => setWizard(null)} testId="dlg-wizard">
         <DealWizard editing={wizard.editing} initialKind="coupon" heading={tx('cp.newCoupon')} onCancel={() => setWizard(null)}
           onDone={(v) => { const editing = !!wizard.editing; setWizard(null); afterCreate(v, editing ? 'cp.saved' : 'cp.created'); }} />
@@ -309,8 +310,10 @@ export function Campaigns({ dealId }: { dealId: string }) {
 }
 
 /** The read-only checker (Checkout's own engine). Deals & Offers reuses it with its own endpoint, subtitle and no code box. */
-export function CheckDialog({ dealId, name, services, onClose, check = posCouponsApi.check, subtitle, showCode = true, doneNote }: { dealId: string; name: string; services: { id: string; name: string }[]; onClose: () => void;
-  check?: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean; customerId?: string | null }) => Promise<CouponCheck>; subtitle?: string; showCode?: boolean; doneNote?: string }) {
+export function CheckDialog({ dealId, name, services, onClose, check = posCouponsApi.check, subtitle, showCode = true, doneNote, branches }: { dealId: string; name: string; services: { id: string; name: string }[]; onClose: () => void;
+  check?: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean; customerId?: string | null; branchId?: string | null }) => Promise<CouponCheck>; subtitle?: string; showCode?: boolean; doneNote?: string;
+  /** round 10 (Coupons 07): this salon's locations — a hypothetical check can be judged "as at" one of them */ branches?: { id: string; name: string }[] }) {
+  const [branchSel, setBranchSel] = useState('');
   const [ticket, setTicket] = useState(''); const [spend, setSpend] = useState(''); const [svc, setSvc] = useState<string[]>([]); const [code, setCode] = useState(true);
   const [res, setRes] = useState<CouponCheck | null>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   // audit B2 (Nov 4 2026): a hypothetical check can name the customer (new-customer-only and once-per-customer rules need one)
@@ -324,7 +327,7 @@ export function CheckDialog({ dealId, name, services, onClose, check = posCoupon
   }, [dcq, cust]);
   const run = async () => {
     setBusy(true); setErr(null); setRes(null);
-    try { setRes(await check(dealId, ticket.trim() ? { ticketNumber: ticket.trim(), codeEntered: showCode && code } : { spendCents: parseDollarsToCents(spend) ?? 0, serviceIds: svc, codeEntered: showCode && code, customerId: cust?.id ?? null })); }
+    try { setRes(await check(dealId, ticket.trim() ? { ticketNumber: ticket.trim(), codeEntered: showCode && code } : { spendCents: parseDollarsToCents(spend) ?? 0, serviceIds: svc, codeEntered: showCode && code, customerId: cust?.id ?? null, ...(branchSel ? { branchId: branchSel } : {}) })); }
     catch (e) { setErr(errorTextOf(e, tx('cp.failed'))); } finally { setBusy(false); }
   };
   return <FitDialog title={tx('cp.checkTitle', { name })} subtitle={subtitle ?? tx('cp.checkSub')} onClose={onClose} testId="dlg-check"
@@ -339,6 +342,9 @@ export function CheckDialog({ dealId, name, services, onClose, check = posCoupon
         {cust ? <span className="fk-chip info" data-testid="check-customer">{cust.name}<button type="button" className="fk-chip-x" aria-label={tx('pos.cancel')} onClick={() => setCust(null)} disabled={!!ticket.trim()}>✕</button></span>
           : <input className="fk-input" type="search" value={cq} onChange={(e) => setCq(e.target.value)} disabled={!!ticket.trim()} placeholder={tx('cp.checkCustomerPh')} data-testid="check-customer-find" />}</label>
       {!cust && hits.length ? <ul className="fk-pick" data-testid="check-customer-hits">{hits.map((h) => <li key={h.id}><button type="button" onClick={() => { setCust({ id: h.id, name: h.name }); setCq(''); }} data-testid="check-customer-option"><b>{h.name}</b><span>{h.phone ?? ''}</span></button></li>)}</ul> : null}
+      {(branches?.length ?? 0) > 1 ? <label className="lf"><span>{tx('cp10.checkBranch')}</span>
+        <select className="fk-select" value={branchSel} onChange={(e) => setBranchSel(e.target.value)} disabled={!!ticket.trim()} data-testid="check-branch">
+          <option value="">{tx('cp10.checkBranchHere')}</option>{branches!.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label> : null}
       {showCode ? <label className="cp-chk"><input type="checkbox" checked={code} onChange={(e) => setCode(e.target.checked)} data-testid="check-code" />{tx('cp.codeEntered')}</label> : null}
     </div>
     {err ? <div className="fk-note bad" role="alert">{err}</div> : null}
@@ -420,4 +426,20 @@ function saveText(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** round 10 (Coupons 04 · Deals 05): how to investigate a check that needs attention — what to look at, and the flagged records
+ *  themselves (an offer opens on its redemption history; a redemption-level check opens Redemption History). Read-only: the
+ *  correction (reversal / refund) stays a person's decision in the existing screens; nothing here edits a ledger. */
+const REDEMPTION_LEVEL = new Set(['paid_not_marked', 'stuck_holds', 'confirmed_unpaid']);
+export function HealthGuide({ c, onDeal, onRedemptions }: { c: { key: string; status: string; sample?: string[] }; onDeal: (id: string) => void; onRedemptions: () => void }) {
+  if (c.status !== 'attention') return null;
+  const sample = (c.sample ?? []).slice(0, 5);
+  return (
+    <div className="cp-guide" data-testid={'guide-' + c.key}>
+      <span className="fk-li-s">{tx('cp10.guide.' + c.key)}</span>
+      {REDEMPTION_LEVEL.has(c.key) ? <button type="button" className="fk-btn ghost sm" onClick={onRedemptions} data-testid={'guide-open-' + c.key}>{tx('cp10.openRedemptions')}</button>
+        : sample.map((id, i) => <button key={id} type="button" className="fk-btn ghost sm" onClick={() => onDeal(id)} data-testid={'guide-open-' + c.key}>{tx('cp10.openOffer', { n: String(i + 1) })}</button>)}
+    </div>
+  );
 }

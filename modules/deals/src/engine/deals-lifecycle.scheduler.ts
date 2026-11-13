@@ -76,6 +76,38 @@ export async function runDealsLifecycle(db: AppDatabase, outbox: OutboxWriter | 
   return out;
 }
 
+/** round 10 (Deals & Offers 06 — Upcoming Expiration Alerts): one manager alert (owner_alerts, category 'deal_schedule',
+ *  audience 'all') per offer and kind — starting within 24 h, ending within 48 h, or few uses left (≤ 10 % of the total cap,
+ *  at least 1) — deduped by key on uq_owner_alerts_deal_schedule (migration 910), so a sweep run every ten minutes adds
+ *  nothing new. Reads deals; writes alerts only — no deal, redemption or message is touched. Cross-tenant platform sweep. */
+export async function alertUpcomingDealChanges(db: AppDatabase): Promise<{ startingSoon: number; endingSoon: number; fewLeft: number }> {
+  const d: any = db;
+  const ins = async (kind: string, rows: any[], title: (r: any) => string, body: (r: any) => string, key: (r: any) => string) => {
+    let n = 0;
+    for (const r of rows) {
+      const meta = { dealId: String(r.id), kind, dedupeKey: key(r), startsAt: r.starts_at ?? null, endsAt: r.ends_at ?? null, remaining: r.remaining == null ? null : Number(r.remaining), source: 'deals.lifecycle' };
+      const res = rowsOf(await sql`INSERT INTO owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+        VALUES (${String(r.tenant_id)}, ${r.branch_id ?? null}, 'deal_schedule', 'info', 'new', ${title(r).slice(0, 200)}, ${body(r).slice(0, 1000)}, ${JSON.stringify(meta)}::jsonb, 'all')
+        ON CONFLICT (tenant_id, (metadata->>'dedupeKey')) WHERE category = 'deal_schedule' DO NOTHING RETURNING id`.execute(d));
+      n += res.length;
+    }
+    return n;
+  };
+  const day = (v: unknown) => (v ? new Date(v as string).getTime().toString(36) : 'none');   // a dedupe-key part only: the exact instant of the change (a moved date → a new alert)
+  const starting = rowsOf(await sql`SELECT d.id, d.tenant_id, d.branch_id, d.title, d.starts_at, d.ends_at FROM deals d
+    WHERE d.status IN ('scheduled', 'approved') AND d.starts_at IS NOT NULL AND d.starts_at > now() AND d.starts_at <= now() + interval '24 hours' AND d.suspended_at IS NULL LIMIT ${BATCH}`.execute(d));
+  const ending = rowsOf(await sql`SELECT d.id, d.tenant_id, d.branch_id, d.title, d.starts_at, d.ends_at FROM deals d
+    WHERE d.status IN ('active', 'scheduled', 'approved', 'paused') AND d.ends_at IS NOT NULL AND d.ends_at > now() AND d.ends_at <= now() + interval '48 hours' LIMIT ${BATCH}`.execute(d));
+  const few = rowsOf(await sql`SELECT d.id, d.tenant_id, d.branch_id, d.title, d.starts_at, d.ends_at, d.max_redemptions, (d.max_redemptions - d.redemption_count) AS remaining FROM deals d
+    WHERE d.status = 'active' AND d.max_redemptions IS NOT NULL AND d.redemption_count < d.max_redemptions
+      AND (d.max_redemptions - d.redemption_count) <= greatest(1, ceil(d.max_redemptions * 0.1)) LIMIT ${BATCH}`.execute(d));
+  return {
+    startingSoon: await ins('starting_soon', starting, (r) => `Offer starts soon: ${r.title}`, (r) => `"${r.title}" goes live at ${new Date(r.starts_at).toISOString()}. Make sure the front desk knows the terms.`, (r) => `deal:${r.id}:starting:${day(r.starts_at)}`),
+    endingSoon: await ins('ending_soon', ending, (r) => `Offer ends soon: ${r.title}`, (r) => `"${r.title}" ends at ${new Date(r.ends_at).toISOString()}. After that Checkout will refuse it.`, (r) => `deal:${r.id}:ending:${day(r.ends_at)}`),
+    fewLeft: await ins('few_left', few, (r) => `Few uses left: ${r.title}`, (r) => `"${r.title}" has ${Number(r.remaining)} of ${Number(r.max_redemptions)} uses left.`, (r) => `deal:${r.id}:few_left:${Number(r.max_redemptions)}`),
+  };
+}
+
 /** deal_daily_stats for a day, recomputed from the facts (analytics events + the application ledger). Idempotent. */
 /**
  * Roll one SALON-LOCAL day into deal_daily_stats. `day` is a calendar date read in each deal's own timezone (its branch's,
@@ -163,5 +195,8 @@ export class DealsLifecycleScheduler implements OnModuleInit, OnModuleDestroy {
     // re-rolling yesterday catches late refunds and events that arrived after its last run
     const now = Date.now();
     for (const at of [now - 86_400_000, now, now + 86_400_000]) await aggregateDealDay(this.db, utcDate(new Date(at)));
+    // round 10 (Deals 06): manager alerts for offers starting / ending soon or with few uses left — every ten minutes, deduped
+    const a = await alertUpcomingDealChanges(this.db);
+    if (a.startingSoon + a.endingSoon + a.fewLeft > 0) this.log.log(`deal schedule alerts: ${JSON.stringify(a)}`);
   }
 }

@@ -82,4 +82,6 @@ export const DEALSOFFERS_EN = {
   'do.ci.st.scheduled': 'Scheduled',
   'do.ci.st.active': 'Active',
   'do.ci.st.paused': 'Paused',
+  'do.check.ticket_repeat_use': 'No ticket used the same offer twice',
+  'do.check.version_not_frozen': 'Every completed use keeps its terms',
 } as const;

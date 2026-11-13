@@ -99,4 +99,5 @@ export const NAV_VI: Record<keyof typeof NAV_EN, string> = {
   'nav.badgesync.fix.broken': 'Thiết bị đang được dùng nhưng đã hơn {min} phút không làm mới số đếm: tải lại trang trên thiết bị; nếu vẫn không được, đăng xuất thiết bị trong Tài khoản → Bảo mật rồi đăng nhập lại.', // DRAFT — Kevin reviews
   'nav.badgesync.fix.never': 'Mở POS trên thiết bị đó một lần; nếu vẫn không báo, tải lại trang hoặc cập nhật ứng dụng.', // DRAFT — Kevin reviews
   'nav.badgesync.how': 'Thiết bị bị coi là lâu chưa dùng hoặc không làm mới sau {min} phút không làm mới số đếm. Chỉ có số đếm — không hiện nội dung cảnh báo ở đây.', // DRAFT — Kevin reviews
+  'nav.alertreads.cat.deal_schedule': 'Ưu đãi & mã giảm giá', // DRAFT — Kevin reviews
 };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import { RedemptionsTable } from '../POSDiscountsScreen';
+import { RedemptionsTable, DiscountDetailsDialog } from '../POSDiscountsScreen';
 
 const row = (o: Record<string, unknown>) => ({ id: 'r1aaaaaaaa', at: '2026-11-01T10:00:00Z', customerName: 'Ann', ticketId: 't1', ticketNumber: '101', eligibleSubtotalCents: 8000, discountCents: 1000, finalCents: 7000, status: 'confirmed', dealId: 'd1', ...o });
 describe('Discounts · automatic savings explanation', () => {
@@ -40,5 +40,31 @@ describe('Deals & Offers · preview vs paid', () => {
     render(<RedemptionsTable compact rows={[row({ previewVsPaid: { ...pvp, changeCents: 0, unchanged: true, changes: [] } }), row({ id: 'r2bbbbbbbb', previewVsPaid: null })]} />);
     expect(screen.getAllByTestId('pvp-same')).toHaveLength(1);
     expect(screen.queryByTestId('pvp')).toBeNull();
+  });
+});
+
+// round 10 — Deals & Offers 09: each use names the rules version it was charged under (server value, never re-derived)
+describe('Deals & Offers · rule version per use', () => {
+  it('shows the version used, that the rules changed since, and when the terms are not on record', () => {
+    render(<RedemptionsTable compact rows={[row({ ruleVersion: { used: 2, current: 3, changedSince: true, frozen: true } }), row({ id: 'r2bbbbbbbb', ruleVersion: { used: 1, current: 1, changedSince: false, frozen: false } }), row({ id: 'r3cccccccc' })]} />);
+    const v = screen.getAllByTestId('red-version');
+    expect(v).toHaveLength(2);
+    expect(v[0].textContent).toBe('Charged under rules version 2 · rules changed since (now version 3) — this use keeps its own terms');
+    expect(v[1].textContent).toBe('Charged under rules version 1 · terms at payment time not on record');
+  });
+});
+
+// round 10 — Coupons 08: version history names the approver and each version's changes against the one before (server values)
+describe('Coupons · change history with approver and before → after', () => {
+  it('renders approver, the changed fields before → after, and "First version"', async () => {
+    const x = { id: 'd1', code: '••••NG20', name: 'vishal', lifecycle: 'active', discountType: 'percent', discountPercent: 25, history: [
+      { id: 'v2', version: 2, at: '2026-11-02T10:00:00Z', actor: 'Kim', terms: { discountPercent: 25, minSpendCents: 5000 }, approvedBy: 'Olivia Owner', approvedAt: '2026-11-02T11:00:00Z', changes: [{ field: 'discountPercent', before: 20, after: 25 }, { field: 'minSpendCents', before: null, after: 5000 }] },
+      { id: 'v1', version: 1, at: '2026-11-01T10:00:00Z', actor: 'Kim', terms: { discountPercent: 20 }, approvedBy: null, approvedAt: null, changes: null }] };
+    render(<DiscountDetailsDialog id="d1" initialTab="history" tick={0} onClose={() => undefined} onCustomer={() => undefined} extras={{ load: async () => x } as any} />);
+    const rows = await screen.findAllByTestId('dd-history-row');
+    expect(within(rows[0]).getByTestId('dd-history-approver').textContent).toMatch(/^Olivia Owner · /);
+    expect(within(rows[0]).getByTestId('dd-history-changes').textContent).toMatch(/: 20 → 25 · .*: — → \$50\.00$/);
+    expect(within(rows[1]).getByTestId('dd-history-changes').textContent).toBe('First version');
+    expect(within(rows[1]).getByTestId('dd-history-approver').textContent).toBe('—');
   });
 });

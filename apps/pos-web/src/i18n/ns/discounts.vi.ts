@@ -168,4 +168,11 @@ export const DISCOUNTS_VI = {
   'dsc.pvp.price': 'Một dịch vụ đổi giá từ {p0} thành {p1} (giảm {d0} → {d1})', // DRAFT — Kevin reviews
   'dsc.pvp.other': 'Ưu đãi khác trên hóa đơn, mức trần hoặc ngân sách đã làm giảm giá thay đổi {v}', // DRAFT — Kevin reviews
   'dsc.pvp.note': 'Giá tạm tính = mức giảm khi ưu đãi được áp vào hóa đơn. Hoàn tiền sau khi thanh toán được ghi riêng.', // DRAFT — Kevin reviews
+  'dsc10.version': 'Tính theo phiên bản điều kiện {v}', // DRAFT — Kevin reviews
+  'dsc10.changedSince': 'điều kiện đã đổi từ đó (nay là phiên bản {c}) — lần dùng này giữ nguyên điều kiện cũ', // DRAFT — Kevin reviews
+  'dsc10.notFrozen': 'không có bản ghi điều kiện lúc thanh toán', // DRAFT — Kevin reviews
+  'dsc10.col.approvedBy': 'Người duyệt', // DRAFT — Kevin reviews
+  'dsc10.col.changed': 'Thay đổi so với phiên bản trước', // DRAFT — Kevin reviews
+  'dsc10.firstVersion': 'Phiên bản đầu tiên', // DRAFT — Kevin reviews
+  'dsc10.noChange': 'Không đổi điều kiện nào', // DRAFT — Kevin reviews
 };

@@ -226,6 +226,8 @@ export function POSDiscountsScreen() {
 export const ticketRoute = (r: { ticketId: string; ticketNumber?: string | null; status?: string } | undefined, ticketId: string) =>
   (r && r.status !== 'applied' && r.ticketNumber ? `/tenant/payments/transactions?search=${encodeURIComponent(r.ticketNumber)}` : `/checkout?ticket=${encodeURIComponent(ticketId)}`);
 
+/** a stored term value as shown (cents as money; missing as —) */
+const termText = (k: string, v: unknown) => (v == null ? '—' : k.endsWith('Cents') ? fmtMoney(Number(v)) : String(v));
 export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact = false, rule }: { rule?: SavingsRule; rows: any[]; onCoupon?: (dealId: string) => void; onCustomer?: (id: string, name: string) => void; onTicket?: (ticketId: string, row?: { ticketId: string; ticketNumber?: string | null; status?: string }) => void; compact?: boolean }) {
   return (
     <table className="fk-table fn-table dsc-table" data-testid="redemptions-table">
@@ -238,7 +240,8 @@ export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact
         <td className="num t-opt">{r.eligibleSubtotalCents == null ? '—' : fmtMoney(r.eligibleSubtotalCents)}</td>
         <td className="num"><b>−{fmtMoney(r.discountCents)}</b>{r.reversedCents ? <span className="fk-li-s">{tx('dsc.reversedAmt', { v: fmtMoney(r.reversedCents) })}</span> : null}{rule ? <SavingsWhy rule={rule} row={r} /> : null}<PreviewVsPaidWhy pvp={r.previewVsPaid} /></td>
         <td className="num t-opt2">{r.finalCents == null ? '—' : fmtMoney(r.finalCents)}</td>
-        <td><span className={'fk-chip ' + (TONE[r.status] ?? 'mut')}>{state(r.status)}</span>{r.reversalReason ? <span className="fk-li-s">{codeLabel('dsc.reason.' + r.reversalReason, r.reversalReason)}</span> : null}</td>
+        <td><span className={'fk-chip ' + (TONE[r.status] ?? 'mut')}>{state(r.status)}</span>{r.reversalReason ? <span className="fk-li-s">{codeLabel('dsc.reason.' + r.reversalReason, r.reversalReason)}</span> : null}
+          {r.ruleVersion?.used != null ? <span className="fk-li-s" data-testid="red-version">{tx('dsc10.version', { v: String(r.ruleVersion.used) })}{r.ruleVersion.changedSince ? ` · ${tx('dsc10.changedSince', { c: String(r.ruleVersion.current) })}` : ''}{r.ruleVersion.frozen ? '' : ` · ${tx('dsc10.notFrozen')}`}</span> : null}</td>
         {onCoupon ? <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onCoupon(r.dealId)} data-testid="red-coupon">{tx('dsc.viewCoupon')}</button></td> : null}
       </tr>)}</tbody>
     </table>
@@ -360,8 +363,11 @@ export function DiscountDetailsDialog({ id, initialTab, onClose, onPromotions, o
         {t === 'redemptions' ? (reds.error ? <StateBlock error={reds.error} onRetry={reds.reload} /> : !reds.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : reds.data.items.length === 0 ? <Empty title={tx('dsc.noRedemptions')} /> : <><RedemptionsTable rows={reds.data.items} compact onCustomer={onCustomer} onTicket={onTicket} rule={{ discountType: x.discountType, discountPercent: x.discountPercent, discountCents: x.discountCents, maxDiscountCents: x.limits?.maxDiscountCents ?? null }} /><Pager info={pageOf(reds.data)} onPage={setRp} /></>) : null}
         {t === 'history' ? (x.history.length === 0 ? <div className="fk-hint">{tx('dsc.noHistory')}</div> : (
-          <table className="fk-table fn-table dsc-table" data-testid="dd-history"><thead><tr><th>{tx('dsc.col.when')}</th><th>{tx('dsc.col.version')}</th><th>{tx('dsc.col.by')}</th><th>{tx('dsc.col.terms')}</th></tr></thead>
-            <tbody>{x.history.map((h: any) => <tr key={h.id}><td>{whenTime(h.at)}</td><td>v{h.version}</td><td>{h.actor || '—'}</td><td className="dsc-terms">{Object.entries(h.terms).map(([k2, v]) => `${tx('dsc.term.' + k2)}: ${k2.endsWith('Cents') ? fmtMoney(Number(v)) : String(v)}`).join(' · ') || '—'}</td></tr>)}</tbody></table>)) : null}
+          <table className="fk-table fn-table dsc-table" data-testid="dd-history"><thead><tr><th>{tx('dsc.col.when')}</th><th>{tx('dsc.col.version')}</th><th>{tx('dsc.col.by')}</th><th>{tx('dsc10.col.approvedBy')}</th><th>{tx('dsc.col.terms')}</th><th>{tx('dsc10.col.changed')}</th></tr></thead>
+            <tbody>{x.history.map((h: any) => <tr key={h.id} data-testid="dd-history-row"><td>{whenTime(h.at)}</td><td>v{h.version}</td><td>{h.actor || '—'}</td>
+              <td data-testid="dd-history-approver">{h.approvedBy ? `${h.approvedBy}${h.approvedAt ? ' · ' + whenTime(h.approvedAt) : ''}` : '—'}</td>
+              <td className="dsc-terms">{Object.entries(h.terms).map(([k2, v]) => `${tx('dsc.term.' + k2)}: ${termText(k2, v)}`).join(' · ') || '—'}</td>
+              <td className="dsc-terms" data-testid="dd-history-changes">{h.changes == null ? tx('dsc10.firstVersion') : h.changes.length === 0 ? tx('dsc10.noChange') : h.changes.map((c: any) => `${tx('dsc.term.' + c.field)}: ${termText(c.field, c.before)} → ${termText(c.field, c.after)}`).join(' · ')}</td></tr>)}</tbody></table>)) : null}
         {(extras?.tabs ?? []).filter((e) => e.key === t).map((e) => <div key={e.key} data-testid={'dd-' + e.key}>{e.render(x)}</div>)}
       </>}
     </FitDialog>
