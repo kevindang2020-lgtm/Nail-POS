@@ -166,6 +166,30 @@ describe('Loyalty & Rewards — reward availability rules', () => {
     expect((await repo.redeem(ctx, { customerId: C1, rewardId: RL, idempotencyKey: key(970) })).duplicate).toBe(false);
     expect(await code(repo.redeem(ctx, { customerId: C2, rewardId: RL, idempotencyKey: key(971) }))).toBe('REWARD_OUT_OF_STOCK');
   });
+  // Checkout Upsell Assistant Settings 05: the redeem picker reads the authoritative balance and explains each reward with
+  // the SAME rule redeem() enforces — what it calls redeemable, redeem() accepts; what it blocks, redeem() refuses the same way
+  it('redeemOptions: authoritative balance + tier; every blocked reward carries the code redeem() refuses with', async () => {
+    const RT = id('fb3'), RP = id('fb4');
+    await q(`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, eligible_tiers) values ($1,$2,'Gold only',20,true,'amount_off',300,'{Gold}'), ($3,$2,'Too dear',999999,true,'amount_off',900,null)`, [RT, T, RP]);
+    const bal = Number((await q(`select points_balance from customer_loyalty_profiles where tenant_id = $1 and customer_id = $2`, [T, C2])).rows[0].points_balance);
+    const bea = await repo.redeemOptions(ctx, C2);
+    expect(bea).toMatchObject({ enrolled: true, balancePoints: bal, tier: 'Regular' });
+    const by = Object.fromEntries(bea.rewards.map((r) => [r.rewardId, r.blockedBy]));
+    expect(by[RT]).toBe('REWARD_TIER_NOT_ELIGIBLE');
+    expect(by[RP]).toBe('LOYALTY_INSUFFICIENT_POINTS');
+    expect(by[R1]).toBeNull();
+    expect(by[R2]).toBeUndefined();                    // inactive rewards are not offered at all
+    expect(by[RX]).toBeUndefined();                    // never another salon's reward
+    for (const [rid, blocked] of [[RT, 'REWARD_TIER_NOT_ELIGIBLE'], [RP, 'LOYALTY_INSUFFICIENT_POINTS']] as const)
+      expect(await code(repo.redeem(ctx, { customerId: C2, rewardId: rid, idempotencyKey: key(980 + (rid === RT ? 0 : 1)) }))).toBe(blocked);
+    const CN = id('c7');
+    await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name) values ($1,$2,$3,'Dao','Ng','Dao Ng')`, [CN, T, B]);
+    const dao = await repo.redeemOptions(ctx, CN);   // a customer who never enrolled
+    expect(dao).toMatchObject({ enrolled: false, balancePoints: 0, tier: null });
+    expect(dao.rewards.find((r) => r.rewardId === R1)?.blockedBy).toBe('LOYALTY_NOT_ENROLLED');
+    expect((await repo.redeemOptions(ctx2, C2)).enrolled).toBe(false);   // another salon cannot read this member
+    await q(`update loyalty_rewards set active = false, eligible_tiers = null where id in ($1, $2)`, [RT, RP]);   // leave the tier tests' data as it was
+  });
 });
 
 // Loyalty guide (Nov 4 2026) "Manage Tiers" + member filters: configured tiers with threshold and benefits, rename relabels

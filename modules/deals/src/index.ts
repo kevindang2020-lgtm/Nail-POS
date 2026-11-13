@@ -17,7 +17,7 @@ export * from './engine/pricing';
 export * from './engine/eligibility';
 export * from './engine/coupons';
 export { DealsCheckoutService, DealRefusedError, applicationOffer, type TicketOfferRequest, type OfferCandidate, type OfferSummary } from './engine/deals-checkout.service';
-export { KyselyDealsLedger, LedgerRefusal, type LiveApplication } from './engine/deals-ledger.kysely';
+export { KyselyDealsLedger, LedgerRefusal, dealRule, type LiveApplication } from './engine/deals-ledger.kysely';   // dealRule: Deals & Offers 12 (commission impact sample)
 export { KyselyDealsMarketplace } from './deals/deals-marketplace.kysely';
 export { DealsLifecycleScheduler, runDealsLifecycle, registerDealsJobHandlers, DEALS_JOB } from './engine/deals-lifecycle.scheduler';
 export { DealForbiddenError, DealValidationError, DealConflictError } from './deals/deals.service';

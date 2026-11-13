@@ -309,4 +309,19 @@ export const AIFD_VI: Record<string, string> = {
   "aifd.drift.no_change": "Chưa ghi nhận thay đổi", // DRAFT — Kevin reviews
   "aifd.drift.none_found": "Không có chữ nào của trợ lý này mâu thuẫn với thiết lập hiện tại.", // DRAFT — Kevin reviews
   "aifd.drift.saved": "Trợ lý lưu lần cuối {at}", // DRAFT — Kevin reviews
+  "aifd.bud.title": "Mức sử dụng & lỗi", // DRAFT — Kevin reviews
+  "aifd.bud.used": "Đã dùng {u} / {l} trong gói kỳ này ({p}%)", // DRAFT — Kevin reviews
+  "aifd.bud.used_nolimit": "Đã dùng {u} kỳ này (gói không giới hạn)", // DRAFT — Kevin reviews
+  "aifd.bud.used_unknown": "Không đọc được mức sử dụng — xem là chưa rõ, không phải còn trong hạn mức.", // DRAFT — Kevin reviews
+  "aifd.bud.a.quota_80": "Đã dùng 80% mức trong gói ({v}%)", // DRAFT — Kevin reviews
+  "aifd.bud.a.quota_90": "Đã dùng 90% mức trong gói ({v}%)", // DRAFT — Kevin reviews
+  "aifd.bud.a.quota_100": "Đã dùng hết mức trong gói ({v}%)", // DRAFT — Kevin reviews
+  "aifd.bud.a.quota_unknown": "Chưa rõ mức sử dụng", // DRAFT — Kevin reviews
+  "aifd.bud.a.events_stale": "Không có sự kiện cuộc gọi từ nhà cung cấp — có thể lỗi kết nối gọi lại", // DRAFT — Kevin reviews
+  "aifd.bud.a.call_failures": "{v} cuộc gọi lỗi trong 24 giờ", // DRAFT — Kevin reviews
+  "aifd.bud.spend.STOPS_AT_LIMIT": "Đến 100% thì điện thoại AI dừng; muốn dùng quá mức trong gói, chủ tiệm phải bật tính phí vượt mức.", // DRAFT — Kevin reviews
+  "aifd.bud.spend.OVERAGE_APPROVED_BY_OWNER": "Chủ tiệm đã bật tính phí vượt mức: phần dùng quá gói sẽ bị tính tiền.", // DRAFT — Kevin reviews
+  "aifd.bud.spend.NO_LIMIT": "Gói này không giới hạn mức sử dụng.", // DRAFT — Kevin reviews
+  "aifd.bud.spend.UNKNOWN": "Chưa rõ quy tắc chi tiêu cho đến khi đọc được mức sử dụng.", // DRAFT — Kevin reviews
+  "aifd.bud.charges_na": "Chi phí nhà cung cấp không được ghi ở đây nên không hiển thị hay ước tính — hãy xem hóa đơn của nhà cung cấp.", // DRAFT — Kevin reviews
 };

@@ -9,5 +9,6 @@ export const CompensationControllerListQueries = {
   reportCommission: { filters: { branchId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
   reportSupply: { filters: { branchId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
   servicePreviewGet: { filters: { serviceId: { type: 'id' }, priceCents: { type: 'text', maxLength: 10 } }, search: false },
+  dealReviewsList: { filters: { flagged: { type: 'enum', values: ['true', 'false'] } }, search: false, params: ['page', 'pageSize'] },   // Deals & Offers 12
   reportTips: { filters: { branchId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
 } satisfies Record<string, ListQuerySpec>;

@@ -24,6 +24,9 @@
       "@aipowersalon/database": [
         "../../packages/database/dist/index.d.ts"
       ],
+      "@aipowersalon/deals": [
+        "../../modules/deals/dist/index.d.ts"
+      ],
       "@aipowersalon/permissions": [
         "../../packages/permissions/dist/index.d.ts"
       ],

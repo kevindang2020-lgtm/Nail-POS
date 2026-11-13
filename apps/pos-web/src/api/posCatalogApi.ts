@@ -33,6 +33,8 @@ export const posCatalogApi = {
   addOns: (q: Q) => api.get<any>(`${C}/add-ons`, clean(q)),
   addOn: (key: string) => api.get<any>(`${C}/add-ons/${enc(key)}`),
   addOnUsage: (q: Q) => api.get<any>(`${C}/add-ons/usage`, clean(q)),
+  // Extras · ADD-ONS 09: sold add-ons + recipe cost with the stated basis (inventory.cost.view)
+  addOnProfitability: (q: { days: number; page: number; pageSize: number }) => api.get<any>('/pos/menu-insights/add-on-profitability', { days: String(q.days), page: String(q.page), pageSize: String(q.pageSize) }),
   createAddOn: (b: Q) => api.post<any>(`${C}/add-ons`, b),
   updateAddOn: (key: string, b: Q) => api.patch<any>(`${C}/add-ons/${enc(key)}`, b),
   archiveAddOn: (key: string, b: Q = {}) => api.post<any>(`${C}/add-ons/${enc(key)}/archive`, b),

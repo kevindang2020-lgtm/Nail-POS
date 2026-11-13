@@ -8,7 +8,7 @@ import {
   recommendLoyaltyRedemption, recommendGiftCard, recommendNextAppointment, applyFatigueLimits,
   type RecommendationCard, type AddOnCandidate, type ProductCandidate, type MembershipCandidate,
   type LoyaltyEnrollInput, type LoyaltyRedeemInput, type GiftCardInput, type NextApptInput,
-  enforceAddedValueCap,
+  enforceAddedValueCap, detectRecordChecks, type RecordCheck, type RequestedService,
 } from './ai-checkout-upsell-core';
 import { resolveSettings, settingSources, PLATFORM_DEFAULTS, effectiveAddedValueCapCents, type UpsellSettingsLayer, type EffectiveUpsellSettings } from './ai-checkout-upsell-settings';
 import { UpsellCache, contextFingerprint } from './ai-checkout-upsell.cache';
@@ -33,6 +33,8 @@ export interface LoyaltyRecoPort { state(ctx: AiCheckoutUpsellContext, ticket: C
 export interface GiftCardRecoPort { options(ctx: AiCheckoutUpsellContext): Promise<GiftCardInput>; }
 export interface NextAppointmentPort { context(ctx: AiCheckoutUpsellContext, ticket: CheckoutTicketView): Promise<NextApptInput | null>; }
 /** Functional Decision 27: when does this technician's next appointment start (minutes from now, salon time)? null = none today. */
+/** Checkout Upsell 09: what the customer asked for on the booking / check-in this ticket came from (read-only). */
+export interface RequestedServicesPort { requested(ctx: AiCheckoutUpsellContext, checkoutId: string): Promise<RequestedService[]>; }
 export interface TechnicianSchedulePort { nextAppointment(ctx: AiCheckoutUpsellContext, technicianId: string): Promise<{ startsInMinutes: number; startTime: string } | null>; }
 export interface UpsellSettingsPort {
   layers(ctx: AiCheckoutUpsellContext): Promise<{ tenant?: UpsellSettingsLayer; branch?: UpsellSettingsLayer; device?: UpsellSettingsLayer; user?: UpsellSettingsLayer }>;
@@ -55,7 +57,8 @@ export interface AddOnMutationPort { addServiceLine(ctx: AiCheckoutUpsellContext
 export interface MembershipMutationPort { enroll(ctx: AiCheckoutUpsellContext, input: { customerId: string; planId: string; checkoutId: string }): Promise<{ membershipId: string }>; }
 export interface LoyaltyMutationPort {
   enroll(ctx: AiCheckoutUpsellContext, input: { customerId: string; checkoutId: string }): Promise<{ enrolled: true }>;
-  redeem(ctx: AiCheckoutUpsellContext, input: { customerId: string; rewardId: string; checkoutId: string }): Promise<{ redemptionId: string }>;
+  /** requestKey = the upsell's own idempotency key for this redeem, so a retried request reuses the same redemption */
+  redeem(ctx: AiCheckoutUpsellContext, input: { customerId: string; rewardId: string; checkoutId: string; requestKey?: string }): Promise<{ redemptionId: string }>;
 }
 export interface PromotionMutationPort { apply(ctx: AiCheckoutUpsellContext, checkoutId: string, promotionId: string): Promise<{ applied: true }>; }
 export interface NextAppointmentMutationPort { openBooking(ctx: AiCheckoutUpsellContext, input: { customerId: string; serviceId: string }): Promise<{ bookingDraftId: string }>; }
@@ -84,6 +87,9 @@ export interface UpsellAuditPort { record(who: { tenantId: string; branchId: str
 export interface RecommendationsResult {
   enabled: boolean; disabledAtLevel: string | null; frozen: boolean; freezeReason: string | null;
   cards: RecommendationCard[]; generatedAt: string;
+  /** Checkout Upsell 09: record discrepancies (requested but not on the ticket) — a separate workflow from `cards`, for a
+   *  person to resolve; never priced, never added or charged here. Shown even while payment is in progress. */
+  recordChecks?: RecordCheck[];
 }
 
 export class AiCheckoutUpsellService {
@@ -103,6 +109,7 @@ export class AiCheckoutUpsellService {
     private readonly mut?: MutationDeps,
     private readonly records?: RecommendationRecordPort,
     private readonly schedule?: TechnicianSchedulePort,
+    private readonly requested?: RequestedServicesPort,
   ) { this.cache = new UpsellCache(cache ?? null); }
 
   /** Decision 27: minutes before any of this ticket's technicians must start their next appointment (null = none / unknown). */
@@ -143,6 +150,16 @@ export class AiCheckoutUpsellService {
     return t;
   }
 
+  /** Checkout Upsell 09: requested-but-not-on-ticket services. A failed read is reported as "unknown" (undefined), never
+   *  as "nothing missing". */
+  private async recordChecks(ctx: AiCheckoutUpsellContext, ticket: CheckoutTicketView): Promise<RecordCheck[] | undefined> {
+    if (!this.requested) return undefined;
+    let req: RequestedService[];
+    try { req = await this.requested.requested(ctx, ticket.checkoutId); }
+    catch (e) { this.audit(ctx, 'ai_upsell_record_check_unreadable', ticket.checkoutId, { error: String((e as Error)?.message ?? e).slice(0, 120) }); return undefined; }
+    return detectRecordChecks(req, { serviceIds: [...ticket.serviceLines.map((l) => l.serviceId), ...ticket.cartAddOnIds], serviceNames: ticket.serviceLines.map((l) => l.serviceName) });
+  }
+
   async recommendations(ctx: AiCheckoutUpsellContext, checkoutId: string): Promise<RecommendationsResult> {
     this.need(ctx, VIEW);
     const now = () => new Date().toISOString();
@@ -152,8 +169,10 @@ export class AiCheckoutUpsellService {
     const ticket = await this.loadTicket(ctx, checkoutId);
     if (isPaymentStage(ticket.status)) { // §10 — never modify the cart during payment
       this.audit(ctx, 'ai_upsell_frozen_payment_stage', checkoutId, { status: ticket.status });
-      return { enabled: true, disabledAtLevel: null, frozen: true, freezeReason: 'PAYMENT_IN_PROGRESS', cards: [], generatedAt: now() };
+      return { enabled: true, disabledAtLevel: null, frozen: true, freezeReason: 'PAYMENT_IN_PROGRESS', cards: [], generatedAt: now(), recordChecks: await this.recordChecks(ctx, ticket) };
     }
+    const recordChecks = await this.recordChecks(ctx, ticket);
+    const underRecordCheck = new Set((recordChecks ?? []).map((r) => r.serviceId).filter((x): x is string => !!x));
 
     const t = st.tunables;
     const cx = contextFingerprint({ serviceIds: ticket.serviceLines.map(s => s.serviceId), addOnIds: ticket.cartAddOnIds, subtotalCents: ticket.subtotalCents, customerId: ticket.customerId });
@@ -167,7 +186,7 @@ export class AiCheckoutUpsellService {
       const candidates: AddOnCandidate[] = [];
       for (const line of ticket.serviceLines) {
         const a = await this.addOns.getAddOns(ctx, line.serviceId).catch(() => [] as ServiceAddOnLite[]);
-        for (const ao of a) candidates.push({ ...ao, sourceServiceId: line.serviceId, sourceServiceName: line.serviceName });
+        for (const ao of a) if (!underRecordCheck.has(ao.addOnId)) candidates.push({ ...ao, sourceServiceId: line.serviceId, sourceServiceName: line.serviceName });   // Checkout Upsell 09: never sell a record gap
       }
       const availableMinutes = await this.addOnMinutes(ctx, ticket);   // Decision 27: never run into the next appointment
       cards.push(...recommendAddOns({ candidates, cartAddOnIds: ticket.cartAddOnIds, sameVisitFeasible: t.allowAfterServiceDone, maxAddOns: t.maxAddOn, ticketSubtotalCents: ticket.subtotalCents, maxPriceCents: effectiveAddedValueCapCents(t, ticket.subtotalCents), availableMinutes }));
@@ -186,7 +205,7 @@ export class AiCheckoutUpsellService {
     let ranked = applyFatigueLimits(cards, { maxTotal: t.maxTotal, maxProduct: t.maxProduct, maxAddOn: t.maxAddOn, maxMembership: t.maxMembership }, dismissed);
     ranked = enforceAddedValueCap(ranked, effectiveAddedValueCapCents(t, ticket.subtotalCents)); // Functional Decision 27: ≤ min($30, 30% of booked services) by default
 
-    const result: RecommendationsResult = { enabled: true, disabledAtLevel: null, frozen: false, freezeReason: null, cards: ranked, generatedAt: now() };
+    const result: RecommendationsResult = { enabled: true, disabledAtLevel: null, frozen: false, freezeReason: null, cards: ranked, generatedAt: now(), recordChecks };
     await this.cache.set(ctx, checkoutId, 'recommendations', cx, result);
     if (this.records && ranked.length) {
       const nowIso = new Date().toISOString();
@@ -334,8 +353,9 @@ export class AiCheckoutUpsellService {
     const reward = loy.redeem.rewards.find(r => r.rewardId === rewardId);
     if (!reward) throw new Error('LOYALTY_NOT_ELIGIBLE');
     if (reward.pointsCost > loy.redeem.balancePoints) throw new Error('LOYALTY_BALANCE_INSUFFICIENT'); // revalidate against authoritative balance
-    const result = await runOnce(mut.idem, this.idem(ctx, checkoutId, 'redeem_loyalty', rewardId, opts.idempotencyKey || ''), { rewardId, customerId: ticket.customerId }, async () => {
-      const red = await mut.loyalty.redeem(ctx, { customerId: ticket.customerId!, rewardId, checkoutId });
+    const key = this.idem(ctx, checkoutId, 'redeem_loyalty', rewardId, opts.idempotencyKey || '');
+    const result = await runOnce(mut.idem, key, { rewardId, customerId: ticket.customerId }, async () => {
+      const red = await mut.loyalty.redeem(ctx, { customerId: ticket.customerId!, rewardId, checkoutId, requestKey: key });
       const totals = await mut.recalc.recalculate(ctx, checkoutId);
       return { redemptionId: red.redemptionId, totals };
     });

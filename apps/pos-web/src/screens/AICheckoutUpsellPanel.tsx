@@ -15,6 +15,21 @@ const money = (c: number | null) => (c == null ? null : `$${(c / 100).toFixed(2)
 const CONF: Record<string, string> = { high: GOLD, medium: '#8a6d3b', low: MUTED };
 const STOCK_LABEL: Record<string, string> = { get in_stock() { return t('growth.upsell.stock.inStock'); }, get low_stock() { return t('growth.upsell.stock.low'); }, get out_of_stock() { return t('growth.upsell.stock.out'); }, not_tracked: '' };
 
+/** Checkout Upsell 09: record checks are a DIFFERENT workflow from suggestions — a service asked for but not on the
+ *  ticket may have been done and not recorded. Shown apart, with no price and no Add button; a person resolves it. */
+function RecordChecks({ checks }: { checks: { serviceId: string | null; serviceName: string }[] }) {
+  if (!checks.length) return null;
+  return (
+    <div role="region" aria-label={t('ucx.rc.region')} data-testid="ucx-record-checks" style={{ border: '1px solid #c9a227', background: '#fff8e6', borderRadius: 10, padding: 12, margin: '4px 8px 10px' }}>
+      <div style={{ fontWeight: 700, color: '#7a5a00' }}>{t('ucx.rc.title')}</div>
+      <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>{t('ucx.rc.lead')}</div>
+      <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13 }}>
+        {checks.map((c) => <li key={(c.serviceId ?? '') + ':' + c.serviceName}>{t('ucx.rc.item', { name: c.serviceName })}</li>)}
+      </ul>
+    </div>
+  );
+}
+
 export function AICheckoutUpsellPanel({ checkoutId, onCartChanged }: { checkoutId: string; onCartChanged?: (totals: any) => void }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -60,11 +75,13 @@ export function AICheckoutUpsellPanel({ checkoutId, onCartChanged }: { checkoutI
   if (loading) return <div style={{ padding: 12, color: MUTED }}>{t('pos.loading_suggestions')}</div>;
   if (error) return <div style={{ padding: 12, color: '#a12d2d' }}>{error} <button className="seg-btn" onClick={load}>{t('pos.retry')}</button></div>;
   if (!data?.enabled) return null; // kill switch: show nothing, never a broken panel
-  if (data.frozen) return <div style={{ padding: 12, color: MUTED, fontSize: 13 }}>{t('pos.suggestions_are_paused_while_payment_is_lnvw')}</div>;
-  if (!data.cards?.length) return <div style={{ padding: 12, color: MUTED, fontSize: 13 }}>{t('pos.no_suggestions_for_this_checkout')}</div>;
+  const checks = Array.isArray(data.recordChecks) ? data.recordChecks : [];
+  if (data.frozen) return <><RecordChecks checks={checks} /><div style={{ padding: 12, color: MUTED, fontSize: 13 }}>{t('pos.suggestions_are_paused_while_payment_is_lnvw')}</div></>;
+  if (!data.cards?.length) return <><RecordChecks checks={checks} /><div style={{ padding: 12, color: MUTED, fontSize: 13 }}>{t('pos.no_suggestions_for_this_checkout')}</div></>;
 
   return (
     <div style={{ padding: 4 }} role="region" aria-label={t('pos.checkout_suggestions')}>
+      <RecordChecks checks={checks} />
       <div style={{ fontFamily: 'Playfair Display, serif', color: GOLD, fontSize: 16, margin: '4px 8px 8px' }}>{t('pos.suggestions')}</div>
       {actionErr && <div style={{ margin: '0 8px 8px', color: '#a12d2d', fontSize: 13 }}>{actionErr}</div>}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>

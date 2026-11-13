@@ -18,4 +18,7 @@ export const posDealsOffersApi = {
   healthRuns: (q: { page: number; pageSize: number }) => api.get<any>(`/pos/deals-offers/health/runs`, q as unknown as Record<string, unknown>),
   suggest: (goal: CouponAssistGoal) => api.post<any>(`/pos/deals-offers/assistant/suggest`, { goal }),
   draft: (body: Record<string, unknown>) => api.post<any>(`/pos/deals-offers/assistant/draft`, body),
+  // Extras · Deals & Offers 12: Commission Impact Review (compensation.view_all to read, compensation.manage to approve)
+  commissionReviews: (q: { flagged?: boolean; page: number; pageSize: number }) => api.get<any>(`/owner/compensation/deal-reviews`, qs({ ...q, flagged: q.flagged ? 'true' : undefined })),
+  approveCommission: (dealId: string, note: string | null) => api.post<any>(`/owner/compensation/deal-reviews/${encodeURIComponent(dealId)}/approve`, { note }),
 };

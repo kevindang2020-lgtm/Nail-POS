@@ -161,4 +161,11 @@ export const DISCOUNTS_VI = {
   'dsc.exp.byBudget': 'Giới hạn bởi ngân sách còn lại', // DRAFT — Kevin reviews
   'dsc.exp.unlimited': 'Không có mức trần: không giới hạn lượt dùng và chưa đặt ngân sách', // DRAFT — Kevin reviews
   'dsc.exp.noCap': 'Không có mức trần: giảm theo % không có giới hạn mỗi phiếu và chưa đặt ngân sách', // DRAFT — Kevin reviews
+  'dsc.pvp.open': 'Giá tạm tính {a} → đã thanh toán {b}', // DRAFT — Kevin reviews
+  'dsc.pvp.same': 'Giống như lúc tạm tính', // DRAFT — Kevin reviews
+  'dsc.pvp.removed': 'Một dịch vụ {p} đã bị bỏ khỏi hóa đơn (được giảm {d})', // DRAFT — Kevin reviews
+  'dsc.pvp.added': 'Một dịch vụ {p} được thêm vào (giảm {d})', // DRAFT — Kevin reviews
+  'dsc.pvp.price': 'Một dịch vụ đổi giá từ {p0} thành {p1} (giảm {d0} → {d1})', // DRAFT — Kevin reviews
+  'dsc.pvp.other': 'Ưu đãi khác trên hóa đơn, mức trần hoặc ngân sách đã làm giảm giá thay đổi {v}', // DRAFT — Kevin reviews
+  'dsc.pvp.note': 'Giá tạm tính = mức giảm khi ưu đãi được áp vào hóa đơn. Hoàn tiền sau khi thanh toán được ghi riêng.', // DRAFT — Kevin reviews
 };

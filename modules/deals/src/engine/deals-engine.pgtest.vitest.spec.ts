@@ -284,3 +284,41 @@ describe('per-salon gating and plan limits', () => {
     expect(((await sql`select count(*)::int as n from audit_logs where tenant_id = ${T} and action_type = 'deals_platform_settings_changed'`.execute(db)).rows[0] as any).n).toBe(2);
   });
 });
+
+// Extras · Deals & Offers 08 — "Preview vs Paid Comparison": the discount first priced is kept once (estimate_snapshot,
+// migration 871); after the ticket is edited and paid, the redemption history compares the two and explains the change.
+describe('Deals & Offers 08 — preview vs paid', () => {
+  it('keeps the first-priced estimate once, then explains a removed line and a price change against the paid discount', async () => {
+    const { DiscountsScreenRepository } = await import('../salon-promotions/discounts-screen');
+    const d = await deal({ pct: 20 }); const t = await ticket(await customer());
+    // the engine priced 20% of $50 + $30 = $16.00 (allocated 1000 + 600)
+    const c = await co.candidate(ctx, t.id, { dealId: d });
+    const app = await co.reserve(ctx, t.id, c, { id: c.offer.id, category: c.offer.category, description: '', appliedCents: 1600, lines: [{ lineId: t.lines[0], cents: 1000 }, { lineId: t.lines[1], cents: 600 }] });
+    const snap = ((await sql`select estimate_snapshot from deal_redemptions where id = ${app.redemptionId}`.execute(db)).rows[0] as any).estimate_snapshot;
+    expect(snap).toEqual({ discountCents: 1600, allocations: [{ lineId: t.lines[0], cents: 1000 }, { lineId: t.lines[1], cents: 600 }], lines: [{ lineId: t.lines[0], priceCents: 5000 }, { lineId: t.lines[1], priceCents: 3000 }] });
+    // the ticket is edited: the pedicure comes off, the gel goes to $60 → checkout re-prices the application to $12.00
+    await sql`update ticket_service_lines set removed_at = now() where id = ${t.lines[1]}`.execute(db);
+    await sql`update ticket_service_lines set line_total_cents = 6000 where id = ${t.lines[0]}`.execute(db);
+    await co.syncAmounts(ctx, [{ id: c.offer.id, category: c.offer.category, description: '', appliedCents: 1200, lines: [{ lineId: t.lines[0], cents: 1200 }], redemptionId: app.redemptionId } as any], []);
+    await co.onPaid(ctx, t.id);
+    // the estimate is never rewritten (the trigger refuses it)
+    await expect(sql`update deal_redemptions set estimate_snapshot = '{"discountCents":1}'::jsonb where id = ${app.redemptionId}`.execute(db)).rejects.toThrow(/written once/);
+    const screen = new DiscountsScreenRepository(db, 'all');
+    const row = (await screen.redemptions({ tenantId: T, branchId: B, userId: ctx.userId, role: 'OWNER', permissions: ['pos.marketing.view'] } as never, { dealId: d, state: 'all', preset: 'all', page: 1, pageSize: 10 })).items.find((x: any) => x.id === app.redemptionId)!;
+    expect(row.discountCents).toBe(1200);
+    expect(row.previewVsPaid).toEqual({ estimateCents: 1600, paidCents: 1200, changeCents: -400, unchanged: false, changes: [
+      { code: 'price_changed', lineId: t.lines[0], beforeCents: 5000, afterCents: 6000, discountBeforeCents: 1000, discountAfterCents: 1200 },
+      { code: 'line_removed', lineId: t.lines[1], beforeCents: 3000, afterCents: null, discountBeforeCents: 600, discountAfterCents: null },
+    ] });
+  });
+
+  it('same lines, different amount → the other offers / limits decided it; no estimate recorded → null, never a guess', async () => {
+    const { comparePreviewToPaid, readEstimateSnapshot } = await import('./preview-vs-paid');
+    const snap = readEstimateSnapshot({ discountCents: 1000, allocations: [{ lineId: 'a', cents: 1000 }], lines: [{ lineId: 'a', priceCents: 5000 }] });
+    expect(comparePreviewToPaid(snap, { discountCents: 700, allocations: [{ lineId: 'a', cents: 700 }], lines: [{ lineId: 'a', priceCents: 5000 }] }))
+      .toEqual({ estimateCents: 1000, paidCents: 700, changeCents: -300, unchanged: false, changes: [{ code: 'other_offers_or_limits', lineId: null, beforeCents: null, afterCents: null, discountBeforeCents: null, discountAfterCents: -300 }] });
+    expect(comparePreviewToPaid(snap, { discountCents: 1000, allocations: [{ lineId: 'a', cents: 1000 }], lines: [{ lineId: 'a', priceCents: 5000 }] })!.unchanged).toBe(true);
+    expect(comparePreviewToPaid(readEstimateSnapshot(null), { discountCents: 1, allocations: [], lines: [] })).toBeNull();
+    expect(readEstimateSnapshot({ nope: 1 })).toBeNull();
+  });
+});

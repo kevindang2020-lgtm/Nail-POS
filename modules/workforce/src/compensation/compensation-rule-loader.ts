@@ -67,6 +67,11 @@ export function mapVersionRowToRule(tenantId: string, r: PolicyVersionRow): Comp
   };
 }
 
+/** The funding allocation the money path stamps on every line's deal / coupon discount today (§13 per-rule funding is a
+ *  later phase): 'proportional' — the discount comes off the commissionable base and technician and salon each give up
+ *  their share. ONE constant, so the Deals commission impact review (deal-commission-review.ts) states what checkout does. */
+export const CHECKOUT_DISCOUNT_FUNDING = 'proportional' as const;
+
 /** Pure: run the resolver over already-loaded rules and shape the winner (or null). Kept separate for unit testing. */
 export function resolveFromRules(rules: CompensationRule[], ctx: ResolveContext): ResolvedLineCommission | null {
   const won = resolvePolicy(rules, ctx);
@@ -76,7 +81,7 @@ export function resolveFromRules(rules: CompensationRule[], ctx: ResolveContext)
     commissionValue: won.commission.value,
     supplyMethod: (won.supply?.method as string) ?? 'none',
     supplyValue: won.supply?.value ?? 0,
-    discountFunding: 'proportional', // §13 wired in a later phase; default preserves today's behaviour
+    discountFunding: CHECKOUT_DISCOUNT_FUNDING, // §13 wired in a later phase; default preserves today's behaviour
     policyId: won.policyId,
     policyVersion: won.version,
     source: won.source,

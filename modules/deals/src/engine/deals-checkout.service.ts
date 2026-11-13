@@ -132,7 +132,7 @@ export class DealsCheckoutService {
     try {
       return await this.ledger.apply({ tenantId: ctx.tenantId, branchId: t.branchId, ticketId, customerId: t.customerId, dealId: c.deal.id, kind: c.kind,
         appointmentHoldId: c.appointmentHoldId, appointmentId: c.appointmentId, couponCodeId: c.couponCodeId, discountCents: priced.appliedCents, lines: priced.lines,
-        terms: termsSnapshot(c.deal), dealVersion: c.deal.version, userId: ctx.userId },
+        terms: termsSnapshot(c.deal), dealVersion: c.deal.version, userId: ctx.userId, estimateLines: t.lines },
       { maxRedemptions: c.appointmentHoldId ? null : c.deal.maxRedemptions ?? null, maxPerCustomer: c.appointmentHoldId ? null : c.deal.maxPerCustomer ?? null, budgetCents: c.deal.budgetCents ?? null });
     } catch (e) {
       if (e instanceof LedgerRefusal) throw new DealRefusedError(e.message, 409, [{ code: e.code, message: e.message }]);

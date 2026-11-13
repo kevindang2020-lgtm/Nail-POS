@@ -10,6 +10,7 @@
 // Codes are stored hashed; only the last four characters (code_hint) exist to show. An exact code typed in the search is
 // hashed with the tenant (engine/coupons) and matched — the code itself is never returned. Tenant pinned in every statement;
 // a branch user sees salon-wide coupons and their branch's. Money is integer cents; days are the salon's (tenantTimeZone).
+import { readEstimateSnapshot, comparePreviewToPaid } from '../engine/preview-vs-paid';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { Controller, Get, Header, HttpException, HttpStatus, Inject, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode } from '@aipowersalon/api-contracts';
@@ -234,12 +235,24 @@ export class DiscountsScreenRepository {
     const sums = (await sql<any>`select coalesce(sum(r.amount_discounted_cents - coalesce(r.reversed_cents, 0)) filter (where ${CONFIRMED}), 0)::bigint as saved, count(distinct r.customer_id) filter (where ${CONFIRMED})::int as customers ${from} where ${w}`.execute(this.db)).rows[0];
     const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select r.id, r.status, ${at} as at, r.applied_at, r.redeemed_at, r.reversed_at, r.reversal_reason, r.amount_discounted_cents, r.reversed_cents, r.deal_id, d.title, cc.code_hint,
+        r.estimate_snapshot, r.line_allocations,
         (select c3.code_hint from deal_coupon_codes c3 where c3.tenant_id = r.tenant_id and c3.deal_id = r.deal_id order by c3.created_at, c3.id limit 1) as deal_hint,
         r.customer_id, cu.full_name, cu.phone_display, cu.normalized_phone, r.ticket_id, tk.ticket_number, tk.subtotal_cents, tk.total_cents, tk.status as ticket_status,
         coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) as technician, coalesce(nullif(au.full_name, ''), au.email) as applied_by, br.name as branch_name
       ${from} where ${w} order by ${at} desc, r.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
+    // Deals & Offers 08: the ticket's lines now, for the preview-vs-paid explanation (only rows that kept an estimate)
+    const tIds = [...new Set(rows.filter((r: any) => r.estimate_snapshot && r.ticket_id).map((r: any) => String(r.ticket_id)))];
+    const tLines = tIds.length ? (await sql<{ ticket_id: string; id: string; line_total_cents: number }>`select tsl.ticket_id, tsl.id, tsl.line_total_cents from ticket_service_lines tsl
+        where tsl.tenant_id = ${T} and tsl.ticket_id in (${sql.join(tIds)}) and tsl.removed_at is null`.execute(this.db)).rows : [];
+    const linesOf = (tid: string) => tLines.filter((l) => String(l.ticket_id) === tid).map((l) => ({ lineId: String(l.id), priceCents: N(l.line_total_cents) }));
+    const pvp = (r: any) => {
+      const snap = readEstimateSnapshot(r.estimate_snapshot);
+      if (!snap || !r.ticket_id) return null;
+      const alloc = Array.isArray(r.line_allocations) ? r.line_allocations.map((a: any) => ({ lineId: String(a?.lineId), cents: N(a?.cents) })) : [];
+      return comparePreviewToPaid(snap, { discountCents: N(r.amount_discounted_cents), allocations: alloc, lines: linesOf(String(r.ticket_id)) });
+    };
     return { state, period: per, totals: { savingsCents: N(sums?.saved), uniqueCustomers: N(sums?.customers) },
-      items: rows.map((r: any) => ({ id: String(r.id), status: String(r.status), at: iso(r.at), appliedAt: iso(r.applied_at), redeemedAt: iso(r.redeemed_at), reversedAt: iso(r.reversed_at), reversalReason: r.reversal_reason ?? null,
+      items: rows.map((r: any) => ({ id: String(r.id), status: String(r.status), previewVsPaid: pvp(r), at: iso(r.at), appliedAt: iso(r.applied_at), redeemedAt: iso(r.redeemed_at), reversedAt: iso(r.reversed_at), reversalReason: r.reversal_reason ?? null,
         dealId: String(r.deal_id), dealName: String(r.title), code: (r.code_hint ?? r.deal_hint) ? '••••' + String(r.code_hint ?? r.deal_hint) : null,
         customerId: r.customer_id ? String(r.customer_id) : null, customerName: r.full_name ?? null, maskedPhone: maskPhone(r.phone_display ?? r.normalized_phone),
         ticketId: r.ticket_id ? String(r.ticket_id) : null, ticketNumber: r.ticket_number == null ? null : String(r.ticket_number), ticketStatus: r.ticket_status ?? null,

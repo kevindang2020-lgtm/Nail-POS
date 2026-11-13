@@ -54,3 +54,6 @@ export { REFERRAL_PROGRAM } from './pos-referrals/referral-program.controller';
 export { applyLoyaltyEntry, lockLoyaltyCustomer, reconcileLoyaltyBalances, LoyaltyLedgerService, LoyaltyLedgerError, LOYALTY_ENTRY_TYPES, type LoyaltyEntryInput, type LoyaltyEntryResult, type LoyaltyEntryType, type LoyaltyReconcileResult } from './loyalty/loyalty-ledger.service';
 export { LoyaltyReconcileScheduler, loyaltyReconcileEnabled } from './loyalty/loyalty-reconcile.scheduler';
 export { LOYALTY_REDEMPTION } from './loyalty/loyalty-redemption-machine';   // loyalty_redemptions.status (checkout re-exports it)
+// Checkout Upsell Assistant Settings 05: the authoritative redeem transaction + the read-only redeem picker it explains
+// with (the AI upsell's loyalty adapter delegates to these; it never writes points itself)
+export { LoyaltyProgramRepository, LoyaltyProgramError, redeemBlock, type LoyaltyProgramContext, type RedeemOptions, type RedeemOption, type RedeemBlockCode } from './loyalty/loyalty-program.repository';

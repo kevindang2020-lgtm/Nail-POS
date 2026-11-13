@@ -7,4 +7,5 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 export const MenuInsightsControllerListQueries = {
   get: { filters: { days: { type: 'text' } }, search: false, dateRange: { maxDays: 'analytics', days: ['windowDays'] } },
   state: { filters: { days: { type: 'text' } }, search: false, dateRange: { maxDays: 'analytics', days: ['windowDays'] } },
+  addOnProfitability: { filters: { days: { type: 'enum', values: ['7', '30', '90', '365'] } }, search: false, params: ['page', 'pageSize'] },   // Extras · ADD-ONS 09
 } satisfies Record<string, ListQuerySpec>;

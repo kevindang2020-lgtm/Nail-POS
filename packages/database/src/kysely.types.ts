@@ -2984,6 +2984,7 @@ export interface DealRedemptionsTable {
   idempotency_key: string | null;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  estimate_snapshot: unknown | null;   // migration 871, the discount first priced (written once)
 }
 export interface DealSavesTable {
   deal_id: string;
@@ -4959,6 +4960,9 @@ export interface CatalogCategoryReviewsTable {   // migration 847 — owner deci
 export interface AiBranchComparisonSnapshotsTable {   // migration 848 — a frozen AI Branch Comparison (immutable)
   id: Generated<string>; tenant_id: string; branch_id: string | null; created_by_user_id: string | null; title: string | null; preset: string;
   range_from: string | null; range_to: string | null; financials_included: boolean; as_of: Ts; snapshot_json: unknown; created_at: Generated<Ts>;
+}
+export interface DealCommissionReviewsTable {   // migration 881 — an approved commission impact for one deal version (append-only)
+  id: Generated<string>; tenant_id: string; deal_id: string; deal_version: number; discount_funding: string; note: string | null; reviewed_by_user_id: string | null; reviewed_at: Generated<Ts>;
 }
 export interface AiBranchComparisonSignoffsTable {   // migration 848 — reviewer sign-off notes on a saved comparison (append-only)
   id: Generated<string>; tenant_id: string; snapshot_id: string; reviewer_user_id: string | null; decision: string; note: string; created_at: Generated<Ts>;
@@ -8092,6 +8096,7 @@ export interface DB {
   catalog_category_reviews: CatalogCategoryReviewsTable;
   ai_branch_comparison_snapshots: AiBranchComparisonSnapshotsTable;
   ai_branch_comparison_signoffs: AiBranchComparisonSignoffsTable;
+  deal_commission_reviews: DealCommissionReviewsTable;
   pos_saved_views: PosSavedViewsTable;
   report_email_subscriptions: ReportEmailSubscriptionsTable;
   report_email_deliveries: ReportEmailDeliveriesTable;

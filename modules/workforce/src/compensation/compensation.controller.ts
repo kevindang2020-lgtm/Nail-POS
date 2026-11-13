@@ -5,7 +5,8 @@ import { RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guar
  * the owner role / compensation permission (§30) — no tenant data is read or written here, calculation only.
  */
 import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Req, HttpException, HttpStatus, Optional } from '@nestjs/common';
-import type { ServiceCompensationPreviewResponse } from '@aipowersalon/api-contracts/tenant';
+import type { ServiceCompensationPreviewResponse, DealCommissionReviewListResponse, DealCommissionReviewItem } from '@aipowersalon/api-contracts/tenant';
+import { DealCommissionReviewService } from './deal-commission-review';
 import { ServiceCompensationPreviewService } from './compensation-service-preview';
 import { CompensationPreviewService } from './compensation-preview.service';
 import { CompensationReportsService } from './compensation-reports.service';
@@ -18,7 +19,7 @@ import { ComplianceService } from './compensation-compliance.service';
 import { AgreementsService } from './compensation-agreements.service';
 import { ListQueries } from '@aipowersalon/database';
 import { CompensationControllerListQueries } from './compensation.list-queries';
-import { COMP_AGREEMENT_BODY, COMP_BONUS_APPROVE_BODY, COMP_BONUS_PREVIEW_BODY, COMP_BONUS_RULE_BODY, COMP_CLASSIFICATION_BODY, COMP_COMPLIANCE_PREVIEW_BODY, COMP_GUARANTEE_PREVIEW_BODY, COMP_PERIOD_REVIEW_BODY, COMP_PREVIEW_BODY, COMP_RETAIL_POLICY_BODY, COMP_RULE_ACTIVATE_BODY, COMP_RULE_CREATE_BODY, COMP_RULE_VERSION_BODY, COMP_SEED_DEFAULT_BODY, COMP_SUPPLY_PREVIEW_BODY, COMP_TIER_PLAN_BODY, COMP_TIER_PREVIEW_BODY, COMP_TIP_POLICY_BODY, COMP_VALIDATE_BODY, COMP_WAGE_CONFIG_BODY } from '../request-schemas';
+import { COMP_AGREEMENT_BODY, COMP_BONUS_APPROVE_BODY, COMP_BONUS_PREVIEW_BODY, COMP_BONUS_RULE_BODY, COMP_CLASSIFICATION_BODY, COMP_COMPLIANCE_PREVIEW_BODY, COMP_DEAL_REVIEW_APPROVE_BODY, COMP_GUARANTEE_PREVIEW_BODY, COMP_PERIOD_REVIEW_BODY, COMP_PREVIEW_BODY, COMP_RETAIL_POLICY_BODY, COMP_RULE_ACTIVATE_BODY, COMP_RULE_CREATE_BODY, COMP_RULE_VERSION_BODY, COMP_SEED_DEFAULT_BODY, COMP_SUPPLY_PREVIEW_BODY, COMP_TIER_PLAN_BODY, COMP_TIER_PREVIEW_BODY, COMP_TIP_POLICY_BODY, COMP_VALIDATE_BODY, COMP_WAGE_CONFIG_BODY } from '../request-schemas';
 
 // BUILD_PLAN Phase 9 (Constitution 2, bug 6): every route carries @RequirePermission('compensation.view_all' | 'compensation.manage')
 // — keys now in the catalog, held by the OWNER (as the `role === 'OWNER'` shortcut allowed before; no other salon role
@@ -46,7 +47,7 @@ function range(q: any): { from: string; to: string; branchId?: string } { return
 @ListQueries(CompensationControllerListQueries)
 @Controller('owner/compensation')
 export class CompensationController {
-  constructor(private readonly svc: CompensationPreviewService, private readonly reports: CompensationReportsService, private readonly tipPolicy: CompensationTipPolicyService, private readonly rules: CompensationRulesService, private readonly tierPlans: TierPlansService, private readonly retail: RetailCommissionService, private readonly bonuses: BonusRulesService, private readonly compliance: ComplianceService, private readonly agreements: AgreementsService, @Optional() private readonly servicePreview?: ServiceCompensationPreviewService) {}
+  constructor(private readonly svc: CompensationPreviewService, private readonly reports: CompensationReportsService, private readonly tipPolicy: CompensationTipPolicyService, private readonly rules: CompensationRulesService, private readonly tierPlans: TierPlansService, private readonly retail: RetailCommissionService, private readonly bonuses: BonusRulesService, private readonly compliance: ComplianceService, private readonly agreements: AgreementsService, @Optional() private readonly servicePreview?: ServiceCompensationPreviewService, @Optional() private readonly dealReviews?: DealCommissionReviewService) {}
 
   // §19 compensation agreements (owner captures + lists; technician acknowledges elsewhere).
   @RequirePermission('compensation.view_all') @Get('agreements') agreementsList(@Req() r: any, @Query('technicianId') technicianId?: string) { gate(r); return run(() => this.agreements.list(rc(r), technicianId)); }
@@ -105,6 +106,20 @@ export class CompensationController {
     const svc = this.servicePreview;
     if (!svc) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Compensation preview needs the database.' }, HttpStatus.SERVICE_UNAVAILABLE);
     return run(() => svc.preview(rc(r), { serviceId: q?.serviceId, priceCents: q?.priceCents }));
+  }
+  // Extras · Deals & Offers 12: Commission Impact Review — which deals' commission impact is not approved (read), and the
+  // append-only approval of one deal version (write; never edits a deal, a ticket or anyone's pay).
+  @RequirePermission('compensation.view_all') @Get('deal-reviews') async dealReviewsList(@Req() r: any, @Query() q: any): Promise<DealCommissionReviewListResponse> {
+    gate(r);
+    const svc = this.dealReviews;
+    if (!svc) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Commission impact review needs the database.' }, HttpStatus.SERVICE_UNAVAILABLE);
+    return run(() => svc.list(rc(r), { flagged: q?.flagged, page: q?.page, pageSize: q?.pageSize }));
+  }
+  @RequirePermission('compensation.manage') @Post('deal-reviews/:dealId/approve') async dealReviewApprove(@Req() r: any, @Param('dealId') dealId: string, @Body(ValidatedBody(COMP_DEAL_REVIEW_APPROVE_BODY, { strict: true })) b: any): Promise<DealCommissionReviewItem> {
+    gateManage(r);
+    const svc = this.dealReviews;
+    if (!svc) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Commission impact review needs the database.' }, HttpStatus.SERVICE_UNAVAILABLE);
+    return run(() => svc.approve(rc(r), dealId, { note: b?.note }));
   }
   @RequirePermission('compensation.view_all') @Get('reports/commission') reportCommission(@Req() r: any, @Query() q: any) { gate(r); const g = range(q); return this.reports.commission(r.ctx.tenantId, g.from, g.to, g.branchId); }
   @RequirePermission('compensation.view_all') @Get('reports/supply') reportSupply(@Req() r: any, @Query() q: any) { gate(r); const g = range(q); return this.reports.supply(r.ctx.tenantId, g.from, g.to, g.branchId); }

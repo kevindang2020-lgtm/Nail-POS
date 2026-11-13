@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { ReceptionistCenter, type RcCtx, type RcAccessRepo } from './receptionist-center';
-import { FrontDeskCenter, effectiveState, refSuffix, knowledgeDrift } from './front-desk-center';
+import { FrontDeskCenter, effectiveState, refSuffix, knowledgeDrift, budgetAlerts } from './front-desk-center';
 import { BusinessSetupCenter } from './business-setup-center';
 import { canTransitionAgent } from './ai-agent-core';
 
@@ -345,5 +345,34 @@ describe('Extras · AI Front Desk 06 — knowledge drift check (agent wording vs
     const src = { hours: { source: 'platform_default', timezone: 'America/New_York', storeHours: {} }, services: [{ id: 's1', name: 'Gel Manicure', active: true, priceCents: 4000 }],
       changedAt: { hours: null, services: null, closures: null, faqs: null } };
     expect(knowledgeDrift({ greeting: 'Open till 7:30 p.m. Gel Manicure is $40.00. Tips are $5.' }, src, true)).toEqual([{ kind: 'hours_not_set', field: 'greeting', value: '7:30 p.m.' }]);
+  });
+});
+
+// Extras · AI Front Desk 09 — Usage & Error Budget Alerts: quota pressure from the SAME entitlement snapshot the access gate
+// uses, stale provider callbacks and failed calls; provider charges are not recorded so they are NOT_AVAILABLE (never
+// estimated); spending past the included usage needs the owner's overage setting. Read-only: nothing sent or switched off.
+describe('Extras · AI Front Desk 09 — usage & error budget alerts', () => {
+  const at = (used: number, limit: number, overageEnabled = false): RcAccessRepo => ({ loadSnapshot: async () => ({ tenantStatus: 'active', packageEnabled: true, subscription: { status: 'active' }, usage: { used, limit, overageEnabled }, hasPermission: true }) as never });
+  const monitorWith = async (repo: RcAccessRepo | null) => (await new FrontDeskCenter(db, new ReceptionistCenter(db, repo, bizOk, ENV), bizOk).monitor(own)).budget;
+  it('quota levels 80 / 90 / 100 % from the entitlement snapshot; the spend rule follows the owner overage setting', async () => {
+    expect(await monitorWith(at(820, 1000))).toMatchObject({ usage: { used: 820, limit: 1000, percent: 82, overageEnabled: false }, spendRule: 'STOPS_AT_LIMIT', charges: 'NOT_AVAILABLE' });
+    expect((await monitorWith(at(820, 1000))).alerts.map((a) => a.key)).toContain('quota_80');
+    expect((await monitorWith(at(950, 1000))).alerts.map((a) => a.key)).toContain('quota_90');
+    const full = await monitorWith(at(1000, 1000, true));
+    expect(full.alerts.find((a) => a.key === 'quota_100')).toMatchObject({ severity: 'FAILED', value: 100 });
+    expect(full.spendRule).toBe('OVERAGE_APPROVED_BY_OWNER');
+    expect((await monitorWith(at(5, 0))).spendRule).toBe('NO_LIMIT');
+    expect((await monitorWith(at(10, 1000))).alerts.some((a) => a.key.startsWith('quota_'))).toBe(false);
+  });
+  it('an unreadable usage counter is UNKNOWN, never "within budget"', async () => {
+    const broken: RcAccessRepo = { loadSnapshot: async () => { throw new Error('db down'); } };
+    const b = await monitorWith(broken);
+    expect(b.usage).toBeNull(); expect(b.spendRule).toBe('UNKNOWN');
+    expect(b.alerts.find((a) => a.key === 'quota_unknown')).toMatchObject({ severity: 'UNKNOWN' });
+    expect((await monitorWith(null)).alerts.map((a) => a.key)).toContain('quota_unknown');
+  });
+  it('pure rule: stale provider callbacks and failed calls are flagged', () => {
+    const r = budgetAlerts({ usage: { used: 1, limit: 100, overageEnabled: false, level: null, percent: 1 }, usageReadFailed: false, eventsState: 'FAILED', failed24h: 3, calls24h: 10 });
+    expect(r.alerts).toEqual([{ key: 'events_stale', severity: 'FAILED', value: null }, { key: 'call_failures', severity: 'WARNING', value: 3 }]);
   });
 });

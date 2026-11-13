@@ -7,7 +7,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
   cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), compensationPreview: vi.fn(), pricePreview: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
-    addOnSummary: vi.fn(), reviewDecision: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
+    addOnSummary: vi.fn(), reviewDecision: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), addOnProfitability: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },
   bundles: { state: vi.fn(), create: vi.fn() }, insights: { get: vi.fn() }, alerts: { summary: vi.fn(), active: vi.fn() }, invScreen: { products: vi.fn(), product: vi.fn() },
 }));
@@ -54,6 +54,7 @@ beforeEach(() => {
   cat.addOns.mockResolvedValue(page([AO('s1', 'Gel Manicure'), AO('s2', 'Classic Pedicure'), AO('s5', 'Haircut', 'nail_add_on_on_hair_service'), AO('s6', 'Hair Coloring', 'nail_add_on_on_hair_service')]));
   cat.addOn.mockResolvedValue({ key: 'ao_french', name: 'French tips', offerings: [AO('s1', 'Gel Manicure'), AO('s2', 'Classic Pedicure'), AO('s5', 'Haircut'), AO('s6', 'Hair Coloring')].map((o) => ({ ...o, withServicePriceCents: 6500, withServiceMinutes: 55 })), differsByService: false, usage: { paidLines: 4, cents: 4000, lastAt: null } });
   cat.addOnUsage.mockResolvedValue({ ...page([]), totals: { paidLines: 0, paidCents: 0 } });
+  cat.addOnProfitability.mockResolvedValue({ window: { days: 30, from: '2026-10-14T04:00:00Z', timeZone: 'UTC' }, basis: {}, totals: { unitsSold: 0, revenueCents: 0, costedRevenueCents: 0, recipeCostCents: 0, contributionCents: 0, addOnsWithoutRecipe: 0 }, items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 });   // ADD-ONS 09 panel (usage tab, cost viewers)
 });
 const mount = (el: JSX.Element) => render(<MemoryRouter>{el}</MemoryRouter>);
 

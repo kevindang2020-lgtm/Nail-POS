@@ -19,3 +19,19 @@ export interface InventoryLowStockCause {
   /** Reorder & Receiving Reconciliation (Extras · Stock Alerts 06): the suggestion vs what is on order and what arrived */
   reorder: { reorderQuantity: number; onOrder: number; suggested: number; partlyReceivedLines: number; receivedInWindow: number; lastReceiptQuantity: number | null };
 }
+
+// ── Extras · ADD-ONS 09 — Service profitability context (GET /pos/menu-insights/add-on-profitability, inventory.cost.view).
+//    Sold add-ons on PAID tickets in the salon-local window (a fully refunded or voided ticket is left out) and the recipe
+//    cost of what was sold: units × THE recipe unit cost (recipeUnitCosts — Σ recipe quantity × the product's own cost, or
+//    its location average; TODAY's costs). Contribution = revenue − recipe cost, before commission, tax and labor. An
+//    add-on with no recipe has recipeCostCents null ("—"), never 0. Read only. Integer cents.
+export interface AddOnProfitabilityItem {
+  key: string; serviceId: string | null; name: string; unitsSold: number; ticketCount: number; revenueCents: number;
+  recipeUnitCostCents: number | null; recipeCostCents: number | null; contributionCents: number | null;
+}
+export interface AddOnProfitabilityResponse {
+  window: { days: number; from: string; timeZone: string };
+  basis: { revenue: 'paid_tickets_line_totals'; cost: 'recipe_at_current_product_cost'; excludes: ['commission', 'tax', 'labor', 'refunded_or_voided_tickets'] };
+  totals: { unitsSold: number; revenueCents: number; costedRevenueCents: number; recipeCostCents: number; contributionCents: number; addOnsWithoutRecipe: number };
+  items: AddOnProfitabilityItem[]; page: number; pageSize: number; totalItems: number; totalPages: number;
+}

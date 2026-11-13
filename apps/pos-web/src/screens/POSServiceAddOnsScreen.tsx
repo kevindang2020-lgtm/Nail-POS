@@ -15,6 +15,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posCatalogApi } from '../api/posCatalogApi';
 import { useCan } from '../components/usePermissions';
+import { AddOnProfitPanel } from './AddOnProfitPanel';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
@@ -129,6 +130,7 @@ export function POSServiceAddOnsScreen() {
         {usage.error ? <StateBlock error={usage.error} onRetry={usage.reload} /> : !usage.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : usage.data.items.length === 0 ? <Empty title={q ? tx('cg.noMatchSearch', { q }) : tx('cg.ao.noUsage')} /> : <UsageTable rows={usage.data.items} />}
       </FitPanel>}
+      {tab === 'usage' && can('inventory.cost.view') ? <AddOnProfitPanel /> : null}
 
       <div className="cg-links" data-testid="nav-links">
         <button type="button" className="fk-btn ghost" onClick={() => nav('/services')} data-testid="link-services">{tx('pos.back_to_services')}</button>

@@ -56,4 +56,29 @@ export const DEALSOFFERS_VI = {
   'do.byBranch.note': 'Lượt đã thanh toán trong khoảng thời gian đã chọn, đã trừ hoàn tiền. Không hiển thị doanh thu của các hóa đơn này — đó không phải doanh số tăng thêm nhờ ưu đãi.', // DRAFT — Kevin reviews
   'do.stack.nc': 'Nếu ưu đãi không được đánh dấu kết hợp được:', // DRAFT — Kevin reviews
   'do.stack.c': 'Nếu ưu đãi được đánh dấu kết hợp được:', // DRAFT — Kevin reviews
+  'do.ci.title': 'Xem xét ảnh hưởng hoa hồng', // DRAFT — Kevin reviews
+  'do.ci.flagged': '{n} cần duyệt', // DRAFT — Kevin reviews
+  'do.ci.funding': 'Khi tính tiền, khoản giảm giá của ưu đãi được chi trả: {f}. Duyệt nghĩa là bạn chấp nhận điều này cho ưu đãi như hiện tại; không thay đổi giá, hóa đơn hay tiền công.', // DRAFT — Kevin reviews
+  'do.ci.fund.proportional': 'chia chung — trừ vào cơ sở tính hoa hồng, thợ và tiệm mỗi bên chịu phần của mình', // DRAFT — Kevin reviews
+  'do.ci.fund.salon_funded': 'tiệm chịu', // DRAFT — Kevin reviews
+  'do.ci.fund.technician_funded': 'thợ chịu', // DRAFT — Kevin reviews
+  'do.ci.fund.noncommissionable': 'không tính vào hoa hồng', // DRAFT — Kevin reviews
+  'do.ci.onlyFlagged': 'Chỉ ưu đãi cần duyệt', // DRAFT — Kevin reviews
+  'do.ci.none': 'Mọi ưu đãi đang mở đều đã được duyệt ảnh hưởng hoa hồng.', // DRAFT — Kevin reviews
+  'do.ci.sample': 'Ví dụ', // DRAFT — Kevin reviews
+  'do.ci.review': 'Duyệt', // DRAFT — Kevin reviews
+  'do.ci.sampleLine': '{s} giá {p}: giảm {d}', // DRAFT — Kevin reviews
+  'do.ci.earn': 'Thợ nhận {a} → {b} ({n} thợ)', // DRAFT — Kevin reviews
+  'do.ci.approved': 'Đã duyệt', // DRAFT — Kevin reviews
+  'do.ci.reviewedBy': 'bởi {who} · phiên bản {v}', // DRAFT — Kevin reviews
+  'do.ci.approve': 'Duyệt ảnh hưởng', // DRAFT — Kevin reviews
+  'do.ci.flag.not_reviewed': 'Chưa duyệt', // DRAFT — Kevin reviews
+  'do.ci.flag.terms_changed': 'Điều khoản đã đổi sau khi duyệt', // DRAFT — Kevin reviews
+  'do.ci.flag.funding_changed': 'Cách chi trả đã đổi sau khi duyệt', // DRAFT — Kevin reviews
+  'do.ci.st.draft': 'Bản nháp', // DRAFT — Kevin reviews
+  'do.ci.st.pending_approval': 'Đang chờ duyệt', // DRAFT — Kevin reviews
+  'do.ci.st.approved': 'Đã duyệt', // DRAFT — Kevin reviews
+  'do.ci.st.scheduled': 'Đã lên lịch', // DRAFT — Kevin reviews
+  'do.ci.st.active': 'Đang hoạt động', // DRAFT — Kevin reviews
+  'do.ci.st.paused': 'Tạm dừng', // DRAFT — Kevin reviews
 } as const;

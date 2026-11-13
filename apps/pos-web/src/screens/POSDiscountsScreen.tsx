@@ -236,7 +236,7 @@ export function RedemptionsTable({ rows, onCoupon, onCustomer, onTicket, compact
         {compact ? null : <td><b className="dsc-code">{r.code ?? '—'}</b><span className="fk-li-s">{r.dealName}</span></td>}
         <td>{r.ticketNumber && r.ticketId && onTicket ? <button type="button" className="fk-li-t link" onClick={() => onTicket(r.ticketId, r)} data-testid="red-ticket">#{r.ticketNumber}</button> : r.ticketNumber ? '#' + r.ticketNumber : '—'}{r.technician ? <span className="fk-li-s">{r.technician}</span> : null}</td>
         <td className="num t-opt">{r.eligibleSubtotalCents == null ? '—' : fmtMoney(r.eligibleSubtotalCents)}</td>
-        <td className="num"><b>−{fmtMoney(r.discountCents)}</b>{r.reversedCents ? <span className="fk-li-s">{tx('dsc.reversedAmt', { v: fmtMoney(r.reversedCents) })}</span> : null}{rule ? <SavingsWhy rule={rule} row={r} /> : null}</td>
+        <td className="num"><b>−{fmtMoney(r.discountCents)}</b>{r.reversedCents ? <span className="fk-li-s">{tx('dsc.reversedAmt', { v: fmtMoney(r.reversedCents) })}</span> : null}{rule ? <SavingsWhy rule={rule} row={r} /> : null}<PreviewVsPaidWhy pvp={r.previewVsPaid} /></td>
         <td className="num t-opt2">{r.finalCents == null ? '—' : fmtMoney(r.finalCents)}</td>
         <td><span className={'fk-chip ' + (TONE[r.status] ?? 'mut')}>{state(r.status)}</span>{r.reversalReason ? <span className="fk-li-s">{codeLabel('dsc.reason.' + r.reversalReason, r.reversalReason)}</span> : null}</td>
         {onCoupon ? <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onCoupon(r.dealId)} data-testid="red-coupon">{tx('dsc.viewCoupon')}</button></td> : null}
@@ -252,6 +252,24 @@ function ExposureRows({ x }: { x: any }) {
   const why = e.estimate != null ? tx(e.limitedBy === 'budget' ? 'dsc.exp.byBudget' : 'dsc.exp.byUses', { n: nf(e.usesLeft ?? 0), v: fmtMoney(e.perUse ?? 0) })
     : e.usesLeft == null ? tx('dsc.exp.unlimited') : tx('dsc.exp.noCap');
   return <><dt>{tx('dsc.exp.title')}</dt><dd data-testid="dd-exposure"><b>{e.estimate != null ? fmtMoney(e.estimate) : '—'}</b> <span className="fk-muted">· {tx('dsc.exp.estimate')}</span><span className="fk-li-s">{why}</span></dd></>;
+}
+
+/** Deals & Offers 08: the discount first priced vs the one paid, with the server's explanation (no estimate kept → nothing) */
+type PvpChange = { code: string; beforeCents: number | null; afterCents: number | null; discountBeforeCents: number | null; discountAfterCents: number | null };
+function PreviewVsPaidWhy({ pvp }: { pvp?: { estimateCents: number; paidCents: number; changeCents: number; unchanged: boolean; changes: PvpChange[] } | null }) {
+  if (!pvp) return null;
+  if (pvp.unchanged) return <span className="fk-li-s" data-testid="pvp-same">{tx('dsc.pvp.same')}</span>;
+  const off = (c: number | null) => '−' + fmtMoney(Math.abs(c ?? 0));
+  const line = (c: PvpChange) => c.code === 'line_removed' ? tx('dsc.pvp.removed', { p: fmtMoney(c.beforeCents ?? 0), d: off(c.discountBeforeCents) })
+    : c.code === 'line_added' ? tx('dsc.pvp.added', { p: fmtMoney(c.afterCents ?? 0), d: off(c.discountAfterCents) })
+    : c.code === 'price_changed' ? tx('dsc.pvp.price', { p0: fmtMoney(c.beforeCents ?? 0), p1: fmtMoney(c.afterCents ?? 0), d0: off(c.discountBeforeCents), d1: off(c.discountAfterCents) })
+    : tx('dsc.pvp.other', { v: ((c.discountAfterCents ?? 0) > 0 ? '+' : '−') + fmtMoney(Math.abs(c.discountAfterCents ?? 0)) });
+  return (
+    <details className="dsc-why" data-testid="pvp"><summary>{tx('dsc.pvp.open', { a: off(pvp.estimateCents), b: off(pvp.paidCents) })}</summary>
+      <ul className="fk-li-s" style={{ margin: '4px 0', paddingLeft: 16 }}>{pvp.changes.map((c, i) => <li key={i} data-testid="pvp-change">{line(c)}</li>)}</ul>
+      <div className="fk-hint">{tx('dsc.pvp.note')}</div>
+    </details>
+  );
 }
 
 /** Automatic Savings Explanation: eligible subtotal → rule → cap → saving, each on its own line (savingsExplain.ts) */

@@ -173,4 +173,8 @@ export const UPSELLSETTINGS_EN: Record<string, string> = {
   "ucx.st.runNo": "No — {why}",
   "ucx.st.pay": "Payment authority:",
   "ucx.st.payNone": "None. Suggestions never charge, discount or change a ticket; the cashier adds an item and the customer pays at checkout.",
+  "ucx.rc.title": "Record check — not a sale",
+  "ucx.rc.lead": "Asked for on the booking or check-in but not on this ticket. If it was done, add it to the ticket; if it was not, nothing to do. Nothing is added or charged here.",
+  "ucx.rc.item": "{name} — ask the technician whether it was done",
+  "ucx.rc.region": "Services to check on this ticket",
 };
