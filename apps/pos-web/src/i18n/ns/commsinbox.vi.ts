@@ -165,4 +165,11 @@ export const COMMSINBOX_VI = {
   'ci.consent.src.provider_complaint': 'nhà mạng báo phiền', // DRAFT — Kevin reviews
   'ci.consent.src.email_unsubscribe': 'hủy nhận email', // DRAFT — Kevin reviews
   'ci.consent.src.legacy_backfill': 'bản ghi cũ', // DRAFT — Kevin reviews
+  'ci.plan.title': 'Gói tin nhắn', // DRAFT — Kevin reviews
+  'ci.plan.error': 'Không đọc được gói tin nhắn.', // DRAFT — Kevin reviews
+  'ci.plan.usage': 'Tháng này: {n} tin, {s} phân đoạn ({d} đã nhận, {f} thất bại).', // DRAFT — Kevin reviews
+  'ci.plan.noUsage': 'Chưa có số liệu tin nhắn tháng này.', // DRAFT — Kevin reviews
+  'ci.plan.package': '{p}: còn {r} trên {i} mã đặt lịch trong kỳ.', // DRAFT — Kevin reviews
+  'ci.plan.noPackage': 'Tiệm chưa có gói mã đặt lịch.', // DRAFT — Kevin reviews
+  'ci.plan.open': 'Mở gói', // DRAFT — Kevin reviews
 };

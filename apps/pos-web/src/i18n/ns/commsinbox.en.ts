@@ -164,4 +164,11 @@ export const COMMSINBOX_EN = {
   'ci.consent.src.provider_complaint': 'carrier complaint',
   'ci.consent.src.email_unsubscribe': 'email unsubscribe',
   'ci.consent.src.legacy_backfill': 'older record',
+  'ci.plan.title': 'Texting plan',
+  'ci.plan.error': 'The texting plan could not be read.',
+  'ci.plan.usage': 'This month: {n} texts, {s} segments ({d} delivered, {f} failed).',
+  'ci.plan.noUsage': 'Texting usage for this month is not available.',
+  'ci.plan.package': '{p}: {r} of {i} booking codes left this cycle.',
+  'ci.plan.noPackage': 'No booking-code package on this salon.',
+  'ci.plan.open': 'Open plan',
 };

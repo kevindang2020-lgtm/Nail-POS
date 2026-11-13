@@ -33,6 +33,7 @@ import { deviceToday } from '../lib/deviceToday';
 import { authApi } from '../api/authApi';
 import { useCan } from '../components/usePermissions';
 import { ProviderReadinessStrip } from '../components/ProviderReadinessStrip';
+import { posSmsPlanApi, type SmsBalance, type SmsMessagingUsage } from '../api/posSmsPlanApi';
 import { codeLabel } from '../components/peopleLabels';
 
 const when = (iso: string | null | undefined) => { if (!iso) return ''; try { return fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
@@ -388,6 +389,7 @@ export function POSCommunicationsScreen() {
             <button type="button" className="ci-btn" onClick={() => nav('/tenant/communications/templates')}>{tx('pos.open_templates')}</button>
           </div>
         </div>
+        {can('settings.view') ? <SmsPlanCard onOpen={() => nav('/tenant/account/overview')} /> : null}
         <div className="ci-card">
           <div className="ci-card-t">{tx('pos.ai_communication_insights')} <span className="ci-tag">{tx('ci.aiLabel')}</span></div>
           <div className="ci-small">{tx('ci.aiHint')}</div>
@@ -438,6 +440,25 @@ function ThreadRow({ t, on, draft, onOpen }: { t: InboxThread; on: boolean; draf
         </div>
       ) : null}
     </button>
+  );
+}
+
+/** extras Communications 09 — the texting subscription wired into the inbox: this month's sent texts / segments (delivered,
+ *  failed) and the plan's verification allowance, read from the salon's own plan (GET /tenant/sms-plan). Never merged into
+ *  one number; a failed read says so. */
+export function SmsPlanCard({ onOpen }: { onOpen: () => void }) {
+  const [p, setP] = useState<{ balance: SmsBalance; messaging?: SmsMessagingUsage | null } | null>(null); const [err, setErr] = useState(false);
+  useEffect(() => { let alive = true; posSmsPlanApi.plan().then((r) => { if (alive) setP(r); }, () => { if (alive) setErr(true); }); return () => { alive = false; }; }, []);
+  const m = p?.messaging ?? null; const b = p?.balance;
+  return (
+    <div className="ci-card" data-testid="ci-sms-plan">
+      <div className="ci-card-t">{tx('ci.plan.title')}</div>
+      {err ? <div className="ci-small warn" data-testid="ci-sms-plan-error">{tx('ci.plan.error')}</div> : !p ? <div className="ci-small">{tx('ci.loading')}</div> : <>
+        <div className="ci-small" data-testid="ci-sms-plan-usage">{m ? tx('ci.plan.usage', { n: String(m.messages), s: String(m.segments), d: String(m.delivered), f: String(m.failed) }) : tx('ci.plan.noUsage')}</div>
+        <div className="ci-small" data-testid="ci-sms-plan-package">{b && b.hasPackage ? tx('ci.plan.package', { p: b.packageName, r: String(b.remainingIncluded), i: String(b.includedAllowance) }) : tx('ci.plan.noPackage')}</div>
+      </>}
+      <div className="ci-row"><button type="button" className="ci-btn" onClick={onOpen} data-testid="ci-sms-plan-open">{tx('ci.plan.open')}</button></div>
+    </div>
   );
 }
 
