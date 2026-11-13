@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 const { cust, cn } = vi.hoisted(() => ({
   cust: { quickSearch: vi.fn(), getNotes: vi.fn(), setNotes: vi.fn() },
-  cn: { summary: vi.fn(), list: vi.fn(), detail: vi.fn(), review: vi.fn(), check: vi.fn() },
+  cn: { summary: vi.fn(), list: vi.fn(), detail: vi.fn(), review: vi.fn(), check: vi.fn(), setSource: vi.fn() },
 }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: cust }));
 vi.mock('../api/posCustomerNotesApi', () => ({ posCustomerNotesApi: cn }));
@@ -27,6 +27,27 @@ beforeEach(() => {
 });
 
 describe('Customer Notes workspace', () => {
+  it('Customer Notes 6 · 05: each note shows where it came from as the server states it; a person sets it for the text they read; a confirmed source must be named', async () => {
+    const withProv = (gen: any) => { const d: any = detail(); d.entries[0].provenance = { source: 'customer_reported', origin: 'labelled', setBy: 'Owner Kim', setAt: '2026-11-09T10:00:00Z', reference: null, earlierLabel: false };
+      d.entries[1].provenance = gen; return d; };
+    cn.list.mockResolvedValue(page([row({ source: 'customer_reported' }), row({ category: 'visit', ticketId: 't1', review: 'not_required', safety: false, source: 'staff_observed' })]));
+    cn.detail.mockResolvedValue(withProv({ source: 'not_stated', origin: 'none', setBy: null, setAt: null, reference: null, earlierLabel: true }));
+    cn.setSource.mockResolvedValue(withProv({ source: 'source_confirmed', origin: 'labelled', setBy: 'Owner Kim', setAt: '2026-11-12T10:00:00Z', reference: 'Intake form', earlierLabel: false }));
+    render(<POSCustomerNotesScreen />);
+    const rows = await screen.findAllByTestId('cnx-row-source');
+    expect(rows.map((r) => r.textContent)).toEqual(['Customer-reported', 'Staff-observed']);
+    fireEvent.click((await screen.findAllByTestId('cnx-view'))[0]);
+    expect(await screen.findByTestId('cnx-src-allergy')).toHaveTextContent(/Customer-reported.*Labelled by Owner Kim/);
+    expect(screen.getByTestId('cnx-src-general')).toHaveTextContent(/Source not stated.*does not carry over/);
+    fireEvent.click(screen.getByTestId('cnx-src-set-general'));
+    fireEvent.change(screen.getByTestId('cnx-src-pick'), { target: { value: 'source_confirmed' } });
+    expect(screen.getByTestId('cnx-src-save')).toBeDisabled();   // the source must be named
+    expect(screen.queryByRole('option', { name: 'AI-suggested' })).toBeNull();   // a person cannot claim AI-suggested
+    fireEvent.change(screen.getByTestId('cnx-src-ref'), { target: { value: 'Intake form' } });
+    fireEvent.click(screen.getByTestId('cnx-src-save'));
+    await waitFor(() => expect(cn.setSource).toHaveBeenCalledWith({ customerId: 'c1', category: 'general', contentHash: 'b'.repeat(64), source: 'source_confirmed', reference: 'Intake form' }));
+    expect(await screen.findByTestId('cnx-src-general')).toHaveTextContent(/Source-confirmed.*Source: Intake form/);
+  });
   it('four cards with real numbers; a card filters the table; the table is newest first with category and review', async () => {
     render(<POSCustomerNotesScreen />);
     await waitFor(() => expect(screen.getByTestId('cnx-kpi-review')).toHaveTextContent('4'));

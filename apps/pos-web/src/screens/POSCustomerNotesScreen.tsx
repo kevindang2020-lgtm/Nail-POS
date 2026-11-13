@@ -29,6 +29,12 @@ type Notes = { salonNotes: string; allergyNotes: string; preferredStyle: string;
 const EMPTY: Notes = { salonNotes: '', allergyNotes: '', preferredStyle: '', preferredTechnician: '', servicePreferences: '', warnings: '', customerVisible: false };
 const CATEGORIES = ['general', 'service_preference', 'technician_preference', 'allergy', 'warning', 'visit'] as const;
 const REVIEWS = ['needs_review', 'reviewed', 'needs_correction', 'not_required'] as const;
+/** Customer Notes 6 · 05 — the provenance the server returns per note (optional on older servers; never derived here) */
+type NoteSourceView = { source: string; origin: 'labelled' | 'derived' | 'none'; setBy: string | null; setAt: string | null; reference: string | null; earlierLabel: boolean };
+const SOURCE_TONE: Record<string, string> = { customer_reported: '', staff_observed: '', source_confirmed: 'ok', ai_suggested: 'warn', not_stated: 'warn' };
+const SETTABLE_SOURCES = ['customer_reported', 'staff_observed', 'source_confirmed'] as const;
+const provOf = (e: unknown): NoteSourceView | null => (e as { provenance?: NoteSourceView }).provenance ?? null;
+const srcOf = (r: unknown): string | null => (r as { source?: string }).source ?? null;
 const REVIEW_TONE: Record<string, string> = { needs_review: 'warn', reviewed: 'ok', needs_correction: 'bad', not_required: '' };
 const CAT_TONE: Record<string, string> = { allergy: 'bad', warning: 'bad', visit: '', general: '', service_preference: 'ok', technician_preference: 'ok' };
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -268,7 +274,8 @@ export function POSCustomerNotesScreen() {
             <tbody>{list.items.map((r) => (
               <tr key={`${r.customerId}:${r.category}:${r.ticketId ?? ''}`} data-testid="cnx-row">
                 <td><b>{r.customer ?? t('pos.unnamed_customer')}</b>{r.phone ? <div className="sub">{r.phone}</div> : null}</td>
-                <td><span className={'chip ' + (CAT_TONE[r.category] ?? '')}>{t('cnx.cat.' + r.category)}</span>{r.ticketId ? <div className="sub">{t('cnx.visitTicket')}</div> : null}</td>
+                <td><span className={'chip ' + (CAT_TONE[r.category] ?? '')}>{t('cnx.cat.' + r.category)}</span>{r.ticketId ? <div className="sub">{t('cnx.visitTicket')}</div> : null}
+                  {srcOf(r) ? <div className="sub" data-testid="cnx-row-source">{t('cnx.src.' + srcOf(r))}</div> : null}</td>
                 <td className="cnx-preview">{r.preview.text}{r.preview.truncated ? '…' : ''}</td>
                 <td><span className={'chip ' + (REVIEW_TONE[r.review] ?? '')} data-testid="cnx-row-review">{t('cnx.rv.' + r.review)}</span>{r.reviewedAt ? <div className="sub">{when(r.reviewedAt)}</div> : null}</td>
                 <td className="sub">{when(r.at)}</td>
@@ -302,6 +309,14 @@ export function POSCustomerNotesScreen() {
 /** Customer Notes extras 04 — the review receipt under a safety note: who acknowledged it, when, the decision and WHICH
  *  version of the text (a short form of the text's own hash); an acknowledgment of an earlier text is never shown as
  *  covering the current one. Read-only (from the detail's own review history). */
+/** Customer Notes 6 · 05 — where a note came from, as the server states it (a source is never guessed in the POS) */
+function SourceLine({ p, category, testId }: { p: NoteSourceView; category: string; testId: string }) {
+  return <div className="sub" data-testid={testId}>
+    <span className={'chip ' + (SOURCE_TONE[p.source] ?? '')}>{t('cnx.src.' + p.source)}</span>{' '}
+    {p.origin === 'derived' ? t('cnx.src.derivedVisit') : p.origin === 'labelled' ? t('cnx.src.by', { who: p.setBy ?? '—', at: when(p.setAt) }) : p.earlierLabel ? t('cnx.src.earlier') : category === 'visit' ? '' : t('cnx.src.none')}
+    {p.reference ? <span> · {t('cnx.src.ref', { r: p.reference })}</span> : null}
+  </div>;
+}
 function ReviewReceipt({ category, hash, history }: { category: string; hash: string; history: CnDetailResponse['history'] }) {
   const cur = history.find((h) => h.category === category && h.current);
   const older = cur ? null : history.find((h) => h.category === category);
@@ -333,7 +348,16 @@ function NoteDetail({ customerId, onClose, onEdit, onChanged }: { customerId: st
   const [correct, setCorrect] = useState<{ category: 'allergy' | 'warning'; hash: string } | null>(null);
   const [reason, setReason] = useState('');
   const [actErr, setActErr] = useState<string | null>(null);
+  const [srcEdit, setSrcEdit] = useState<{ category: string; hash: string; source: string; reference: string } | null>(null);
   useEffect(() => { posCustomerNotesApi.detail(customerId).then(setD).catch((e) => setErr(errText(e, t('cnx.loadFailed')))); }, [customerId]);
+  const saveSource = () => {
+    if (!srcEdit || !(SETTABLE_SOURCES as readonly string[]).includes(srcEdit.source)) return;
+    setBusy(true); setActErr(null);
+    posCustomerNotesApi.setSource({ customerId, category: srcEdit.category, contentHash: srcEdit.hash, source: srcEdit.source as typeof SETTABLE_SOURCES[number], reference: srcEdit.reference.trim() || null })
+      .then((n) => { setD(n); setSrcEdit(null); onChanged(); })
+      .catch((e) => { setActErr(errText(e, t('cnx.loadFailed'))); if ((e as { status?: number })?.status === 409) posCustomerNotesApi.detail(customerId).then(setD).catch(() => undefined); })
+      .finally(() => setBusy(false));
+  };
   const review = (category: 'allergy' | 'warning', hash: string, decision: 'confirmed' | 'needs_correction', why?: string) => {
     setBusy(true); setActErr(null);
     posCustomerNotesApi.review({ customerId, category, contentHash: hash, decision, reason: why ?? null })
@@ -354,6 +378,14 @@ function NoteDetail({ customerId, onClose, onEdit, onChanged }: { customerId: st
               <span className={'chip ' + (REVIEW_TONE[e.review] ?? '')}>{t('cnx.rv.' + e.review)}</span><span className="sub">{when(e.at)}</span></div>
             {e.relevance?.reasons.length ? <div className="sub" data-testid="cnx-rel">{e.relevance.reasons.map((r) => t('cnx.rel.' + r)).join(' · ')}</div> : null}
             <p className="cnx-text">{e.text}</p>
+            {provOf(e) ? <SourceLine p={provOf(e)!} category={e.category} testId={`cnx-src-${e.category}`} /> : null}
+            {provOf(e) && e.category !== 'visit' ? (srcEdit?.category === e.category ? <div className="cnx-correct" data-testid={`cnx-src-edit-${e.category}`}>
+                <label className="rvw-f"><span>{t('cnx.src.ask')}</span><select data-testid="cnx-src-pick" value={srcEdit.source} onChange={(ev) => setSrcEdit({ ...srcEdit, source: ev.target.value })}>
+                  <option value="">{t('cnx.src.choose')}</option>{SETTABLE_SOURCES.map((x) => <option key={x} value={x}>{t('cnx.src.' + x)}</option>)}</select></label>
+                {srcEdit.source === 'source_confirmed' ? <label className="rvw-f"><span>{t('cnx.src.reference')}</span><input data-testid="cnx-src-ref" value={srcEdit.reference} maxLength={200} onChange={(ev) => setSrcEdit({ ...srcEdit, reference: ev.target.value })} /></label> : null}
+                <button className="btn ghost" onClick={() => setSrcEdit(null)}>{t('pos.cancel')}</button>
+                <button className="btn" data-testid="cnx-src-save" disabled={busy || !srcEdit.source || (srcEdit.source === 'source_confirmed' && srcEdit.reference.trim().length < 3)} onClick={saveSource}>{t('cnx.src.save')}</button></div>
+              : <button className="btn ghost sm" data-testid={`cnx-src-set-${e.category}`} disabled={busy} onClick={() => setSrcEdit({ category: e.category, hash: e.hash, source: '', reference: '' })}>{t('cnx.src.set')}</button>) : null}
             {e.safety ? <ReviewReceipt category={e.category} hash={e.hash} history={d.history} /> : null}
             {e.safety ? (correct?.category === e.category ? <div className="cnx-correct">
                 <label className="rvw-f"><span>{t('cnx.correctWhy')}</span><input value={reason} maxLength={500} onChange={(ev) => setReason(ev.target.value)} data-testid="cnx-reason" /></label>

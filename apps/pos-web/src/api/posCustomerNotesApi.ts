@@ -14,5 +14,8 @@ export const posCustomerNotesApi = {
   detail: (customerId: string, ticketId?: string) => api.get<CnDetailResponse>('/pos/customer-notes/notes/detail', ticketId ? { customerId, ticketId } : { customerId }),
   review: (b: { customerId: string; category: 'allergy' | 'warning'; contentHash: string; decision: 'confirmed' | 'needs_correction'; reason?: string | null }) =>
     api.post<CnDetailResponse>('/pos/customer-notes/review', b),
+  /** Customer Notes 6 · 05 — state where a profile note came from, for the text the person read (sha256); append-only */
+  setSource: (b: { customerId: string; category: string; contentHash: string; source: 'customer_reported' | 'staff_observed' | 'source_confirmed'; reference?: string | null }) =>
+    api.post<CnDetailResponse>('/pos/customer-notes/source', b),
   check: () => api.post<CnCheckResponse>('/pos/customer-notes/check', {}),
 };

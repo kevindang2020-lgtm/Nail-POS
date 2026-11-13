@@ -586,4 +586,21 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.health.m.warning_latency": "95% trong {n} lần mở mất tối đa {ms} ms (giới hạn {l} ms)", // DRAFT — Kevin reviews
   "cnx.health.m.version_conflicts": "{c}/{w} lần lưu bị từ chối vì người khác đã lưu trước", // DRAFT — Kevin reviews
   "cnx.health.m.notMeasured": "Chưa đo — nhật ký yêu cầu không có dữ liệu trong 24 giờ qua.", // DRAFT — Kevin reviews
+  "cnx.src.customer_reported": "Khách hàng cho biết", // DRAFT — Kevin reviews
+  "cnx.src.staff_observed": "Nhân viên ghi nhận", // DRAFT — Kevin reviews
+  "cnx.src.source_confirmed": "Đã xác nhận theo nguồn", // DRAFT — Kevin reviews
+  "cnx.src.ai_suggested": "AI gợi ý", // DRAFT — Kevin reviews
+  "cnx.src.not_stated": "Chưa ghi nguồn", // DRAFT — Kevin reviews
+  "cnx.src.derivedVisit": "Do nhân viên viết khi hoàn tất dịch vụ", // DRAFT — Kevin reviews
+  "cnx.src.by": "Ghi nguồn bởi {who} · {at}", // DRAFT — Kevin reviews
+  "cnx.src.earlier": "Bản ghi chú trước đã có nguồn; nguồn đó không áp dụng cho nội dung đã sửa", // DRAFT — Kevin reviews
+  "cnx.src.none": "Chưa ai cho biết ghi chú này từ đâu", // DRAFT — Kevin reviews
+  "cnx.src.ref": "Nguồn: {r}", // DRAFT — Kevin reviews
+  "cnx.src.ask": "Ghi chú này từ đâu?", // DRAFT — Kevin reviews
+  "cnx.src.choose": "Chọn…", // DRAFT — Kevin reviews
+  "cnx.src.reference": "Nguồn nào đã xác nhận (bắt buộc)", // DRAFT — Kevin reviews
+  "cnx.src.save": "Lưu nguồn", // DRAFT — Kevin reviews
+  "cnx.src.set": "Ghi nguồn", // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Hãy chọn ghi chú và nguồn của nó.", // DRAFT — Kevin reviews
+  "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Hãy ghi tên nguồn đã xác nhận.", // DRAFT — Kevin reviews
 };

@@ -4935,6 +4935,10 @@ export interface CustomerIntelligenceScansTable {   // migration 763 — Custome
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
 }
+export interface CustomerNoteSourcesTable {   // migration 885 — where a note came from (customer / staff / confirmed source / AI), tied to the text's sha256; append-only
+  id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; source: string; reference: string | null;
+  set_by_user_id: string | null; created_at: Generated<Ts>;
+}
 export interface CustomerNoteReviewsTable {   // migration 843 — Review & Accuracy of safety notes (append-only; tied to the text's sha256)
   id: Generated<string>; tenant_id: string; customer_id: string; category: string; content_hash: string; decision: string; reason: string | null;
   reviewer_user_id: string | null; created_at: Generated<Ts>;
@@ -8072,6 +8076,7 @@ export interface DB {
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   customer_note_reviews: CustomerNoteReviewsTable;
+  customer_note_sources: CustomerNoteSourcesTable;
   catalog_category_reviews: CatalogCategoryReviewsTable;
   ai_branch_comparison_snapshots: AiBranchComparisonSnapshotsTable;
   ai_branch_comparison_signoffs: AiBranchComparisonSignoffsTable;

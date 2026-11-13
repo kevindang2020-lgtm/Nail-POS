@@ -59,6 +59,12 @@ export const CN_PRESETS = ['all', 'today', 'week', 'month', 'year', 'custom'] as
 export const CN_SORTS = ['newest', 'oldest', 'name'] as const;
 export const CN_PAGE_SIZES = [10, 25, 50, 100] as const;
 export const CN_DECISIONS = ['confirmed', 'needs_correction'] as const;
+/** Customer Notes 6 · 05 — where a note came from (migration 885). A person may state the first three; 'ai_suggested' is reserved
+ *  for an AI-drafted note (no AI path writes notes today). Nothing labelled → 'not_stated' — a source is never guessed. */
+export const CN_SOURCES = ['customer_reported', 'staff_observed', 'source_confirmed', 'ai_suggested'] as const;
+export const CN_SOURCES_SETTABLE = ['customer_reported', 'staff_observed', 'source_confirmed'] as const;
+export type CnSource = typeof CN_SOURCES[number] | 'not_stated';
+export interface CnProvenance { source: CnSource; origin: 'labelled' | 'derived' | 'none'; setBy: string | null; setAt: string | null; reference: string | null; earlierLabel: boolean }
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const PREVIEW = 120;
 
@@ -113,6 +119,10 @@ export class CustomerNotesCenter {
         where t.tenant_id = ${T} and t.removed_at is null and c.archived_at is null and nullif(btrim(coalesce(t.service_done_notes, '')), '') is not null and ${this.ticketScope(s)}
       ), allrows as (select * from prof union all select * from visit)
       select a.*, encode(sha256(convert_to(a.body, 'UTF8')), 'hex') as hash, rv.decision, rv.created_at as reviewed_at, rv.reviewer_user_id,
+        case when a.category = 'visit' then 'staff_observed' else coalesce(src.source, 'not_stated') end as source,
+        case when a.category = 'visit' then 'derived' when src.source is not null then 'labelled' else 'none' end as source_origin,
+        src.reference as source_reference, src.created_at as source_at, src.set_by_user_id as source_by,
+        (src.source is null and a.category <> 'visit' and exists (select 1 from customer_note_sources o where o.tenant_id = ${T} and o.customer_id = a.customer_id and o.category = a.category)) as source_earlier,
         case when a.category not in ('allergy', 'warning') then 'not_required'
              when rv.decision is null then 'needs_review'
              when rv.decision = 'confirmed' then 'reviewed' else 'needs_correction' end as review
@@ -121,6 +131,10 @@ export class CustomerNotesCenter {
           where r.tenant_id = ${T} and r.customer_id = a.customer_id and r.category = a.category and a.category in ('allergy', 'warning')
             and r.content_hash = encode(sha256(convert_to(a.body, 'UTF8')), 'hex')
           order by r.created_at desc, r.id desc limit 1) rv on true
+      left join lateral (select ns.source, ns.reference, ns.created_at, ns.set_by_user_id from customer_note_sources ns
+          where ns.tenant_id = ${T} and ns.customer_id = a.customer_id and ns.category = a.category
+            and ns.content_hash = encode(sha256(convert_to(a.body, 'UTF8')), 'hex')
+          order by ns.created_at desc, ns.id desc limit 1) src on true
     )`;
   }
 
@@ -191,6 +205,7 @@ export class CustomerNotesCenter {
         customerId: String(r.customer_id), customer: r.full_name ?? null, phone: maskPhone(r.normalized_phone ?? r.phone_display),
         category: r.category as CnCategory, preview: preview(r.body), at: iso(r.at), ticketId: r.ticket_id ? String(r.ticket_id) : null,
         review: r.review as typeof CN_REVIEW[number], reviewedAt: iso(r.reviewed_at), safety: CN_SAFETY.includes(r.category),
+        source: r.source as CnSource,
       })),
       total, page: p, pageSize, totalPages,
       applied: { q: q || null, category, review, dateField, sort, preset: per.preset, from: per.from, to: per.to },
@@ -212,8 +227,12 @@ export class CustomerNotesCenter {
     const json = (c.notes_json && typeof c.notes_json === 'object') ? c.notes_json : {};
     const rank = await this.rankContext(ctx, s, customerId, opts.ticketId ?? null);
     const visits = await this.visitFacts(T, entries.map((r) => r.ticket_id).filter(Boolean).map(String));
+    const byIds = [...new Set(entries.map((r) => r.source_by).filter(isUuid).map(String))];
+    const names = new Map(byIds.length ? (await sql<{ id: string; full_name: string | null }>`select id, full_name from users where tenant_id = ${T} and id = any(${byIds}::uuid[])`.execute(this.db)).rows.map((u) => [String(u.id), u.full_name] as const) : []);
+    const provenance = (r: Row): CnProvenance => ({ source: r.source as CnSource, origin: r.source_origin, setBy: r.source_by ? names.get(String(r.source_by)) ?? null : null,
+      setAt: iso(r.source_at), reference: r.source_reference ?? null, earlierLabel: !!r.source_earlier });
     const ranked = rankByRelevance(entries.map((r) => ({ category: r.category as CnCategory, text: String(r.body), hash: String(r.hash), at: iso(r.at), ticketId: r.ticket_id ? String(r.ticket_id) : null,
-      review: r.review, reviewedAt: iso(r.reviewed_at), safety: CN_SAFETY.includes(r.category),
+      review: r.review, reviewedAt: iso(r.reviewed_at), safety: CN_SAFETY.includes(r.category), provenance: provenance(r),
       relevance: noteRelevance(String(r.category), r.ticket_id ? visits.get(String(r.ticket_id)) ?? null : null, rank) })));
     return {
       customer: { id: String(c.id), name: c.full_name ?? null, phone: maskPhone(c.normalized_phone ?? c.phone_display), customerVisible: !!json.customerVisible, updatedAt: iso(c.at) },
@@ -266,6 +285,26 @@ export class CustomerNotesCenter {
     if (cur.hash !== hash) throw new CustomerNotesError('This note was changed after you opened it. Read it again before reviewing.', 'CUSTOMER_NOTES_CHANGED', 409);
     await sql`insert into customer_note_reviews (tenant_id, customer_id, category, content_hash, decision, reason, reviewer_user_id)
       values (${ctx.tenantId}, ${customerId}, ${category}, ${hash}, ${decision}, ${reason}, ${isUuid(ctx.userId) ? ctx.userId : null})`.execute(this.db);
+    return this.detail(ctx, customerId);
+  }
+
+  /** Customer Notes 6 · 05 — a person states where a profile note came from, for the CURRENT text they read (sha256). An edit in
+   *  between answers 409 and nothing is written; 'source_confirmed' needs the source named; nobody can label a note AI-suggested.
+   *  Append-only: the label never edits the note or its review. Visit notes are staff-observed by how they are written. */
+  async setSource(ctx: CnCtx, b: { customerId?: unknown; category?: unknown; contentHash?: unknown; source?: unknown; reference?: unknown }): Promise<CnDetailResponse> {
+    const customerId = typeof b.customerId === 'string' && isUuid(b.customerId) ? b.customerId : null;
+    const category = pick(CN_CATEGORIES.filter((c) => c !== 'visit'), b.category) as CnCategory | undefined;
+    const source = pick(CN_SOURCES_SETTABLE, b.source);
+    const hash = typeof b.contentHash === 'string' && /^[0-9a-f]{64}$/.test(b.contentHash) ? b.contentHash : null;
+    const reference = typeof b.reference === 'string' ? b.reference.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null;
+    if (!customerId || !category || !source || !hash) throw new CustomerNotesError('Choose a note and where it came from.', 'CUSTOMER_NOTES_INVALID_SOURCE');
+    if (source === 'source_confirmed' && (!reference || reference.length < 3)) throw new CustomerNotesError('Name the source that confirmed it.', 'CUSTOMER_NOTES_REFERENCE_REQUIRED');
+    const d = await this.detail(ctx, customerId);
+    const cur = d.entries.find((e) => e.category === category);
+    if (!cur) throw new CustomerNotesError('That note is empty now.', 'CUSTOMER_NOTES_NOT_FOUND', 404);
+    if (cur.hash !== hash) throw new CustomerNotesError('This note was changed after you opened it. Read it again before reviewing.', 'CUSTOMER_NOTES_CHANGED', 409);
+    await sql`insert into customer_note_sources (tenant_id, customer_id, category, content_hash, source, reference, set_by_user_id)
+      values (${ctx.tenantId}, ${customerId}, ${category}, ${hash}, ${source}, ${reference}, ${isUuid(ctx.userId) ? ctx.userId : null})`.execute(this.db);
     return this.detail(ctx, customerId);
   }
 
