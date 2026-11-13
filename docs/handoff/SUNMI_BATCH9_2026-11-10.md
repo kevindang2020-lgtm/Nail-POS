@@ -732,3 +732,25 @@ The 5 TODO rows are the K-12 console steps — docs/K12_RUNBOOK.md + tooling/k12
   - per-message price for review-request texts (blank → cost "not available" as before).
 - Deals: a partly refunded use counts as a live use; the same offer can't be applied twice on that ticket (migration 965).
 - Migrations 965–967, 970–971.
+
+## Round 12 — four new PDFs + the standalone board zip (Nov 13 2026)
+- **Booking Schedule Board merged** (`packages/booking-schedule-board`, Kevin's standalone build): production adapter on
+  the existing `/pos/booking` routes (server paging 12/page, day grid per page, availability / openings, create /
+  reschedule with expectedVersion / cancel / blocked time, walk-in), realtime bridge, mounted in POSBookingScreen's
+  schedule region; Booking Assistant · New Appointment untouched and prefilled from open slots; "Classic board" switch
+  keeps the old board recoverable. Stable technician identity colour (hash of tenant + technician). Bugs fixed:
+  appointment version always read as 1 (blocked moves after one edit); skill refusal had no code.
+- **Picture-matched 200-tech:** six KPI cards from `GET /pos/booking/kpi-cards` (per-source unavailable, never fake 0);
+  200-technician server proof (pages 1/8/16/17, totals 0…201, working-only 164 → 14 pages, locate #200 → page 17, Find an
+  Opening on a busy day) with measured latency in `docs/PERFORMANCE_REPORT.md`; hidden `LIMIT 200` on live booking holds
+  removed; top-bar/sidebar freeze guard (hash lock + owner-approval procedure) and Booking no-print tests.
+- **CPad 14 walk-in service selection (Section 4A):** categories + search + category screens + review with the server's
+  estimate; idempotent confirm per device + request id → one visit / one queue entry; catalog revision re-check; owner
+  switches (require services ON, prices ON, durations ON, add-ons ON, technician preference OFF); privacy reset;
+  migrations 990–991.
+- **Team Tips:** root cause of "$0 cards vs $9.60 technician" fixed (carrier payment row was chosen by text-sorted date,
+  and the technician list used a different ticket set); page rebuilt on the Payments tip read model — definitions,
+  collected / allocated / payable / paid / accrued, Custom From/To, scoped search, newest-first numbered history,
+  technician detail, read-only accuracy check, exact-cent splits pinned by tests.
+- Not provable here: real SUNMI FLEX 3 / CPad 14 hardware, true parallel booking on networked Postgres, live SSE fan-out.
+- Print Schedule from the Standalone spec was NOT built (owner no-print rule + the 200-tech plan supersede it).
