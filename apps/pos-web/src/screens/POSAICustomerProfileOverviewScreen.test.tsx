@@ -116,4 +116,27 @@ describe('POSAICustomerProfileOverviewScreen', () => {
     expect(await screen.findByTestId('chk-eligibility')).toHaveTextContent('15 scanned = 1 active + 0 inactive (card) + 0 due or rebooking soon + 13 never served + 1 with too few visits.');
     expect(screen.getByTestId('chk-coverage-state')).toHaveTextContent('Warning');
   });
+  it('Customer Intelligence 23: All my branches / This branch / several branches go to the server as the branch query; the scope line shows each branch and the distinct total', async () => {
+    const scope = { mode: 'tenant', label: 'tenant_wide', branchIds: null, confined: false, branches: [{ branchId: 'b1', name: 'Main' }, { branchId: 'b2', name: 'Second' }, { branchId: 'b3', name: 'Third' }],
+      perBranch: [{ branchId: 'b1', name: 'Main', customers: 7 }, { branchId: 'b2', name: 'Second', customers: 2 }, { branchId: 'b3', name: 'Third', customers: 0 }], distinctCustomers: 8, countedInMoreThanOne: 1 };
+    ci.customers.mockResolvedValue({ ...LIST, scope });
+    mount();
+    expect(await screen.findByTestId('cix-scope-line')).toHaveTextContent('By branch: Main 7 · Second 2 · Third 0 — 8 distinct customers in total (1 visit more than one branch and are counted once).');
+    fireEvent.click(screen.getByTestId('cix-br-b1'));
+    await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ branch: 'b1' })));
+    fireEvent.click(screen.getByTestId('cix-br-b2'));
+    await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ branch: 'b1,b2' })));
+    expect(screen.getByTestId('cix-br-b2')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('cix-br-current'));
+    await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ branch: 'current' })));
+    fireEvent.click(screen.getByTestId('cix-br-all'));
+    await waitFor(() => expect(ci.customers.mock.calls[ci.customers.mock.calls.length - 1]?.[0].branch).toBeUndefined());
+  });
+  it('Customer Intelligence 23: a session with one branch in scope shows no branch picker', async () => {
+    ci.customers.mockResolvedValue({ ...LIST, scope: { mode: 'branches', branchIds: ['b2'], confined: true, branches: [{ branchId: 'b2', name: 'Second' }], perBranch: null, distinctCustomers: null, countedInMoreThanOne: null } });
+    mount();
+    await screen.findAllByTestId('cix-row');
+    expect(screen.queryByTestId('cix-branches')).toBeNull();
+    expect(screen.queryByTestId('cix-scope-line')).toBeNull();
+  });
 });

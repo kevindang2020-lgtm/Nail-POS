@@ -10,7 +10,8 @@ const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Ob
 export const posCustomerNotesApi = {
   summary: () => api.get<CnSummaryResponse>('/pos/customer-notes/summary'),
   list: (q: CustomerNotesQuery = {}) => api.get<CnListResponse>('/pos/customer-notes/notes', clean(q)),
-  detail: (customerId: string) => api.get<CnDetailResponse>('/pos/customer-notes/notes/detail', { customerId }),
+  /** Customer Notes 01: an optional visit (ticketId) ranks the notes for it; without one the session's branch + technician do */
+  detail: (customerId: string, ticketId?: string) => api.get<CnDetailResponse>('/pos/customer-notes/notes/detail', ticketId ? { customerId, ticketId } : { customerId }),
   review: (b: { customerId: string; category: 'allergy' | 'warning'; contentHash: string; decision: 'confirmed' | 'needs_correction'; reason?: string | null }) =>
     api.post<CnDetailResponse>('/pos/customer-notes/review', b),
   check: () => api.post<CnCheckResponse>('/pos/customer-notes/check', {}),

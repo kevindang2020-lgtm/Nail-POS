@@ -14,11 +14,36 @@
 // its branches, and only visit notes of tickets in those branches. Every read needs pos.customers.notes.view; a review needs
 // pos.customers.notes.edit. Counts never include rows the session cannot see.
 import { sql, type Kysely } from 'kysely';
-import type { CnSummaryResponse, CnListResponse, CnDetailResponse, CnCheckResponse } from '@aipowersalon/api-contracts/tenant';
+import type { CnSummaryResponse, CnListResponse, CnDetailResponse, CnCheckResponse, CnRelevanceReason } from '@aipowersalon/api-contracts/tenant';
 import { RetentionRepository, isUuid, maskPhone, type RetentionContext, type BranchScope } from '../retention/retention.repository';
 
 type Row = Record<string, any>;
 export type CnCtx = RetentionContext;
+
+/** Customer Notes 01 — context-aware relevance. The visit being served (or, without one, the session's branch and the signed-in
+ *  technician) ranks a customer's notes; every note is still returned — a lower rank never hides one. Safety notes always lead. */
+export interface CnRankContext { branchId: string | null; technicianIds: readonly string[]; serviceIds: readonly string[] }
+export interface CnVisitFacts { branchId: string | null; technicianIds: readonly string[]; serviceIds: readonly string[] }
+export const CN_RELEVANCE_WEIGHT: Record<CnRelevanceReason, number> = { safety: 100, same_service: 30, same_technician: 20, preference: 15, same_branch: 10 };
+export function noteRelevance(category: string, visit: CnVisitFacts | null, c: CnRankContext): { score: number; reasons: CnRelevanceReason[] } {
+  const reasons: CnRelevanceReason[] = [];
+  if (category === 'allergy' || category === 'warning') reasons.push('safety');
+  else if (category === 'service_preference' || category === 'technician_preference') reasons.push('preference');
+  else if (category === 'visit' && visit) {
+    if (visit.serviceIds.some((x) => c.serviceIds.includes(x))) reasons.push('same_service');
+    if (visit.technicianIds.some((x) => c.technicianIds.includes(x))) reasons.push('same_technician');
+    if (c.branchId && visit.branchId === c.branchId) reasons.push('same_branch');
+  }
+  return { score: reasons.reduce((a, r) => a + CN_RELEVANCE_WEIGHT[r], 0), reasons };
+}
+/** stable: equal scores keep the order they came in (profile notes first, then visits newest first) */
+export function rankByRelevance<E extends { relevance: { score: number } }>(entries: E[]): E[] {
+  return entries.map((e, i) => ({ e, i })).sort((a, b) => b.e.relevance.score - a.e.relevance.score || a.i - b.i).map((x) => x.e);
+}
+
+type CnCheck = CnCheckResponse['checks'][number];
+/** Customer Notes 10 thresholds: a warning needs enough traffic to mean something */
+export const CN_MONITOR = { minReads: 20, failPercent: 5, minLatencySamples: 5, p95Ms: 1500, conflicts: 5 } as const;
 
 export class CustomerNotesError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details: Record<string, unknown> = {}) { super(message); }
@@ -174,7 +199,7 @@ export class CustomerNotesCenter {
   }
 
   /** one customer's notes: every category with its text, review state and review history (and the latest visit notes) */
-  async detail(ctx: CnCtx, customerId: string): Promise<CnDetailResponse> {
+  async detail(ctx: CnCtx, customerId: string, opts: { ticketId?: string | null } = {}): Promise<CnDetailResponse> {
     if (!isUuid(customerId)) throw new CustomerNotesError('That customer was not found.', 'CUSTOMER_NOTES_NOT_FOUND', 404);
     const T = ctx.tenantId; const s = await this.scope(ctx);
     const c = (await sql<Row>`select c.id, c.full_name, c.normalized_phone, c.phone_display, c.notes_json, coalesce(c.notes_updated_at, c.updated_at) as at from customers c
@@ -185,12 +210,44 @@ export class CustomerNotesCenter {
       left join users u on u.id = r.reviewer_user_id and u.tenant_id = r.tenant_id
       where r.tenant_id = ${T} and r.customer_id = ${customerId} order by r.created_at desc, r.id desc limit 20`.execute(this.db)).rows;
     const json = (c.notes_json && typeof c.notes_json === 'object') ? c.notes_json : {};
+    const rank = await this.rankContext(ctx, s, customerId, opts.ticketId ?? null);
+    const visits = await this.visitFacts(T, entries.map((r) => r.ticket_id).filter(Boolean).map(String));
+    const ranked = rankByRelevance(entries.map((r) => ({ category: r.category as CnCategory, text: String(r.body), hash: String(r.hash), at: iso(r.at), ticketId: r.ticket_id ? String(r.ticket_id) : null,
+      review: r.review, reviewedAt: iso(r.reviewed_at), safety: CN_SAFETY.includes(r.category),
+      relevance: noteRelevance(String(r.category), r.ticket_id ? visits.get(String(r.ticket_id)) ?? null : null, rank) })));
     return {
       customer: { id: String(c.id), name: c.full_name ?? null, phone: maskPhone(c.normalized_phone ?? c.phone_display), customerVisible: !!json.customerVisible, updatedAt: iso(c.at) },
-      entries: entries.map((r) => ({ category: r.category as CnCategory, text: String(r.body), hash: String(r.hash), at: iso(r.at), ticketId: r.ticket_id ? String(r.ticket_id) : null,
-        review: r.review, reviewedAt: iso(r.reviewed_at), safety: CN_SAFETY.includes(r.category) })),
+      context: { ticketId: opts.ticketId ?? null, branch: !!rank.branchId, technicians: rank.technicianIds.length, services: rank.serviceIds.length },
+      entries: ranked,
       history: history.map((h) => ({ category: h.category, decision: h.decision, reason: h.reason ?? null, at: iso(h.created_at), reviewer: h.reviewer ?? null, current: entries.some((e) => e.category === h.category && e.hash === h.content_hash) })),
     };
+  }
+
+  /** the visit the notes are ranked for: the given ticket of THIS customer (its branch, technicians, services), or — without one —
+   *  the session's branch and the signed-in user's own technician row. A ticket the session cannot see is refused (404). */
+  private async rankContext(ctx: CnCtx, s: BranchScope, customerId: string, ticketId: string | null): Promise<CnRankContext> {
+    const T = ctx.tenantId;
+    if (ticketId) {
+      if (!isUuid(ticketId)) throw new CustomerNotesError('That visit was not found.', 'CUSTOMER_NOTES_NOT_FOUND', 404);
+      const t = (await sql<Row>`select t.id, t.branch_id from tickets t where t.tenant_id = ${T} and t.id = ${ticketId} and t.customer_id = ${customerId} and t.removed_at is null and ${this.ticketScope(s)}`.execute(this.db)).rows[0];
+      if (!t) throw new CustomerNotesError('That visit was not found.', 'CUSTOMER_NOTES_NOT_FOUND', 404);
+      const f = (await this.visitFacts(T, [ticketId])).get(ticketId);
+      return { branchId: t.branch_id ? String(t.branch_id) : null, technicianIds: f?.technicianIds ?? [], serviceIds: f?.serviceIds ?? [] };
+    }
+    const me = isUuid(ctx.userId) ? (await sql<Row>`select te.id from technicians te where te.tenant_id = ${T} and te.user_id = ${ctx.userId} and te.archived_at is null`.execute(this.db)).rows : [];
+    return { branchId: isUuid(ctx.branchId) ? String(ctx.branchId) : null, technicianIds: me.map((r) => String(r.id)), serviceIds: [] };
+  }
+  /** per ticket: its branch, every technician on it (primary + live lines) and the services of its live lines */
+  private async visitFacts(T: string, ticketIds: string[]): Promise<Map<string, CnVisitFacts>> {
+    const out = new Map<string, CnVisitFacts>();
+    if (!ticketIds.length) return out;
+    const rows = (await sql<Row>`select t.id, t.branch_id,
+        array_remove(array_append(array_agg(distinct l.technician_id::text), t.primary_technician_id::text), null) as techs,
+        array_remove(array_agg(distinct l.service_id::text), null) as services
+      from tickets t left join ticket_service_lines l on l.tenant_id = t.tenant_id and l.ticket_id = t.id and l.removed_at is null
+      where t.tenant_id = ${T} and t.id = any(${ticketIds}::uuid[]) group by t.id, t.branch_id, t.primary_technician_id`.execute(this.db)).rows;
+    for (const r of rows) out.set(String(r.id), { branchId: r.branch_id ? String(r.branch_id) : null, technicianIds: [...new Set<string>((r.techs ?? []).map(String))], serviceIds: [...new Set<string>((r.services ?? []).map(String))] });
+    return out;
   }
 
   /** Review & Accuracy (guide §11): a person confirms the CURRENT text of a safety note, or marks it for correction.
@@ -213,10 +270,38 @@ export class CustomerNotesCenter {
   }
 
   /** Check Customer Notes System — read-only (guide §15): nothing here edits a note or a review */
+  /** Customer Notes 10 — accuracy and response-time monitors, read from the platform's own request log (telemetry_log_events,
+   *  'request.completed' lines written by HttpMetricsInterceptor: route template, status, duration — no note text, no customer).
+   *  Last 24 h, this salon only: read failure rate (5xx on GET /pos/customer-notes/*), warning retrieval latency (p95 of
+   *  notes/detail, which carries the safety notes) and version conflicts (409 on a notes save or a safety review). Search reads
+   *  the live tables (no separate index), so it has no freshness lag to measure. Nothing measured → measured: false, never 0%. */
+  private async monitors(T: string): Promise<CnCheck[]> {
+    const r = (await sql<Row>`select
+        count(*) filter (where l.route like '%/customer-notes/%' and coalesce(l.fields->>'method', 'GET') = 'GET')::int as reads,
+        count(*) filter (where l.route like '%/customer-notes/%' and coalesce(l.fields->>'method', 'GET') = 'GET' and l.status >= 500)::int as failed,
+        count(*) filter (where l.route like '%/customer-notes/notes/detail')::int as detail_n,
+        percentile_cont(0.95) within group (order by l.duration_ms) filter (where l.route like '%/customer-notes/notes/detail' and l.duration_ms is not null) as p95,
+        count(*) filter (where l.status = 409 and (l.route like '%/customer-notes/review' or l.route like '%/customers/:customerId/notes'))::int as conflicts,
+        count(*) filter (where l.route like '%/customer-notes/review' or l.route like '%/customers/:customerId/notes')::int as writes
+      from telemetry_log_events l
+      where l.tenant_id = ${T}::uuid and l.msg = 'request.completed' and l.ts >= now() - interval '24 hours'
+        and (l.route like '%/customer-notes/%' or l.route like '%/customers/:customerId/notes')`.execute(this.db)).rows[0] ?? {};
+    const reads = N(r.reads), failed = N(r.failed), detailN = N(r.detail_n), writes = N(r.writes), conflicts = N(r.conflicts);
+    const p95 = r.p95 == null ? null : Math.round(Number(r.p95));
+    const rate = reads > 0 ? Math.round((failed / reads) * 1000) / 10 : null;
+    return [
+      { key: 'read_failures', state: reads >= CN_MONITOR.minReads && (rate ?? 0) >= CN_MONITOR.failPercent ? 'WARNING' : 'READY', count: failed,
+        detail: { measured: reads > 0, reads, failed, failedPercent: rate } },
+      { key: 'warning_latency', state: detailN >= CN_MONITOR.minLatencySamples && p95 != null && p95 > CN_MONITOR.p95Ms ? 'WARNING' : 'READY',
+        detail: { measured: detailN > 0, requests: detailN, p95Ms: p95, limitMs: CN_MONITOR.p95Ms } },
+      { key: 'version_conflicts', state: conflicts >= CN_MONITOR.conflicts ? 'WARNING' : 'READY', count: conflicts,
+        detail: { measured: writes > 0, writes, conflicts } },
+    ];
+  }
+
   async check(ctx: CnCtx): Promise<CnCheckResponse> {
     const T = ctx.tenantId; const s = await this.scope(ctx);
-    type C = { key: string; state: 'READY' | 'WARNING' | 'FAILED'; count?: number };
-    const checks: C[] = [];
+    const checks: CnCheck[] = [];
     const bad = N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and c.notes_json is not null and jsonb_typeof(c.notes_json) <> 'object'`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'notes_readable', state: bad ? 'FAILED' : 'READY', count: bad });
     const drift = N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and jsonb_typeof(c.notes_json) = 'object'
@@ -226,6 +311,7 @@ export class CustomerNotesCenter {
     checks.push({ key: 'safety_review_backlog', state: stale ? 'WARNING' : 'READY', count: stale });
     const corr = N((await sql<Row>`select count(*)::int as n from ${this.entries(T, s)} e where e.review = 'needs_correction'`.execute(this.db)).rows[0]?.n);
     checks.push({ key: 'corrections_open', state: corr ? 'WARNING' : 'READY', count: corr });
+    checks.push(...await this.monitors(T));
     checks.push({ key: 'no_side_effects', state: 'READY' });
     const overall = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : 'READY';
     return { overall, checkedAt: new Date(this.now()).toISOString(), checks };

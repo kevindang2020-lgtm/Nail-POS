@@ -19,7 +19,7 @@ import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
-const URL_KEYS = ['status', 'flag', 'dateField', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
+const URL_KEYS = ['branch', 'status', 'flag', 'dateField', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
 const STATES = ['active', 'rebooking_soon', 'due_for_return', 'inactive', 'long_term_inactive', 'insufficient_history'];
 const STATUS_FILTERS = ['active', 'rebooking_soon', 'due_for_return', 'inactive_all', 'inactive', 'long_term_inactive', 'insufficient_history', 'never_served', 'not_scanned'];
 // Kevin, Nov 12 2026 (decision 2): churn belongs to Customer Retention — no churn flag or filter of this page's own; the card
@@ -149,6 +149,7 @@ export function POSAICustomerProfileOverviewScreen() {
         <button className="btn" type="submit" data-testid="cix-search-btn">{t('pos.search')}</button>
       </form>
       <section className="panel rvw-filters" data-testid="cix-filters">
+        <BranchScopePicker value={f.branch ?? ''} branches={list?.scope?.branches ?? []} onChange={(v) => setF({ branch: v || null })} />
         {sel('status', t('cix.f.status'), STATUS_FILTERS.map((s) => [s, t('cix.status.' + s)] as [string, string]), 'flt-status', t('cix.all'))}
         {sel('flag', t('cix.f.flag'), FLAGS.map((s) => [s, t('cix.flag.' + s)] as [string, string]), 'flt-flag', t('cix.all'))}
         <label className="rvw-f"><span>{t('cix.f.sort')}</span>
@@ -171,6 +172,8 @@ export function POSAICustomerProfileOverviewScreen() {
 
       <section className="panel rvw-feed" data-testid="cix-customers">
         <div className="p-h">{t('cix.customers')}<span className="sub rvw-scope" data-testid="cix-count">{list ? t('cix.count', { n: fmtNumber(list.total), order: t('cix.sort.' + (list.applied?.sort ?? 'last_visit')) }) : ''}</span></div>
+        {list?.scope?.perBranch ? <p className="sub" data-testid="cix-scope-line">{t('cix.scope.line', { b: list.scope.perBranch.map((x: any) => `${x.name} ${fmtNumber(x.customers)}`).join(' · '),
+          d: fmtNumber(list.scope.distinctCustomers), o: fmtNumber(list.scope.countedInMoreThanOne) })}</p> : null}
         {loading && !list ? <div className="state">{t('pos.loading_customer_intelligence')}</div>
           : !list ? null
           : list.items.length === 0 ? <Empty title={anyFilter ? t('cix.noMatch') : t('cix.empty')} />
@@ -273,5 +276,22 @@ function HealthDialog({ data, onClose }: { data: any; onClose: () => void }) {
         ))}
       </>}
     </FitDialog>
+  );
+}
+
+/** Customer Intelligence 23 — All my branches · This branch · or pick several (the server checks every id; a confined role only
+ *  ever gets its own branches back in scope.branches). Stored in the URL as 'current' or a comma list. */
+function BranchScopePicker({ value, branches, onChange }: { value: string; branches: { branchId: string; name: string }[]; onChange: (v: string) => void }) {
+  if (branches.length < 2) return null;
+  const picked = value && value !== 'current' ? value.split(',').filter(Boolean) : [];
+  const toggle = (id: string) => { const next = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]; onChange(next.join(',')); };
+  return (
+    <div className="rvw-dates" data-testid="cix-branches" role="group" aria-label={t('cix.scope.label')}>
+      <span className="sub">{t('cix.scope.label')}</span>
+      <button type="button" className={'btn ghost' + (!value ? ' on' : '')} data-testid="cix-br-all" onClick={() => onChange('')}>{t('cix.scope.all')}</button>
+      <button type="button" className={'btn ghost' + (value === 'current' ? ' on' : '')} data-testid="cix-br-current" onClick={() => onChange('current')}>{t('cix.scope.current')}</button>
+      {branches.map((b) => <button key={b.branchId} type="button" className={'btn ghost' + (picked.includes(b.branchId) ? ' on' : '')} aria-pressed={picked.includes(b.branchId)}
+        data-testid={`cix-br-${b.branchId}`} onClick={() => toggle(b.branchId)}>{b.name}</button>)}
+    </div>
   );
 }

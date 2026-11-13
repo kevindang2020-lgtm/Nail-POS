@@ -18,6 +18,8 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { addDays as addYmdDays, dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
+import type { ReceiptProcessingResponse, ReceiptProcessingPhase } from '@aipowersalon/api-contracts/tenant';
+import { transition, type PipelineState } from './ai-ocr-receipt-pipeline';
 
 type Row = Record<string, any>;
 export interface RcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -74,6 +76,16 @@ export function tracks(r: { pipeline_status?: unknown; duplicate_status?: string
   const duplicate = r.duplicate_status && r.duplicate_status !== 'none' ? String(r.duplicate_status) : 'none';
   return { reading, expense, receiving, duplicate };
 }
+
+/** Receipt Document Recognition 03 — the phases of a receipt not yet read, from the pipeline's own states */
+export const RC_PROCESSING_PHASES: Record<ReceiptProcessingPhase, readonly string[]> = {
+  queue: ['uploaded', 'scanning'], ocr: ['extracting'], validation: ['validating'], failed: ['extraction_failed'],
+};
+export const RC_PROCESSING_SORTS = ['oldest', 'newest', 'attempts', 'phase'] as const;
+/** a receipt in queue / OCR / validation with no change and no provider job for this long is "stale" (needs a look) */
+export const RC_PROCESSING_STALE_MINUTES = 15;
+const RC_PROCESSING_LIMIT = 50;
+const phaseOf = (state: string): ReceiptProcessingPhase => (Object.entries(RC_PROCESSING_PHASES).find(([, v]) => v.includes(state))?.[0] ?? 'queue') as ReceiptProcessingPhase;
 
 export class ReceiptCenter {
   constructor(private readonly db: Kysely<any>, private readonly scope: ScopeFn, private readonly entitlement: EntitlementFn,
@@ -202,13 +214,77 @@ export class ReceiptCenter {
   }
 
   // ── one receipt, read-only ────────────────────────────────────────────────────────────────────────────────────
+  /** Receipt Document Recognition 03 — the Extracting queue: phase cards, then each waiting receipt with its attempts, the latest
+   *  provider job (status, attempt, error CODE — never the raw provider text) and whether the pipeline would allow 'retry' from
+   *  its state (transition(state, 'retry') — the same state machine retry-extract obeys). Read only; never extracts or retries. */
+  async processing(ctx: RcCtx, f: { sort?: unknown } = {}): Promise<ReceiptProcessingResponse> {
+    const T = ctx.tenantId; const { w } = await this.inScope(ctx, sql`d.branch_id`);
+    const states = Object.values(RC_PROCESSING_PHASES).flat();
+    const sort = pick(RC_PROCESSING_SORTS, f.sort) ?? 'oldest';
+    const order = sort === 'newest' ? sql`d.updated_at desc, d.id desc` : sort === 'attempts' ? sql`d.extraction_attempts desc, d.updated_at asc, d.id asc`
+      : sort === 'phase' ? sql`array_position(${states}::text[], d.pipeline_status), d.updated_at asc, d.id asc` : sql`d.updated_at asc, d.id asc`;
+    const base = sql`from ocr_documents d where d.tenant_id = ${T} and d.deleted_at is null and d.pipeline_status = any(${states}::text[]) and ${w}`;
+    const agg = (await sql<Row>`select d.pipeline_status as state, count(*)::int as n, min(d.updated_at) as oldest, coalesce(sum(d.extraction_attempts), 0)::int as attempts ${base} group by 1`.execute(this.db)).rows;
+    const rows = (await sql<Row>`select d.id, d.vendor, d.pipeline_status, d.extraction_attempts, d.next_extraction_at, d.updated_at, br.name as branch,
+        greatest(0, floor(extract(epoch from (now() - d.updated_at)) / 60))::int as waiting,
+        j.provider_key, j.status as job_status, j.attempt as job_attempt, j.error_code, j.requested_at, j.completed_at
+      from ocr_documents d
+      left join branches br on br.id = d.branch_id and br.tenant_id = d.tenant_id
+      left join lateral (select oj.provider_key, oj.status, oj.attempt, oj.error_code, oj.requested_at, oj.completed_at from ocr_jobs oj
+          where oj.tenant_id = d.tenant_id and oj.document_id = d.id order by oj.requested_at desc limit 1) j on true
+      where d.tenant_id = ${T} and d.deleted_at is null and d.pipeline_status = any(${states}::text[]) and ${w}
+      order by ${order} limit ${RC_PROCESSING_LIMIT}`.execute(this.db)).rows;
+    const fresh = (await sql<Row>`select max(greatest(oj.requested_at, coalesce(oj.completed_at, oj.requested_at))) as last from ocr_jobs oj
+      join ocr_documents d on d.id = oj.document_id and d.tenant_id = oj.tenant_id where oj.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0] ?? {};
+    const staleAt = (r: Row) => {
+      const p = phaseOf(String(r.pipeline_status)); if (p === 'failed') return false;
+      const lastJob = r.completed_at ?? r.requested_at;
+      const quietMin = lastJob ? Math.floor((this.now() - new Date(lastJob).getTime()) / 60000) : N(r.waiting);
+      return N(r.waiting) >= RC_PROCESSING_STALE_MINUTES && quietMin >= RC_PROCESSING_STALE_MINUTES;
+    };
+    const items = rows.map((r) => ({
+      documentId: String(r.id), vendor: r.vendor ?? null, branch: r.branch ?? null, state: String(r.pipeline_status), phase: phaseOf(String(r.pipeline_status)),
+      attempts: N(r.extraction_attempts), nextAttemptAt: iso(r.next_extraction_at), waitingMinutes: N(r.waiting), stale: staleAt(r),
+      job: r.provider_key ? { provider: String(r.provider_key), status: String(r.job_status), attempt: N(r.job_attempt), error: r.error_code ?? null, requestedAt: iso(r.requested_at), completedAt: iso(r.completed_at) } : null,
+      retryEligible: (() => { const t = transition(String(r.pipeline_status) as PipelineState, 'retry'); return t.ok && t.state === 'extracting'; })(),
+    }));
+    const phases = (Object.keys(RC_PROCESSING_PHASES) as ReceiptProcessingPhase[]).map((phase) => {
+      const mine = agg.filter((a) => RC_PROCESSING_PHASES[phase].includes(String(a.state)));
+      const oldest = mine.map((a) => a.oldest).filter(Boolean).map((v) => new Date(v).getTime());
+      return { phase, count: mine.reduce((a, x) => a + N(x.n), 0), oldestAt: oldest.length ? new Date(Math.min(...oldest)).toISOString() : null, attempts: mine.reduce((a, x) => a + N(x.attempts), 0) };
+    });
+    const total = phases.reduce((a, p) => a + p.count, 0);
+    return { phases, items, total, shown: items.length, sort, freshness: { lastJobAt: iso(fresh.last), staleAfterMinutes: RC_PROCESSING_STALE_MINUTES, stale: items.filter((i) => i.stale).length },
+      generatedAt: new Date(this.now()).toISOString() };
+  }
+
+  /** OCR Receipt Scanner 05 — what this vendor charged last time: for each line, the unit price on the most recent EARLIER receipt
+   *  from the same vendor that was approved and posted to the books (ocr_documents.pipeline_status = 'posted'), matched by SKU, or by
+   *  the same description when the line has no SKU. Only receipts this person may see. Read only — it explains, it never edits a
+   *  cost, an expense or the reports (their formulas stay the finance module's). */
+  private async lastApprovedCosts(ctx: RcCtx, d: Row): Promise<Map<number, { unitCents: number; documentId: string; date: string | null; uploadedAt: string | null }>> {
+    const T = ctx.tenantId; const S = (await this.inScope(ctx, sql`po.branch_id`)).w;
+    const vendorMatch = d.vendor_id ? sql`po.vendor_id = ${d.vendor_id}::uuid` : d.vendor ? sql`lower(btrim(po.vendor)) = lower(btrim(${String(d.vendor)}))` : sql`false`;
+    const rows = (await sql<Row>`select li.line_number, prev.unit_price_cents, prev.document_id, prev.doc_date, prev.uploaded_at
+      from ocr_line_items li
+      join lateral (select pl.unit_price_cents, po.id as document_id, po.document_date as doc_date, po.created_at as uploaded_at
+          from ocr_line_items pl join ocr_documents po on po.id = pl.document_id and po.tenant_id = pl.tenant_id
+          where pl.tenant_id = ${T} and po.id <> ${d.id}::uuid and po.pipeline_status = 'posted' and po.deleted_at is null and po.created_at < ${d.created_at}::timestamptz
+            and ${vendorMatch} and ${S} and pl.unit_price_cents is not null
+            and ((nullif(btrim(coalesce(li.sku, '')), '') is not null and pl.sku = li.sku)
+              or (nullif(btrim(coalesce(li.sku, '')), '') is null and nullif(btrim(coalesce(li.description, '')), '') is not null and lower(btrim(pl.description)) = lower(btrim(li.description))))
+          order by po.created_at desc, pl.line_number asc limit 1) prev on true
+      where li.tenant_id = ${T} and li.document_id = ${d.id}::uuid`.execute(this.db)).rows;
+    return new Map(rows.map((r) => [N(r.line_number), { unitCents: N(r.unit_price_cents), documentId: String(r.document_id), date: day(r.doc_date), uploadedAt: iso(r.uploaded_at) }]));
+  }
+
   async document(ctx: RcCtx, id: string) {
     const T = ctx.tenantId;
     if (!isUuid(id)) throw new ReceiptCenterError('Receipt not found.', 'RC_NOT_FOUND', 404);
     const S = (await this.inScope(ctx, sql`d.branch_id`)).w;
     const d = (await sql<Row>`select d.id, d.vendor, d.document_number, d.document_date, d.date_ambiguous, d.currency, d.subtotal_cents, d.tax_cents, d.fees_cents, d.discount_cents,
         d.total_cents, d.is_credit_or_refund, d.document_type, d.page_count, d.created_at, d.source_channel, d.pipeline_status, d.review_status, d.validation_status, d.quality_flags,
-        d.last_extraction_error, d.extraction_attempts, d.duplicate_status, b.name as branch, coalesce(u.full_name, u.email) as uploader from ocr_documents d left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id
+        d.last_extraction_error, d.extraction_attempts, d.duplicate_status, d.vendor_id, b.name as branch, coalesce(u.full_name, u.email) as uploader from ocr_documents d left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id
       left join users u on u.id = d.uploaded_by_user_id and u.tenant_id = d.tenant_id where d.tenant_id = ${T} and d.id = ${id}::uuid and d.deleted_at is null and ${S}`.execute(this.db)).rows[0];
     if (!d) throw new ReceiptCenterError('Receipt not found.', 'RC_NOT_FOUND', 404);   // another branch / salon answers like a missing one
     const [fields, lines, validation, dupes, postings, approvals, jobs, category, expense] = await Promise.all([
@@ -228,6 +304,13 @@ export class ReceiptCenter {
     ]);
     const post = postings.rows[0];
     const v = validation.rows[0];
+    const prev = await this.lastApprovedCosts(ctx, d);
+    const priced = lines.rows.map((x) => {
+      const p = prev.get(N(x.line_number));
+      const unit = x.unit_price_cents == null ? null : N(x.unit_price_cents);
+      return p && unit != null ? { unitCents: p.unitCents, documentId: p.documentId, date: p.date, uploadedAt: p.uploadedAt, changeCents: unit - p.unitCents,
+        changePercent: p.unitCents > 0 ? Math.round(((unit - p.unitCents) / p.unitCents) * 1000) / 10 : null } : null;
+    });
     return {
       id: String(d.id), vendor: d.vendor ?? null, number: d.document_number ?? null, purchaseDate: day(d.document_date), dateAmbiguous: !!d.date_ambiguous, currency: d.currency ?? 'USD',
       amounts: { subtotalCents: d.subtotal_cents == null ? null : N(d.subtotal_cents), taxCents: d.tax_cents == null ? null : N(d.tax_cents), feesCents: d.fees_cents == null ? null : N(d.fees_cents),
@@ -239,8 +322,11 @@ export class ReceiptCenter {
       // confidence stays a reading of the text; "unknown" when the provider gave none — never an invented number
       fields: fields.rows.map((x) => ({ key: x.field_key, value: x.corrected_value ?? x.value_text ?? null, cents: x.value_cents == null ? null : N(x.value_cents), state: x.state,
         confidence: x.confidence == null || Number(x.confidence) === 0 ? null : Number(x.confidence), page: x.source_page ?? null, corrected: !!x.corrected_at })),
-      lines: lines.rows.map((x) => ({ n: N(x.line_number), description: x.description ?? null, sku: x.sku ?? null, quantity: x.quantity == null ? null : Number(x.quantity), unit: x.unit ?? null,
-        unitCents: x.unit_price_cents == null ? null : N(x.unit_price_cents), totalCents: x.line_total_cents == null ? null : N(x.line_total_cents), reconciles: x.reconciles ?? null })),
+      lines: lines.rows.map((x, i) => ({ n: N(x.line_number), description: x.description ?? null, sku: x.sku ?? null, quantity: x.quantity == null ? null : Number(x.quantity), unit: x.unit ?? null,
+        unitCents: x.unit_price_cents == null ? null : N(x.unit_price_cents), totalCents: x.line_total_cents == null ? null : N(x.line_total_cents), reconciles: x.reconciles ?? null,
+        previous: priced[i] })),
+      priceChanges: { compared: priced.filter(Boolean).length, up: priced.filter((p) => p && p.changeCents > 0).length, down: priced.filter((p) => p && p.changeCents < 0).length,
+        basis: 'last_posted_receipt_same_vendor' },
       checks: v ? { status: v.status, blocksPosting: !!v.blocks_posting, flags: v.flags ?? [], missing: v.missing_fields ?? [], at: iso(v.created_at) } : null,
       duplicates: dupes.rows.map((x) => ({ status: x.status, reason: x.reason ?? null, dismissed: !!x.dismissed, documentId: String(x.matched_document_id), vendor: x.vendor ?? null,
         totalCents: x.total_cents == null ? null : N(x.total_cents), purchaseDate: day(x.document_date), pipeline: x.pipeline_status })),

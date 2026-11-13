@@ -99,8 +99,79 @@ describe('Customer Notes workspace', () => {
   it('CN-07 the health check is read-only and names what it saw', async () => {
     const before = (await q(sql`select count(*)::int as n from customer_note_reviews`))[0].n;
     const h = await cn.check(owner());
-    expect(h.checks.map((c: any) => c.key)).toEqual(['notes_readable', 'legacy_mirror', 'safety_review_backlog', 'corrections_open', 'no_side_effects']);
+    expect(h.checks.map((c: any) => c.key)).toEqual(['notes_readable', 'legacy_mirror', 'safety_review_backlog', 'corrections_open', 'read_failures', 'warning_latency', 'version_conflicts', 'no_side_effects']);
+    // Customer Notes 10: nothing in the request log yet → not measured (never "0 % failures")
+    expect(h.checks.find((c: any) => c.key === 'read_failures')).toMatchObject({ state: 'READY', count: 0, detail: { measured: false, reads: 0, failedPercent: null } });
+    expect(h.checks.find((c: any) => c.key === 'warning_latency')?.detail).toMatchObject({ measured: false, p95Ms: null });
     expect(h.checks.find((c: any) => c.key === 'corrections_open')).toMatchObject({ state: 'WARNING', count: 1 });
     expect((await q(sql`select count(*)::int as n from customer_note_reviews`))[0].n).toBe(before);
+  });
+});
+
+describe('Customer Notes 01 — context-aware relevance (nothing hidden)', () => {
+  it('a visit ranks safety first, then visit notes of the same service / technician / branch, then preferences; without a visit the session branch and technician rank them', async () => {
+    const VY = id(120), TA = id(121), TB = id(122), TC = id(123), S1 = id(131), S2 = id(132), S3 = id(133);
+    await q(sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, status, notes_json, notes_updated_at, created_at, updated_at)
+      values (${VY}, ${T}, ${B}, 'Vy', 'Visits', 'Vy Visits', '+16095550120', 'active', ${notes({ allergyNotes: 'Acetone', servicePreferences: 'Gel only', salonNotes: 'Prefers window seat' })}::jsonb, now() - interval '9 days', now(), now())`);
+    // the owner is also technician TA (technicians.user_id) — the "assigned technician" when no visit is given
+    await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active, user_id) values
+      (${TA}, ${T}, ${B}, 'Ann', 'A', 'Ann A', true, ${OWNER}), (${TB}, ${T}, ${B2}, 'Bea', 'B', 'Bea B', true, null), (${TC}, ${T}, ${B}, 'Cy', 'C', 'Cy C', true, null)`);
+    const visit = async (tid: number, branch: string, tech: string, svc: string, note: string | null, ago: string) => {
+      await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, primary_technician_id, status, total_cents, ticket_number, service_done_notes, service_done_at, created_at, paid_at)
+        values (${id(tid)}, ${T}, ${branch}, ${VY}, ${tech}, 'paid', 4000, ${tid}, ${note}, now() - ${ago}::interval, now() - ${ago}::interval, now() - ${ago}::interval)`);
+      await q(sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents)
+        values (${T}, ${branch}, ${id(tid)}, ${svc}, ${tech}, 'Svc', 4000, 30, 4000)`);
+    };
+    await visit(910, B, TA, S1, 'Visit A — same service and technician', '5 days');
+    await visit(911, B2, TB, S2, 'Visit B — same branch only', '3 days');
+    await visit(912, B, TC, S3, 'Visit C — nothing in common', '1 day');
+    await visit(913, B2, TA, S1, null, '1 hour');             // the visit being served now: Second branch, Ann, service S1
+    const order = (d: any) => d.entries.map((e: any) => e.category === 'visit' ? e.ticketId : e.category);
+    const d = await cn.detail(owner(), VY, { ticketId: id(913) });
+    expect(order(d)).toEqual(['allergy', id(910), 'service_preference', id(911), 'general', id(912)]);
+    const byTicket = Object.fromEntries(d.entries.filter((e: any) => e.ticketId).map((e: any) => [e.ticketId, e.relevance]));
+    expect(byTicket[id(910)]).toEqual({ score: 50, reasons: ['same_service', 'same_technician'] });
+    expect(byTicket[id(911)]).toEqual({ score: 10, reasons: ['same_branch'] });
+    expect(byTicket[id(912)]).toEqual({ score: 0, reasons: [] });
+    expect(d.entries.find((e: any) => e.category === 'allergy')?.relevance).toEqual({ score: 100, reasons: ['safety'] });
+    expect(d.context).toEqual({ ticketId: id(913), branch: true, technicians: 1, services: 1 });
+    // no visit: the session's branch (Main) and the signed-in technician (Ann) rank them; every note is still there
+    const s = await cn.detail(owner(), VY);
+    expect(order(s)).toEqual(['allergy', id(910), 'service_preference', id(912), 'general', id(911)]);
+    expect(s.entries.find((e: any) => e.ticketId === id(910))?.relevance).toEqual({ score: 30, reasons: ['same_technician', 'same_branch'] });
+    expect(s.context).toEqual({ ticketId: null, branch: true, technicians: 1, services: 0 });
+    expect(s.entries).toHaveLength(d.entries.length);
+    // another customer's visit, a made-up id and a visit outside a confined role's branches are "not found"
+    expect(await code(cn.detail(owner(), VY, { ticketId: id(900) }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+    expect(await code(cn.detail(owner(), VY, { ticketId: 'x' }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+    expect(await code(cn.detail(confinedB2(), VY, { ticketId: id(910) }))).toBe('CUSTOMER_NOTES_NOT_FOUND');
+  });
+});
+
+describe('Customer Notes 10 — accuracy and response-time monitors from the request log', () => {
+  it('read failure rate, warning retrieval latency (p95) and version conflicts over 24 h for this salon only; old rows and other salons never count; nothing is written', async () => {
+    const line = (tenant: string, route: string, status: number, ms: number, method = 'GET', ago = '1 hour') => q(sql`insert into telemetry_log_events
+      (ts, level, service, tenant_id, route, status, duration_ms, msg, fields) values (now() - ${ago}::interval, 'info', 'api', ${tenant}, ${route}, ${status}, ${ms}, 'request.completed', ${JSON.stringify({ method })}::jsonb)`);
+    // 20 reads: 18 ok + 2 failed (10 %), of them 10 detail reads — 9 fast and 1 very slow; 6 notes saves / reviews, 5 refused 409
+    for (let i = 0; i < 8; i++) await line(T, '/api/v1/pos/customer-notes/notes', 200, 80);
+    await line(T, '/api/v1/pos/customer-notes/notes', 500, 90); await line(T, '/api/v1/pos/customer-notes/summary', 503, 90);
+    for (let i = 0; i < 9; i++) await line(T, '/api/v1/pos/customer-notes/notes/detail', 200, 100 + i * 10);
+    await line(T, '/api/v1/pos/customer-notes/notes/detail', 200, 9000);
+    await line(T, '/api/v1/pos/customer-notes/review', 200, 120, 'POST');
+    for (let i = 0; i < 3; i++) await line(T, '/api/v1/pos/customer-notes/review', 409, 60, 'POST');
+    for (let i = 0; i < 2; i++) await line(T, '/api/v1/pos/customers/:customerId/notes', 409, 60, 'PATCH');
+    // never counted: an old failure, another salon's failures, an unrelated route
+    await line(T, '/api/v1/pos/customer-notes/notes', 500, 90, 'GET', '3 days');
+    for (let i = 0; i < 30; i++) await line(X, '/api/v1/pos/customer-notes/notes', 500, 5000);
+    await line(T, '/api/v1/pos/tickets', 500, 90);
+    const before = (await q(sql`select count(*)::int as n from telemetry_log_events`))[0].n;
+    const h = await cn.check(owner());
+    const by = Object.fromEntries(h.checks.map((c: any) => [c.key, c]));
+    expect(by.read_failures).toEqual({ key: 'read_failures', state: 'WARNING', count: 2, detail: { measured: true, reads: 20, failed: 2, failedPercent: 10 } });
+    expect(by.warning_latency.state).toBe('WARNING');
+    expect(by.warning_latency.detail).toMatchObject({ measured: true, requests: 10, limitMs: 1500 });
+    expect(by.warning_latency.detail.p95Ms).toBeGreaterThan(1500);
+    expect(by.version_conflicts).toEqual({ key: 'version_conflicts', state: 'WARNING', count: 5, detail: { measured: true, writes: 6, conflicts: 5 } });
+    expect((await q(sql`select count(*)::int as n from telemetry_log_events`))[0].n).toBe(before);
   });
 });

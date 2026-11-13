@@ -566,4 +566,24 @@ export const CSEARCH_VI: Record<string, string> = {
   "cpf.fu.noEmail": "Chưa có email", // DRAFT — Kevin reviews
   "cpf.fu.contactOk": "Thông tin liên hệ đầy đủ", // DRAFT — Kevin reviews
   "cpf.fu.note": "Chỉ để tham khảo — không gửi gì từ đây.", // DRAFT — Kevin reviews
+  "cnx.rel.safety": "An toàn — đọc trước", // DRAFT — Kevin reviews
+  "cnx.rel.same_service": "Từ lần ghé cùng dịch vụ", // DRAFT — Kevin reviews
+  "cnx.rel.same_technician": "Từ lần ghé cùng thợ", // DRAFT — Kevin reviews
+  "cnx.rel.same_branch": "Từ lần ghé tại chi nhánh này", // DRAFT — Kevin reviews
+  "cnx.rel.preference": "Sở thích", // DRAFT — Kevin reviews
+  "cnx.rel.noteVisit": "Ghi chú liên quan nhất tới lần ghé này hiện trước; mọi ghi chú vẫn được hiện.", // DRAFT — Kevin reviews
+  "cnx.rel.noteSession": "Ghi chú từ các lần bạn làm và chi nhánh này hiện trước; mọi ghi chú vẫn được hiện.", // DRAFT — Kevin reviews
+  "cnx.health.k.read_failures": "Lần đọc ghi chú bị lỗi (24 giờ qua)", // DRAFT — Kevin reviews
+  "cnx.health.k.warning_latency": "Thời gian mở ghi chú của khách (24 giờ qua)", // DRAFT — Kevin reviews
+  "cnx.health.k.version_conflicts": "Lần sửa bị từ chối vì người khác đã lưu trước (24 giờ qua)", // DRAFT — Kevin reviews
+  "cnx.health.d.read_failures.READY": "Ghi chú tải ổn định cho tiệm này.", // DRAFT — Kevin reviews
+  "cnx.health.d.read_failures.WARNING": "Từ 5% lần đọc ghi chú trở lên bị lỗi — nhân viên có thể không thấy ghi chú an toàn. Báo bộ phận hỗ trợ.", // DRAFT — Kevin reviews
+  "cnx.health.d.warning_latency.READY": "Ghi chú của khách, kể cả ghi chú an toàn, mở nhanh.", // DRAFT — Kevin reviews
+  "cnx.health.d.warning_latency.WARNING": "Mở ghi chú của khách bị chậm (hơn 1,5 giây ở 5% lần chậm nhất). Kiểm tra kết nối hoặc báo bộ phận hỗ trợ.", // DRAFT — Kevin reviews
+  "cnx.health.d.version_conflicts.READY": "Ít hoặc không có lần sửa nào trùng với người khác lưu.", // DRAFT — Kevin reviews
+  "cnx.health.d.version_conflicts.WARNING": "Nhiều lần sửa bị từ chối vì người khác đã lưu cùng ghi chú trước — thống nhất ai cập nhật ghi chú.", // DRAFT — Kevin reviews
+  "cnx.health.m.read_failures": "{f}/{r} lần đọc bị lỗi ({p}%)", // DRAFT — Kevin reviews
+  "cnx.health.m.warning_latency": "95% trong {n} lần mở mất tối đa {ms} ms (giới hạn {l} ms)", // DRAFT — Kevin reviews
+  "cnx.health.m.version_conflicts": "{c}/{w} lần lưu bị từ chối vì người khác đã lưu trước", // DRAFT — Kevin reviews
+  "cnx.health.m.notMeasured": "Chưa đo — nhật ký yêu cầu không có dữ liệu trong 24 giờ qua.", // DRAFT — Kevin reviews
 };

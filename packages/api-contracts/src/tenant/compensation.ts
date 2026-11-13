@@ -92,3 +92,21 @@ export interface BonusFacts {
 //    adjustments ledger (the snapshot is never edited). Money = integer cents.
 export interface TipAllocationRequest { allocations: { technicianId: string; tipCents: number }[]; reason?: string }
 export interface TipAllocationResult { ok: true; ticketId: string; tipCents: number; allocations: { technicianId: string; tipCents: number }[]; corrections: number }
+
+// ── SERVICE PRICING 12 — Technician Compensation Preview (GET /owner/compensation/service-preview, compensation.view_all).
+//    For one service at its current and a proposed price: each technician's rate as the ONE precedence picks it (authored
+//    rule → the service's own rate → salon default) with its source, and the engine's earnings at both prices; plus where the
+//    ACTUAL payout values on paid tickets came from (ticket_compensation_snapshots grouped by source). Read only. Cents.
+export interface ServiceCompensationTechRow {
+  technicianId: string; name: string | null;
+  commissionType: 'percent' | 'fixed'; commissionValue: number; supplyMethod: string; supplyValue: number;
+  source: string; policyId: string | null; policyVersion: number | null;
+  currentEarningsCents: number; proposedEarningsCents: number; changeCents: number;
+}
+export interface ServiceCompensationActualSource { source: string; lines: number; grossCents: number; techEarningsCents: number; lastAt: string | null }
+export interface ServiceCompensationPreviewResponse {
+  serviceId: string; serviceName: string; currentPriceCents: number; proposedPriceCents: number;
+  technicians: ServiceCompensationTechRow[]; techniciansShown: number; techniciansTotal: number;
+  actual: { days: number; lines: number; techEarningsCents: number; bySource: ServiceCompensationActualSource[] };
+  changesPayNow: false;
+}

@@ -44,6 +44,21 @@ describe('POSAIReviewReputationSettingsScreen', () => {
     expect(screen.getByTestId('rssx-save')).toBeDisabled();
   });
 
+  it('Review Reputation 08: the review-site inventory shows each site\'s real connection, what the platform can do there and reviews on record; own feedback apart', async () => {
+    rs.state.mockResolvedValue({ ...STATE(), providerInventory: {
+      external: [
+        { source: 'google', provider: 'google_business_profile', connector: 'connected', connections: 1, lastSuccessfulSyncAt: '2026-11-10T12:00:00Z', lastFailedSyncAt: null, autoImport: false, replyByApi: true, reviews: 2, lastReviewAt: null },
+        { source: 'facebook', provider: 'facebook_pages', connector: 'disconnected', connections: 0, lastSuccessfulSyncAt: null, lastFailedSyncAt: '2026-10-02T08:00:00Z', autoImport: false, replyByApi: false, reviews: 0, lastReviewAt: null },
+        { source: 'yelp', provider: null, connector: 'no_connector', connections: 0, lastSuccessfulSyncAt: null, lastFailedSyncAt: null, autoImport: false, replyByApi: false, reviews: 1, lastReviewAt: null }],
+      internal: { sources: [{ source: 'internal', reviews: 1, lastReviewAt: null }], reviews: 1, requestsSent: 3 } } });
+    mount();
+    const g = await screen.findByTestId('rssx-inv-google');
+    expect(g).toHaveTextContent('Google Business Profile'); expect(g).toHaveTextContent('Connected'); expect(g).toHaveTextContent('Approved replies can be posted from here'); expect(g).toHaveTextContent('Not imported automatically');
+    expect(screen.getByTestId('rssx-inv-facebook')).toHaveTextContent(/Disconnected.*failed Oct 2, 2026.*Reply on the site itself/);
+    expect(screen.getByTestId('rssx-inv-yelp')).toHaveTextContent('No connector available');
+    expect(screen.getByTestId('rssx-inv-internal')).toHaveTextContent('1 on record · 3 review requests sent');
+    expect(rs.save).not.toHaveBeenCalled();
+  });
   it('Settings 05: provider freshness (last sync, a failing provider) and the publish / request queues are shown; nothing changes', async () => {
     rs.state.mockResolvedValue({ ...STATE(), providers: { connected: 2, lastSuccessfulSyncAt: '2026-11-11T13:00:00Z', lastFailedSyncAt: '2026-11-11T17:00:00Z', failing: 1 },
       publishQueue: { approvedNotPublished: 2, publishFailed: 1 } });

@@ -187,4 +187,8 @@ export const CINTEL_EN: Record<string, string> = {
   "cix.health.d.indexes.PASSED": "Classification and visit indexes are present.",
   "cix.health.d.indexes.WARNING": "Some indexes are missing; the list may be slow. Apply the latest database update.",
   "cix.ret.sub": "From Customer Retention — open it to act",
+  "cix.scope.label": "Branches",
+  "cix.scope.all": "All my branches",
+  "cix.scope.current": "This branch",
+  "cix.scope.line": "By branch: {b} — {d} distinct customers in total ({o} visit more than one branch and are counted once).",
 };

@@ -13,6 +13,7 @@
 //     approval-vs-automatic-reply conflict refused, ONE transaction writing the row, the (now append-only) history log
 //     ai_reputation_config_versions and a fail-closed audit; the old write merged nothing and swallowed every error;
 //   • a read-only health check. Nothing here publishes, approves, sends a message, charges or changes a subscription.
+import { SOURCE_TO_PROVIDER, providerRepliesByApi } from './ai-review-reputation-publish';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { RetentionRepository, isUuid, salonPresetRange, type RetentionContext } from '@aipowersalon/customers';
@@ -109,6 +110,37 @@ export class ReputationSettingsCenter {
   }
 
   // ── read: effective values, provenance, operational truth ─────────────────────────────────────────────────────
+  /**
+   * Review Reputation 08 — what is actually connected, per external review site, and the salon's own feedback, read from the
+   * real tables (integration_connections, reviews, review_requests) and the code's real capabilities: a reply goes out by API
+   * only where the publish path supports it (providerRepliesByApi — Google Business Profile today; Facebook has no API reply;
+   * Yelp has no connector at all), and no automatic review IMPORT is bound in this build (the review module's source-adapter
+   * map is empty), so reviews from a site arrive only through a person or a supported integration. Read only.
+   */
+  private async providerInventory(T: string) {
+    const conns = (await sql<Row>`select ic.provider_key, ic.connection_status, ic.last_successful_sync_at, ic.last_failed_sync_at from integration_connections ic
+      where ic.tenant_id = ${T} and ic.provider_key = any(${REVIEW_PROVIDERS}::text[])`.execute(this.db)).rows;
+    const counts = (await sql<Row>`select rv.source, count(*)::int as n, max(coalesce(rv.review_date, rv.created_at)) as last from reviews rv where rv.tenant_id = ${T} group by rv.source`.execute(this.db)).rows;
+    const reqSent = N((await sql<Row>`select count(*)::int as n from review_requests rq where rq.tenant_id = ${T} and rq.status in ('sent', 'delivered', 'converted')`.execute(this.db)).rows[0]?.n);
+    const cnt = (src: string) => counts.find((c) => c.source === src);
+    const external = (['google', 'facebook', 'yelp'] as const).map((source) => {
+      const provider = SOURCE_TO_PROVIDER[source] ?? null;
+      const mine = conns.filter((c) => c.provider_key === (provider ?? source));
+      const active = mine.filter((c) => c.connection_status === 'active');
+      const pickMax = (rows: Row[], k: string) => rows.map((r) => r[k]).filter(Boolean).map((v) => new Date(v).getTime()).sort((a, b) => b - a)[0];
+      const ok = pickMax(mine, 'last_successful_sync_at'), bad = pickMax(mine, 'last_failed_sync_at');
+      const c = cnt(source);
+      return {
+        source, provider, connector: provider ? (active.length ? 'connected' : mine.length ? 'disconnected' : 'not_connected') : 'no_connector',
+        connections: active.length, lastSuccessfulSyncAt: ok ? new Date(ok).toISOString() : null, lastFailedSyncAt: bad ? new Date(bad).toISOString() : null,
+        autoImport: false, replyByApi: providerRepliesByApi(provider), reviews: N(c?.n), lastReviewAt: iso(c?.last),
+      };
+    });
+    const internalSources = ['internal', 'survey', 'sms', 'email', 'app', 'support', 'manual'];
+    const internal = internalSources.map((source) => ({ source, reviews: N(cnt(source)?.n), lastReviewAt: iso(cnt(source)?.last) })).filter((x) => x.reviews > 0);
+    return { external, internal: { sources: internal, reviews: internal.reduce((a, x) => a + x.reviews, 0), requestsSent: reqSent } };
+  }
+
   async state(ctx: RssCtx) {
     const T = ctx.tenantId;
     const { tenant, branch, layers } = await this.layers(this.db, ctx);
@@ -163,6 +195,7 @@ export class ReputationSettingsCenter {
       sms: { configured: sms?.status === 'configured', sender: sms ? (sms.has_service ? 'messaging_service' : sms.has_number ? 'number' : 'none') : 'none', lastValidatedAt: iso(sms?.last_validated_at), lastError: sms?.last_validation_error ? 'validation_failed' : null },
       providers: { connected: providers, lastSuccessfulSyncAt: iso(prov.last_ok), lastFailedSyncAt: iso(prov.last_failed), failing: N(prov.failing) },
       publishQueue: { approvedNotPublished: N(pub.waiting), publishFailed: N(pub.failed) },
+      providerInventory: await this.providerInventory(T),
       salonRow: { version: N(tenant?.version ?? 0), exists: !!tenant, updatedAt: iso(tenant?.updated_at) },
       lastChange: last ? { at: iso(last.created_at), by: last.actor ?? null } : null,
       checkedAt: new Date(this.now()).toISOString(),

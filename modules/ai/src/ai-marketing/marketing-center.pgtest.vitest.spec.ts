@@ -283,3 +283,97 @@ describe('Marketing Growth 07 — Date/Timezone Diagnostics in Check AI Marketin
     expect(nearClockChange(Date.parse('2027-03-14T15:00:00Z'), 'UTC')).toBe(false);
   });
 });
+
+describe('Marketing Growth 09 — Reward Liability Reconciliation on the summary', () => {
+  it('points, token wallet, referral expense and gift-card balances come back separately from their own ledgers; nothing is changed', async () => {
+    const TL = id(820), BL = id(821), CA = id(822), CB = id(823), REF = id(824);
+    const cL = (o: any = {}) => ({ tenantId: TL, branchId: BL, userId: OWNER, role: 'OWNER', permissions: [...VIEW, 'pos.reports.view'], ...o });
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'L','Liability','mk-809l','MK809L','active')`, [TL]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','UTC')`, [BL, TL]);
+    for (const cid of [CA, CB]) await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, created_at) values ($1,$2,$3,'L','X','L X', now() - interval '100 days')`, [cid, TL, BL]);
+    // an empty salon: zeros, no wallet, nothing invented
+    const empty: any = (await mc.summary(cL(), { preset: 'all' })).rewardLiability;
+    expect(empty).toMatchObject({ visible: true, scope: 'salon', points: { outstandingPoints: 0, ledgerPoints: 0, driftPoints: 0, valueCents: null }, tokens: { wallet: false }, giftCards: { outstandingCents: 0, cards: 0 } });
+    // points: CA 120 (ledger 150 earned − 30 used), CB 40 with a 10-point drift (ledger 30)
+    await q(`insert into customer_loyalty_profiles (tenant_id, branch_id, customer_id, points_balance) values ($1,$2,$3,120), ($1,$2,$4,40)`, [TL, BL, CA, CB]);
+    await q(`insert into loyalty_ledger (tenant_id, branch_id, customer_id, type, amount, source, running_balance, entry_type, delta, balance_after) values
+      ($1,$2,$3,'earn',150,'ticket',150,'earn',150,150), ($1,$2,$3,'redeem',-30,'ticket',120,'redeem',-30,120), ($1,$2,$4,'earn',30,'ticket',30,'earn',30,30)`, [TL, BL, CA, CB]);
+    await q(`set session_replication_role = replica`);
+    // tokens: funded $50, $7.50 allocated to earned global points; the wallet projection says $42.50 left
+    await q(`insert into tenant_token_wallets (tenant_id, available_cents, lifetime_funded_cents, lifetime_allocated_cents) values ($1,4250,5000,750)`, [TL]);
+    await q(`insert into token_wallet_ledger (tenant_id, entry_type, delta_cents, balance_after_cents, source_table, source_id) values
+      ($1,'purchase_funded',5000,5000,'token_purchase_intents','p1'), ($1,'earn_allocation',-750,4250,'reward_earn_transactions','e1')`, [TL]);
+    // referrals: one $20 cash payout issued, one points reward (500) issued, one cash reward still pending approval (not expense);
+    // vouchers: a $10 redeemed (expense), a $15 open (owed), a $5 pending (not yet owed), a $25 void (nothing)
+    await q(`insert into referral_rewards (tenant_id, referral_id, recipient_customer_id, reward_type, points, amount_cents, policy_version, state, issued_at, ledger_entry_id) values
+      ($1,$2,$3,'cash_payout',null,2000,1,'ISSUED',now(),null), ($1,$5,$3,'loyalty_points',500,null,1,'ISSUED',now(),gen_random_uuid()), ($1,$6,$4,'cash_payout',null,9900,1,'PENDING_APPROVAL',null,null)`, [TL, REF, CA, CB, id(826), id(827)]);
+    await q(`insert into referral_vouchers (tenant_id, referral_id, customer_id, role, face_cents, state, policy_version, coupon_code_id, redeemed_at, created_at, updated_at) values
+      ($1,$2,$3,'friend',1000,'REDEEMED',1,gen_random_uuid(),now(),now(),now()), ($1,$2,$4,'referrer',1500,'AVAILABLE',1,gen_random_uuid(),null,now(),now()),
+      ($1,$5,$3,'referrer',500,'PENDING',1,null,null,now(),now()), ($1,$5,$4,'friend',2500,'VOID',1,null,null,now(),now())`, [TL, REF, CA, CB, id(825)]);
+    // gift cards: the canonical liability rule — active / frozen / partially redeemed with a balance; redeemed, void and expired are not owed
+    await q(`insert into gift_cards (tenant_id, branch_id, code, initial_balance_cents, balance_cents, status) values
+      ($1,$2,'G1',5000,5000,'active'), ($1,$2,'G2',5000,1200,'partially_redeemed'), ($1,$2,'G3',3000,3000,'frozen'), ($1,$2,'G4',5000,0,'redeemed'), ($1,$2,'G5',4000,4000,'void'), ($1,$2,'G6',2000,2000,'expired')`, [TL, BL]);
+    await q(`set session_replication_role = origin`);
+    const snap = async () => ({ p: await q(`select customer_id, points_balance from customer_loyalty_profiles where tenant_id = $1 order by customer_id`, [TL]),
+      w: await q(`select available_cents from tenant_token_wallets where tenant_id = $1`, [TL]), g: await q(`select code, balance_cents, status from gift_cards where tenant_id = $1 order by code`, [TL]),
+      v: await q(`select face_cents, state from referral_vouchers where tenant_id = $1 order by face_cents`, [TL]) });
+    const before = await snap();
+    const r: any = (await mc.summary(cL(), { preset: 'today' })).rewardLiability;
+    expect(r.points).toEqual({ members: 2, outstandingPoints: 160, ledgerPoints: 150, driftPoints: 10, earnedInPeriod: 180, usedInPeriod: 30, valueCents: null });
+    expect(r.tokens).toEqual({ wallet: true, availableCents: 4250, deficitCents: 0, fundedAllTimeCents: 5000, allocatedAllTimeCents: 750, fundedInPeriodCents: 5000, allocatedInPeriodCents: 750 });
+    expect(r.referrals).toEqual({ cashPaidInPeriodCents: 2000, cashPaidInPeriod: 1, pointsIssuedInPeriod: 500, vouchersRedeemedInPeriodCents: 1000, vouchersRedeemedInPeriod: 1,
+      vouchersOpenCents: 1500, vouchersOpen: 1, vouchersPendingCents: 500, vouchersPending: 1 });
+    expect(r.giftCards).toEqual({ outstandingCents: 9200, cards: 3 });
+    // a past period: the period amounts drop to zero, the balances owed now do not
+    const past: any = (await mc.summary(cL(), { preset: 'custom', from: '2020-01-01', to: '2020-01-31' })).rewardLiability;
+    expect(past.referrals).toMatchObject({ cashPaidInPeriodCents: 0, vouchersRedeemedInPeriodCents: 0, vouchersOpenCents: 1500 });
+    expect(past.tokens).toMatchObject({ allocatedInPeriodCents: 0, availableCents: 4250 });
+    expect(past.points).toMatchObject({ earnedInPeriod: 0, outstandingPoints: 160 });
+    expect(past.giftCards.outstandingCents).toBe(9200);
+    // no pos.reports.view → no money amounts at all; another salon never sees these
+    expect((await mc.summary(cL({ permissions: VIEW }), { preset: 'all' })).rewardLiability).toEqual({ visible: false });
+    const other: any = (await mc.summary(ctx({ permissions: [...VIEW, 'pos.reports.view'] }), { preset: 'all' })).rewardLiability;
+    expect(other.giftCards).toEqual({ outstandingCents: 0, cards: 0 });
+    expect(other.tokens).toEqual({ wallet: false });
+    expect(await snap()).toEqual(before);
+  });
+});
+
+describe('AI Marketing 12 — Permission-safe branch comparisons on the summary', () => {
+  it('each authorized branch side by side (aggregates only), salon-wide campaigns on their own row; one-branch, confined or no-report sessions see none; nothing is changed', async () => {
+    const TC = id(840), BA = id(841), BB = id(842), BC = id(843), CU = id(844), CV = id(845);
+    const cC = (o: any = {}) => ({ tenantId: TC, branchId: BA, userId: OWNER, role: 'OWNER', permissions: [...VIEW, 'pos.reports.view'], ...o });
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'C','Compare','mk-812c','MK812C','active')`, [TC]);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$4,'Avenue','active','UTC'), ($2,$4,'Bridge','active','UTC'), ($3,$4,'Closed old','active','UTC')`, [BA, BB, BC, TC]);
+    await q(`update branches set deleted_at = now() where id = $1`, [BC]);
+    for (const cid of [CU, CV]) await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, created_at) values ($1,$2,$3,'C','X','C X', now() - interval '100 days')`, [cid, TC, BA]);
+    const [ca] = await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values ($1,$2,'Avenue blast','sms','in_progress',2) returning id`, [TC, BA]);
+    await q(`insert into campaigns (tenant_id, branch_id, name, channel, status, audience_size) values ($1,$2,'Bridge later','sms','scheduled',0), ($1,null,'Everyone','sms','draft',0)`, [TC, BB]);
+    // Avenue: two messages sent (one delivered, one failed), 10 000 micros each; Bridge: one delivered message with no reported cost
+    let k = 0;
+    const send = async (branch: string, cust: string, st: string, cost: number | null) => {
+      const pid = `CMP${++k}`;
+      await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, provider_id, provider_cost_micros) values ($1,'sms','+1','hi',$2,$3,$4,$5)`, [TC, cust, st, pid, cost]);
+      await q(`insert into ai_marketing_campaign_sends (tenant_id, branch_id, campaign_id, customer_id, channel, status, provider_id, message_version, created_at, updated_at) values ($1,$2,$3,$4,'sms','sent',$5,$6, now(), now())`, [TC, branch, ca.id, cust, pid, k]);
+    };
+    await send(BA, CU, 'delivered', 10000); await send(BA, CV, 'failed', 10000); await send(BB, CU, 'delivered', null);
+    await q(`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, campaign_id, appointment_id, created_at) values ($1,$2,'link','BOOKING_SUCCEEDED','succeeded',$3,'cmp-a1', now())`, [TC, BB, ca.id]);
+    const before = await q(`select id, status from campaigns where tenant_id = $1 order by id`, [TC]);
+    const r: any = (await mc.summary(cC(), { preset: 'today' })).branchComparison;
+    expect(r.visible).toBe(true);
+    expect(r.branches.map((b: any) => b.name)).toEqual(['Avenue', 'Bridge']);              // the deleted branch is not compared
+    expect(r.branches[0]).toEqual({ branchId: BA, name: 'Avenue', campaigns: 1, active: 1, scheduled: 0, messagesSent: 2, delivered: 1, failed: 1, bookings: 0, associatedRevenueCents: 0, associatedTickets: 0, actualCostCents: 2 });
+    expect(r.branches[1]).toMatchObject({ branchId: BB, campaigns: 1, scheduled: 1, messagesSent: 1, delivered: 1, bookings: 1, actualCostCents: null });   // cost not reported → null, never $0
+    expect(r.salonWide).toMatchObject({ branchId: null, campaigns: 1, messagesSent: 0 });
+    expect(JSON.stringify(r)).not.toMatch(/\+1|C X/);                                       // no recipient, no customer
+    // a manager named on ONE branch, a confined session, and a viewer without reports see no comparison
+    expect((await mc.summary(cC({ authz: { scope: 'BRANCH', branchIds: [BA] } }), { preset: 'today' })).branchComparison).toEqual({ visible: false });
+    expect((await mc.summary(cC({ permissions: VIEW }), { preset: 'today' })).branchComparison).toEqual({ visible: false });
+    // a manager over both branches sees both
+    expect(((await mc.summary(cC({ authz: { scope: 'BRANCH', branchIds: [BA, BB] } }), { preset: 'today' })).branchComparison as any).branches).toHaveLength(2);
+    // the first salon (one live branch in its own scope here) never sees this salon's branches
+    const other: any = (await mc.summary(ctx({ permissions: [...VIEW, 'pos.reports.view'], authz: { scope: 'BRANCH', branchIds: [B] } }), { preset: 'today' })).branchComparison;
+    expect(other).toEqual({ visible: false });
+    expect(await q(`select id, status from campaigns where tenant_id = $1 order by id`, [TC])).toEqual(before);
+  });
+});

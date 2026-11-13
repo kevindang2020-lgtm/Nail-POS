@@ -8,5 +8,6 @@ export const CompensationControllerListQueries = {
   agreementsList: { filters: { technicianId: { type: 'id' } }, search: false },
   reportCommission: { filters: { branchId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
   reportSupply: { filters: { branchId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
+  servicePreviewGet: { filters: { serviceId: { type: 'id' }, priceCents: { type: 'text', maxLength: 10 } }, search: false },
   reportTips: { filters: { branchId: { type: 'id' } }, search: false, dateRange: { maxDays: 'analytics' } },
 } satisfies Record<string, ListQuerySpec>;

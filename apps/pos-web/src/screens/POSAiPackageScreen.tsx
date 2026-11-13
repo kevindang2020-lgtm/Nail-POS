@@ -36,6 +36,9 @@ const newKey = () => (globalThis.crypto?.randomUUID?.() ?? `k${Date.now()}${Math
 export function AiPackagePanel({ code, title, children, actionsSlot }: { code: string; title: string; children?: ReactNode; actionsSlot?: ReactNode }) {
   const [c, setC] = useState<Card | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  // Customer Profile Assistant 05: an AI / billing outage (network, 5xx) must not hide the salon's own data under it — the
+  // page's children (dashboards over Customer Intelligence, bookings …) keep their own server gates and error states
+  const [outage, setOutage] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | 'start_trial' | 'cancel'>(null);
   const [busy, setBusy] = useState(false);
@@ -44,10 +47,11 @@ export function AiPackagePanel({ code, title, children, actionsSlot }: { code: s
   const key = useRef(newKey());
 
   const load = useCallback(async () => {
-    setError(null);
+    setError(null); setOutage(false);
     try { const r = await posAiUsageScreenApi.detail(code); setC((r?.package as Card) ?? null); }
     catch (e: any) {
       if (e?.status === 404 || e?.body?.code === 'AI_PACKAGE_NOT_FOUND') { setC(null); return; }
+      setOutage(e?.status == null || Number(e.status) >= 500);
       setError(reportError(e, title));
     }
   }, [code, title]);
@@ -64,7 +68,9 @@ export function AiPackagePanel({ code, title, children, actionsSlot }: { code: s
     finally { setBusy(false); }
   };
 
-  if (error) return <div className="work"><div className="vh"><h1>{title}</h1></div><div className="err" role="alert" style={{ marginTop: 12 }}>{error}</div></div>;
+  if (error) return <div className="work"><div className="vh"><h1>{title}</h1></div><div className="err" role="alert" style={{ marginTop: 12 }}>{error}
+    {outage ? <> <button type="button" className="btn ghost" data-testid="pkg-retry" onClick={() => void load()}>{t('pos.retry')}</button></> : null}</div>
+    {outage && children ? <div data-testid="pkg-outage-children">{children}</div> : null}</div>;
   if (c === undefined) return <div className="work"><div className="state">{t('pos.loading')}</div></div>;
   if (c === null) return <div className="work"><div className="vh"><h1>{title}</h1></div><div className="state" style={{ marginTop: 12 }}>{t('pos.this_ai_add_on_isn_t_1if4')}</div></div>;
 

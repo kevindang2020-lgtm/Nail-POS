@@ -4,12 +4,14 @@ import { RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guar
  * preview an example calculation (§28), validate a policy before publishing (§27), preview a guarantee top-up. Gated on
  * the owner role / compensation permission (§30) — no tenant data is read or written here, calculation only.
  */
-import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Req, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Req, HttpException, HttpStatus, Optional } from '@nestjs/common';
+import type { ServiceCompensationPreviewResponse } from '@aipowersalon/api-contracts/tenant';
+import { ServiceCompensationPreviewService } from './compensation-service-preview';
 import { CompensationPreviewService } from './compensation-preview.service';
 import { CompensationReportsService } from './compensation-reports.service';
 import { CompensationTipPolicyService } from './compensation-tip-policy.service';
 import { RetailCommissionService } from './compensation-retail-policy.service';
-import { CompensationRulesService, CompensationRulesError } from './compensation-rules.service';
+import { CompensationRulesService } from './compensation-rules.service';
 import { TierPlansService } from './compensation-tier-plans.service';
 import { BonusRulesService } from './compensation-bonus-rules.service';
 import { ComplianceService } from './compensation-compliance.service';
@@ -44,7 +46,7 @@ function range(q: any): { from: string; to: string; branchId?: string } { return
 @ListQueries(CompensationControllerListQueries)
 @Controller('owner/compensation')
 export class CompensationController {
-  constructor(private readonly svc: CompensationPreviewService, private readonly reports: CompensationReportsService, private readonly tipPolicy: CompensationTipPolicyService, private readonly rules: CompensationRulesService, private readonly tierPlans: TierPlansService, private readonly retail: RetailCommissionService, private readonly bonuses: BonusRulesService, private readonly compliance: ComplianceService, private readonly agreements: AgreementsService) {}
+  constructor(private readonly svc: CompensationPreviewService, private readonly reports: CompensationReportsService, private readonly tipPolicy: CompensationTipPolicyService, private readonly rules: CompensationRulesService, private readonly tierPlans: TierPlansService, private readonly retail: RetailCommissionService, private readonly bonuses: BonusRulesService, private readonly compliance: ComplianceService, private readonly agreements: AgreementsService, @Optional() private readonly servicePreview?: ServiceCompensationPreviewService) {}
 
   // §19 compensation agreements (owner captures + lists; technician acknowledges elsewhere).
   @RequirePermission('compensation.view_all') @Get('agreements') agreementsList(@Req() r: any, @Query('technicianId') technicianId?: string) { gate(r); return run(() => this.agreements.list(rc(r), technicianId)); }
@@ -96,6 +98,14 @@ export class CompensationController {
     return this.svc.validate(body?.rule || {}, body?.supply);
   }
 
+  // SERVICE PRICING 12: one service at its current and a proposed price — each technician's rate by the money path's
+  // precedence (with its source) and the engine's earnings at both prices, plus the sources of the actual payouts. Read only.
+  @RequirePermission('compensation.view_all') @Get('service-preview') async servicePreviewGet(@Req() r: any, @Query() q: any): Promise<ServiceCompensationPreviewResponse> {
+    gate(r);
+    const svc = this.servicePreview;
+    if (!svc) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Compensation preview needs the database.' }, HttpStatus.SERVICE_UNAVAILABLE);
+    return run(() => svc.preview(rc(r), { serviceId: q?.serviceId, priceCents: q?.priceCents }));
+  }
   @RequirePermission('compensation.view_all') @Get('reports/commission') reportCommission(@Req() r: any, @Query() q: any) { gate(r); const g = range(q); return this.reports.commission(r.ctx.tenantId, g.from, g.to, g.branchId); }
   @RequirePermission('compensation.view_all') @Get('reports/supply') reportSupply(@Req() r: any, @Query() q: any) { gate(r); const g = range(q); return this.reports.supply(r.ctx.tenantId, g.from, g.to, g.branchId); }
   @RequirePermission('compensation.view_all') @Get('reports/tips') reportTips(@Req() r: any, @Query() q: any) { gate(r); const g = range(q); return this.reports.tips(r.ctx.tenantId, g.from, g.to, g.branchId); }

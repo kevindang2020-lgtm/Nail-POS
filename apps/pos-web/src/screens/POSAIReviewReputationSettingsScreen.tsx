@@ -133,6 +133,8 @@ export function POSAIReviewReputationSettingsScreen() {
           {rt.reviewRequests.overdueNotSent ? <div className="warn">{t('rssx.fresh.overdue', { n: fmtNumber(rt.reviewRequests.overdueNotSent) })}</div> : null}
         </div> : null}
 
+        {s.providerInventory ? <ProviderInventory inv={s.providerInventory} when={when} /> : null}
+
         <div className="rvw-tabs" role="tablist" data-testid="rssx-tabs">
           {(['settings', 'history', 'health'] as const).map((x) => <button key={x} role="tab" aria-selected={tab === x} className={'btn ghost' + (tab === x ? ' on' : '')} data-testid={`tab-${x}`} onClick={() => setTab(x)}>{t('rssx.tab.' + x)}</button>)}
         </div>
@@ -330,4 +332,22 @@ function DryRunLine({ d }: { d: DryRunDetail }) {
     <div>{t('rssx.dry.quiet', { n: fmtNumber(d.quietHoursShifted) })} {t('rssx.dry.channel', { c: codeLabel('rssx.dry.ch.' + d.channel, d.channel) })}{d.channelReady === false ? ' ' + t('rssx.dry.notReady') : ''}</div>
     {!d.requestsEnabled ? <div>{t('rssx.dry.off')}</div> : null}
   </div>;
+}
+
+/** Review Reputation 08 — the server's inventory of review sites (what is connected, what the code can really do) + own feedback */
+function ProviderInventory({ inv, when }: { inv: any; when: (iso: string | null | undefined) => string }) {
+  return (
+    <section className="panel" style={{ padding: 12, marginBottom: 10 }} data-testid="rssx-inv">
+      <div className="p-h">{t('rssx.inv.title')}</div>
+      <div style={{ overflowX: 'auto' }}><table className="tbl"><thead><tr><th>{t('rssx.inv.site')}</th><th>{t('rssx.inv.connection')}</th><th>{t('rssx.inv.sync')}</th>
+        <th>{t('rssx.inv.replies')}</th><th>{t('rssx.inv.import')}</th><th className="num">{t('rssx.inv.reviews')}</th></tr></thead>
+        <tbody>{inv.external.map((x: any) => <tr key={x.source} data-testid={`rssx-inv-${x.source}`}>
+          <td>{t('rssx.inv.src.' + x.source)}</td><td>{t('rssx.inv.conn.' + x.connector)}</td>
+          <td>{x.lastSuccessfulSyncAt ? when(x.lastSuccessfulSyncAt) : '—'}{x.lastFailedSyncAt ? <div className="sub warn">{t('rssx.inv.failedAt', { at: when(x.lastFailedSyncAt) })}</div> : null}</td>
+          <td>{x.replyByApi ? t('rssx.inv.replyApi') : t('rssx.inv.replyManual')}</td><td>{x.autoImport ? t('rssx.inv.importOn') : t('rssx.inv.importOff')}</td>
+          <td className="num">{fmtNumber(x.reviews)}</td></tr>)}</tbody></table></div>
+      <p className="sub" data-testid="rssx-inv-internal">{t('rssx.inv.internal', { n: fmtNumber(inv.internal.reviews), r: fmtNumber(inv.internal.requestsSent) })}</p>
+      <p className="sub">{t('rssx.inv.note')}</p>
+    </section>
+  );
 }

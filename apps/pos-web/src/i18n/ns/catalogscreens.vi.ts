@@ -464,4 +464,41 @@ export const CATALOGSCREENS_VI = {
   "cg.rv.noteRequired": "Hãy viết ghi chú ngắn (ít nhất 3 ký tự).", // DRAFT — Kevin reviews
   "cg.rv.done": "Đã duyệt giữ nguyên. Danh mục không bị thay đổi.", // DRAFT — Kevin reviews
   "cg.rv.reopened": "Đã mở lại để xem xét.", // DRAFT — Kevin reviews
+  "cg.comp.title": "Tiền công thợ", // DRAFT — Kevin reviews
+  "cg.comp.sub": "mỗi thợ sẽ được bao nhiêu cho dịch vụ này khi giá {a} → {b}", // DRAFT — Kevin reviews
+  "cg.comp.unnamed": "Thợ chưa có tên", // DRAFT — Kevin reviews
+  "cg.comp.noTechs": "Không có thợ đang làm.", // DRAFT — Kevin reviews
+  "cg.comp.more": "+{n} thợ khác", // DRAFT — Kevin reviews
+  "cg.comp.actual": "Đã trả trong {d} ngày qua: {n} dòng, tính theo {s}", // DRAFT — Kevin reviews
+  "cg.comp.actualNone": "Không có dòng đã thanh toán cho dịch vụ này trong {d} ngày qua.", // DRAFT — Kevin reviews
+  "cg.comp.note": "Chỉ là xem trước theo quy tắc trả công của tiệm — lưu giá không bao giờ đổi tiền công đã làm, và ở đây không đổi quy tắc nào.", // DRAFT — Kevin reviews
+  "cg.comp.src.ticket_override": "Ghi đè trên phiếu", // DRAFT — Kevin reviews
+  "cg.comp.src.technician_service": "Quy tắc thợ + dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.technician_category": "Quy tắc thợ + nhóm dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.technician_default": "Quy tắc của thợ", // DRAFT — Kevin reviews
+  "cg.comp.src.branch_service": "Quy tắc chi nhánh + dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.branch_category": "Quy tắc chi nhánh + nhóm dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.service": "Quy tắc dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.category": "Quy tắc nhóm dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.branch_default": "Quy tắc mặc định chi nhánh", // DRAFT — Kevin reviews
+  "cg.comp.src.salon_default": "Quy tắc mặc định của tiệm", // DRAFT — Kevin reviews
+  "cg.comp.src.service_default": "Mức riêng của dịch vụ", // DRAFT — Kevin reviews
+  "cg.comp.src.tenant_default_rate": "Mức mặc định của tiệm", // DRAFT — Kevin reviews
+  "cg.comp.src.not_recorded": "Không ghi nguồn", // DRAFT — Kevin reviews
+  "cg.comp.src.unscoped": "Quy tắc không phạm vi", // DRAFT — Kevin reviews
+  "cg.pp.open": "Xem trước khi tính tiền", // DRAFT — Kevin reviews
+  "cg.pp.title": "{name} sẽ tính tiền thế nào", // DRAFT — Kevin reviews
+  "cg.pp.sub": "Khách vãng lai tại quầy tính tiền: ưu đãi được áp dụng, thuế và tổng. Không thu tiền, không lưu gì.", // DRAFT — Kevin reviews
+  "cg.pp.price": "Giá để xem trước", // DRAFT — Kevin reviews
+  "cg.pp.addOns": "Dịch vụ thêm", // DRAFT — Kevin reviews
+  "cg.pp.notTaxed": "không chịu thuế", // DRAFT — Kevin reviews
+  "cg.pp.deal": "Ưu đãi: {t}", // DRAFT — Kevin reviews
+  "cg.pp.subtotal": "Tạm tính sau giảm giá", // DRAFT — Kevin reviews
+  "cg.pp.tax": "Thuế ({r}%)", // DRAFT — Kevin reviews
+  "cg.pp.total": "Tổng phải trả", // DRAFT — Kevin reviews
+  "cg.pp.failed": "Không tải được bản xem trước.", // DRAFT — Kevin reviews
+  "cg.pp.dealsUnavailable": "Không kiểm tra được ưu đãi ở đây nên không hiện giảm giá — quầy tính tiền vẫn áp dụng.", // DRAFT — Kevin reviews
+  "cg.pp.notForWalkIn": "{n} ưu đãi cần biết khách hoặc cần mã nên không áp dụng cho khách vãng lai.", // DRAFT — Kevin reviews
+  "cg.pp.surcharge": "Phụ phí thẻ (nếu có) được quyết định khi đọc thẻ.", // DRAFT — Kevin reviews
+  "cg.pp.note": "Chỉ xem: dùng cùng quy tắc ưu đãi và thuế như quầy tính tiền và không thay đổi gì.", // DRAFT — Kevin reviews
 };

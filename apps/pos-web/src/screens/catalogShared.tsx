@@ -10,6 +10,8 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, useDebounced, type PageInfo } from '../components/FitKit';
 import { similarServices, normName, type SvcLite } from './serviceNameDup';
 import { centsFromText, textFromCents } from '../components/FinanceKit';
+import { useCan } from '../components/usePermissions';
+import { codeLabel } from '../components/codeLabel';
 
 export const nf = (n: number | null | undefined) => fmtNumber(n || 0);
 export const money = (c: number | null | undefined) => (c == null ? '—' : fmtMoney(c));
@@ -113,6 +115,15 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
     let live = true; const tm = setTimeout(() => { posCatalogApi.pricingImpact(service.serviceId, { priceCents: String(cents), durationMinutes: String(m) }).then((r) => { if (live) setImpact(r); }).catch(() => { if (live) setImpact(null); }); }, 300);
     return () => { live = false; clearTimeout(tm); };
   }, [service.serviceId, cents, m, valid, changed]);
+  // SERVICE PRICING 12: what each technician would earn on this service at the new price — the rate and the pay come from the
+  // server's compensation precedence + engine (nothing computed here); shown only to people who may see compensation
+  const can = useCan(); const seePay = can('compensation.view_all');
+  const [pay, setPay] = useState<any | null>(null);
+  useEffect(() => {
+    if (!seePay || !valid || cents == null || cents === service.priceCents) { setPay(null); return; }
+    let live = true; const tm = setTimeout(() => { Promise.resolve().then(() => posCatalogApi.compensationPreview(service.serviceId, cents)).then((r) => { if (live) setPay(r ?? null); }).catch(() => { if (live) setPay(null); }); }, 300);
+    return () => { live = false; clearTimeout(tm); };
+  }, [service.serviceId, service.priceCents, cents, valid, seePay]);
   const save = async () => {
     if (!valid) { setErr(tx('cg.pricing.invalid')); return; }
     if (!reason.trim()) { setErr(tx('cg.reasonRequired')); return; }
@@ -143,7 +154,68 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
         ? tx('cg.impact.some', { n: nf(impact.upcoming), q: fmtMoney(impact.quotedTotalCents), d: nf(impact.quotedDifferently), l: nf(impact.wouldRunLonger) })
         : tx('cg.impact.none')}</span>
         {impact.items?.length ? <ul className="fn-notes" data-testid="pricing-impact-list">{impact.items.slice(0, 5).map((a: any) => <li key={a.appointmentId}>{a.day} {a.time} · {a.customer ?? tx('cg.impact.customerHidden')} · {fmtMoney(a.quotedCents)} · {mins(a.bookedMinutes)}</li>)}</ul> : null}</div> : null}
+      {pay ? <CompensationPreviewNote pay={pay} /> : null}
       {err ? <div className="fk-note bad" role="alert" data-testid="pricing-error"><span>{err}</span></div> : null}
+    </FitDialog>
+  );
+}
+
+/** the rule's provenance label ("Technician + Service", "Salon Default", …) → a catalogue key cg.comp.src.<slug> */
+const paySource = (src: string) => codeLabel('cg.comp.src', String(src).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
+/** SERVICE PRICING 12 — Technician Compensation Preview (read only; nobody's pay changes) */
+function CompensationPreviewNote({ pay }: { pay: any }) {
+  const techs: any[] = pay.technicians ?? [];
+  return (
+    <div className="fk-note info" data-testid="pricing-pay">
+      <span><b>{tx('cg.comp.title')}</b> · {tx('cg.comp.sub', { a: fmtMoney(pay.currentPriceCents), b: fmtMoney(pay.proposedPriceCents) })}</span>
+      {techs.length ? <ul className="fn-notes" data-testid="pricing-pay-list">{techs.slice(0, 6).map((r) => <li key={r.technicianId}>
+        {r.name ?? tx('cg.comp.unnamed')} · {r.commissionType === 'fixed' ? fmtMoney(r.commissionValue) : `${nf(r.commissionValue)}%`} ({paySource(r.source)}) · {fmtMoney(r.currentEarningsCents)} → <b>{fmtMoney(r.proposedEarningsCents)}</b>
+      </li>)}</ul> : <span className="fk-hint">{tx('cg.comp.noTechs')}</span>}
+      {pay.techniciansTotal > techs.slice(0, 6).length ? <span className="fk-hint">{tx('cg.comp.more', { n: nf(pay.techniciansTotal - techs.slice(0, 6).length) })}</span> : null}
+      <span className="fk-hint" data-testid="pricing-pay-actual">{pay.actual?.lines
+        ? tx('cg.comp.actual', { n: nf(pay.actual.lines), d: nf(pay.actual.days), s: (pay.actual.bySource ?? []).map((x: any) => `${paySource(x.source)} ${nf(x.lines)}`).join(' · ') })
+        : tx('cg.comp.actualNone', { d: nf(pay.actual?.days) })}</span>
+      <span className="fk-hint">{tx('cg.comp.note')}</span>
+    </div>
+  );
+}
+
+/** SERVICE PRICING 08 — Live Price Preview: how this service (+ the add-ons picked, at its price or a proposed one) would ring up
+ *  at Checkout for a walk-in. Every number is the server's (deals engine + Checkout's tax); nothing is charged or saved here. */
+export function PricePreviewDialog({ service, onClose }: { service: any; onClose: () => void }) {
+  const [addOns, setAddOns] = useState<string[]>([]);
+  const [price, setPrice] = useState(textFromCents(service.priceCents));
+  const cents = centsFromText(price);
+  const [p, setP] = useState<any | null>(null); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    if (cents == null || cents < 0) { setErr(tx('cg.pricing.invalid')); return; }
+    let live = true; setErr(null);
+    const tm = setTimeout(() => { Promise.resolve().then(() => posCatalogApi.pricePreview(service.serviceId, { addOns, priceCents: cents === service.priceCents ? null : cents }))
+      .then((r) => { if (live) setP(r ?? null); }).catch((e) => { if (live) { setP(null); setErr(errorTextOf(e, tx('cg.pp.failed'))); } }); }, 250);
+    return () => { live = false; clearTimeout(tm); };
+  }, [service.serviceId, service.priceCents, cents, addOns]);
+  const toggle = (k: string) => setAddOns((x) => (x.includes(k) ? x.filter((y) => y !== k) : [...x, k]));
+  return (
+    <FitDialog title={tx('cg.pp.title', { name: service.name })} subtitle={tx('cg.pp.sub')} onClose={onClose} testId="dlg-price-preview"
+      footer={<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button>}>
+      <div className="cg-form">
+        <label className="fk-field">{tx('cg.pp.price')}<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} data-testid="pp-price" /><span className="fk-hint">{tx('cg.f.was', { v: fmtMoney(service.priceCents) })}</span></label>
+      </div>
+      {p?.addOnsAvailable?.length ? <div className="fk-field wide" data-testid="pp-addons">{tx('cg.pp.addOns')}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{p.addOnsAvailable.map((a: any) => <label key={a.key} className="fk-check"><input type="checkbox" checked={addOns.includes(a.key)} onChange={() => toggle(a.key)} data-testid={`pp-addon-${a.key}`} /> {a.name} · {fmtMoney(a.priceCents)}</label>)}</div></div> : null}
+      {err ? <div className="fk-note bad" role="alert" data-testid="pp-error"><span>{err}</span></div> : null}
+      {p ? <table className="fk-table" data-testid="pp-table"><tbody>
+        {p.lines.map((l: any) => <tr key={l.key ?? 'service'}><td>{l.name}{l.taxable ? null : <span className="fk-li-s">{tx('cg.pp.notTaxed')}</span>}</td>
+          <td className="num">{fmtMoney(l.priceCents)}</td><td className="num">{l.discountCents ? `−${fmtMoney(l.discountCents)}` : ''}</td></tr>)}
+        {p.discounts.applied.map((d: any) => <tr key={d.dealId} data-testid="pp-deal"><td colSpan={2}>{tx('cg.pp.deal', { t: d.title })}</td><td className="num">−{fmtMoney(d.appliedCents)}</td></tr>)}
+        <tr><td colSpan={2}>{tx('cg.pp.subtotal')}</td><td className="num" data-testid="pp-subtotal">{fmtMoney(p.totals.subtotalCents)}</td></tr>
+        <tr><td colSpan={2}>{tx('cg.pp.tax', { r: String(p.tax.ratePercent) })}</td><td className="num" data-testid="pp-tax">{fmtMoney(p.tax.taxCents)}</td></tr>
+        <tr><td colSpan={2}><b>{tx('cg.pp.total')}</b></td><td className="num"><b data-testid="pp-total">{fmtMoney(p.totals.totalDueCents)}</b></td></tr>
+      </tbody></table> : null}
+      {p && !p.discounts.available ? <p className="fk-hint" data-testid="pp-no-deals">{tx('cg.pp.dealsUnavailable')}</p> : null}
+      {p?.discounts.notForWalkIn?.length ? <p className="fk-hint">{tx('cg.pp.notForWalkIn', { n: nf(p.discounts.notForWalkIn.length) })}</p> : null}
+      {p?.totals.cardSurcharge === 'decided_when_card_is_read' ? <p className="fk-hint">{tx('cg.pp.surcharge')}</p> : null}
+      <p className="fk-hint">{tx('cg.pp.note')}</p>
     </FitDialog>
   );
 }

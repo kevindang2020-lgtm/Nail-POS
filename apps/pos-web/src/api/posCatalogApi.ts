@@ -14,6 +14,10 @@ export const posCatalogApi = {
   updatePricing: (id: string, b: Q) => api.patch<any>(`${C}/services/${enc(id)}/pricing`, b),
   // D4 gaps (Nov 5 2026): the upcoming bookings a price / duration change would touch, and revert of one change
   pricingImpact: (id: string, q: Q) => api.get<any>(`${C}/services/${enc(id)}/pricing-impact`, clean(q)),
+  /** SERVICE PRICING 12: each technician's rate (with its source) and pay at the current vs proposed price + where actual payouts came from (compensation.view_all, read only) */
+  compensationPreview: (id: string, priceCents: number) => api.get<any>('/owner/compensation/service-preview', { serviceId: id, priceCents: String(priceCents) }),
+  /** SERVICE PRICING 08: how a service (+ add-ons, at its price or a proposed one) rings up for a walk-in — deals, tax, total; nothing charged */
+  pricePreview: (id: string, q: { addOns?: string[]; priceCents?: number | null } = {}) => api.get<any>('/pos/checkout/price-preview', clean({ serviceId: id, addOns: q.addOns?.length ? q.addOns.join(',') : undefined, priceCents: q.priceCents == null ? undefined : String(q.priceCents) })),
   revertPricing: (id: string, b: Q) => api.post<any>(`${C}/services/${enc(id)}/pricing/revert`, b),
   schedulePricing: (id: string, b: Q) => api.post<any>(`${C}/services/${enc(id)}/pricing/schedule`, b),
   cancelScheduledPricing: (id: string, b: Q) => api.post<any>(`${C}/services/${enc(id)}/pricing/schedule/cancel`, b),

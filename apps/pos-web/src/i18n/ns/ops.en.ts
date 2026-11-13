@@ -1938,4 +1938,10 @@ export const OPS_EN = {
   "ops.sched.queue.fair": "Fill with the AI Queue Assistant (fair rotation)",
   "ops.sched.queue.open": "Open Customer Queue",
   "ops.sched.queue.rule": "Waiting guests are assigned by the queue’s own fair rotation — the optimizer never assigns them.",
+  "syschk.catalog.checkout_subtotal_over_lines": "No paid ticket charged a subtotal above what its lines add up to",
+  "syschk.catalog.checkout_subtotal_over_lines.fix": "Open those tickets: a line may have been removed after payment or a price changed outside the ticket. Correct it with a refund or an adjustment, never by editing the paid ticket.",
+  "syschk.catalog.checkout_discount_over_lines": "No paid ticket has a discount larger than its lines",
+  "syschk.catalog.checkout_discount_over_lines.fix": "Review the discounts on those tickets (deal, coupon, manual or membership) and who approved them.",
+  "syschk.catalog.checkout_tax_without_taxable_line": "No paid ticket charged tax without a taxable line",
+  "syschk.catalog.checkout_tax_without_taxable_line.fix": "Check each service’s Taxable setting and the tax on those tickets; refund the tax if it was charged by mistake.",
 };

@@ -9,5 +9,7 @@ export const posReceiptCenterApi = {
   summary: (q: Q = {}) => api.get<any>(`/pos/receipt-center/summary`, clean(q)),
   documents: (q: Q = {}) => api.get<any>(`/pos/receipt-center/documents`, clean(q)),
   document: (id: string) => api.get<any>(`/pos/receipt-center/documents/${enc(id)}`),
+  /** Receipt Document Recognition 03: the Extracting queue — phase cards + waiting receipts (attempts, latest job, retry eligibility) */
+  processing: (sort?: string) => api.get<any>(`/pos/receipt-center/processing`, clean({ sort })),
   check: () => api.post<any>(`/pos/receipt-center/check`, {}),
 };

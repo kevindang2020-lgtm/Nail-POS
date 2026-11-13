@@ -224,6 +224,38 @@ describe('shared read-only Check … System', () => {
     expect(count(r, 'addon_duplicate_charge')).toMatchObject({ state: 'WARNING', count: 1 });           // Paraffin ×2 on A
     expect(count(await svc.run('catalog', { tenantId: T, branchId: B2 }), 'addon_duplicate_charge')).toMatchObject({ state: 'READY', count: 0 });
   });
+  it('extras: SERVICE PRICING 05 — checkout wiring: a paid subtotal above its lines, a discount above its lines, tax with no taxable line; unpaid, removed and other salons never', async () => {
+    const B9 = id(620), BX9 = id(621);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B9}, ${T}, 'Pricing wiring'), (${BX9}, ${X}, 'Other wiring')`);
+    // a line copies is_taxable from its service when written (migration 792): one non-taxable service per salon
+    await q(sql`insert into service_categories (id, tenant_id, branch_id, name, status) values (${id(622)}, ${T}, ${B9}, 'Care', 'active'), (${id(623)}, ${X}, ${BX9}, 'Care', 'active')`);
+    await q(sql`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, is_taxable) values (${id(698)}, ${T}, ${B9}, ${id(622)}, 'Untaxed care', 30, 2000, false), (${id(697)}, ${X}, ${BX9}, ${id(623)}, 'Untaxed X', 30, 2000, false)`);
+    const tk = (n: number, tenant: string, branch: string, paid: boolean, sub: number, tax: number, disc: number, removed = false) => q(sql`insert into tickets
+      (id, tenant_id, branch_id, customer_id, status, paid_at, subtotal_cents, tax_cents, discount_cents, total_cents, removed_at)
+      values (${id(n)}, ${tenant}, ${branch}, ${tenant === T ? id(21) : id(22)}, ${paid ? 'paid' : 'open'}, ${paid ? sql`now()` : null}, ${sub}, ${tax}, ${disc}, ${sub + tax}, ${removed ? sql`now()` : null})`);
+    const ln = (n: number, tenant: string, branch: string, cents: number, taxable = true, removed = false) => q(sql`insert into ticket_service_lines
+      (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, is_taxable, removed_at)
+      values (${tenant}, ${branch}, ${id(n)}, ${taxable ? id(699) : tenant === T ? id(698) : id(697)}, 'Gel', ${cents}, 30, ${cents}, ${taxable}, ${removed ? sql`now()` : null})`);
+    // 631 fine: two lines 3000 + 2000, subtotal after a 500 discount = 4500, tax on a taxable line
+    await tk(631, T, B9, true, 4500, 360, 500); await ln(631, T, B9, 3000); await ln(631, T, B9, 2000);
+    // 632 subtotal 6000 but the live lines only charge 4000 (a 2000 line was removed after) → subtotal over lines
+    await tk(632, T, B9, true, 6000, 0, 0); await ln(632, T, B9, 4000, false); await ln(632, T, B9, 2000, false, true);
+    // 633 a 3000 discount on 2000 of lines → discount over lines; 634 tax 160 but its only line is not taxable
+    await tk(633, T, B9, true, 0, 0, 3000); await ln(633, T, B9, 2000);
+    await tk(634, T, B9, true, 2000, 160, 0); await ln(634, T, B9, 2000, false);
+    // never counted: the same problems on an unpaid ticket, a removed ticket, and the other salon
+    await tk(635, T, B9, false, 9000, 160, 9000); await ln(635, T, B9, 100, false);
+    await tk(636, T, B9, true, 9000, 160, 9000, true); await ln(636, T, B9, 100, false);
+    await tk(637, X, BX9, true, 9000, 160, 9000); await ln(637, X, BX9, 100, false);
+    const before = await q(sql`select id, subtotal_cents, tax_cents, discount_cents, total_cents from tickets where branch_id in (${B9}, ${BX9}) order by id`);
+    const r = await svc.run('catalog', { tenantId: T, branchId: B9 });
+    expect(count(r, 'checkout_subtotal_over_lines')).toMatchObject({ state: 'WARNING', count: 1 });          // 632
+    expect(count(r, 'checkout_discount_over_lines')).toMatchObject({ state: 'WARNING', count: 1 });          // 633
+    expect(count(r, 'checkout_tax_without_taxable_line')).toMatchObject({ state: 'WARNING', count: 1 });     // 634
+    // the other salon's branch through its own tenant: its one paid ticket is counted there (and only there)
+    expect(count(await svc.run('catalog', { tenantId: X, branchId: BX9 }), 'checkout_subtotal_over_lines')).toMatchObject({ count: 1 });
+    expect(await q(sql`select id, subtotal_cents, tax_cents, discount_cents, total_cents from tickets where branch_id in (${B9}, ${BX9}) order by id`)).toEqual(before);
+  });
   it('extras: Stock Alerts 05 — a recipe naming an archived product; a Service Done recipe that could only take part of the amount', async () => {
     const PA = id(251), PB = id(252), SV = id(253), PX = id(254), SVX = id(255);
     await q(sql`insert into inventory_products (id, tenant_id, name, active, archived_at) values (${PA}, ${T}, 'Old Gel', false, now()), (${PB}, ${T}, 'Cuticle Oil', true, null), (${PX}, ${X}, 'Old Gel X', false, now())`);

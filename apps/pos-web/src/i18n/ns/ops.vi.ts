@@ -1937,4 +1937,10 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.sched.queue.fair": "Xếp bằng Trợ lý hàng chờ AI (xoay vòng công bằng)", // DRAFT — Kevin reviews
   "ops.sched.queue.open": "Mở hàng chờ khách", // DRAFT — Kevin reviews
   "ops.sched.queue.rule": "Khách đang chờ được xếp theo xoay vòng công bằng của hàng chờ — trình tối ưu không bao giờ tự xếp.", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_subtotal_over_lines": "Không phiếu đã thanh toán nào có tạm tính cao hơn tổng các dòng của phiếu", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_subtotal_over_lines.fix": "Mở các phiếu đó: có thể một dòng đã bị bỏ sau khi thanh toán hoặc giá bị đổi ngoài phiếu. Sửa bằng hoàn tiền hoặc điều chỉnh, không bao giờ sửa phiếu đã thanh toán.", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_discount_over_lines": "Không phiếu đã thanh toán nào có giảm giá lớn hơn tổng các dòng", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_discount_over_lines.fix": "Xem lại giảm giá trên các phiếu đó (ưu đãi, mã giảm giá, giảm tay hoặc thành viên) và ai đã duyệt.", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_tax_without_taxable_line": "Không phiếu đã thanh toán nào tính thuế khi không có dòng chịu thuế", // DRAFT — Kevin reviews
+  "syschk.catalog.checkout_tax_without_taxable_line.fix": "Kiểm tra cài đặt Chịu thuế của từng dịch vụ và tiền thuế trên các phiếu đó; hoàn lại thuế nếu tính nhầm.", // DRAFT — Kevin reviews
 };

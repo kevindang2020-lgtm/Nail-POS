@@ -35,6 +35,8 @@ const INV_OPEN = sql`('open','sent','pending','partially_paid','past_due')`;
 
 /** a live add-on line on a ticket (k = ticket_service_lines) / a live base service line under another alias */
 const ADDON_LINE = sql`coalesce(k.line_kind, CASE WHEN k.is_add_on THEN 'add_on' ELSE 'service' END) = 'add_on' AND k.removed_at IS NULL AND coalesce(k.status, '') NOT IN ('cancelled', 'removed', 'voided')`;
+/** any live line on a ticket (k = ticket_service_lines): not removed, cancelled or voided */
+const LIVE_LINE = sql`k.removed_at IS NULL AND coalesce(k.status, '') NOT IN ('cancelled', 'removed', 'voided')`;
 const BASE_LINE = (alias: 'sv') => (alias === 'sv'
   ? sql`coalesce(sv.line_kind, CASE WHEN sv.is_add_on THEN 'add_on' ELSE 'service' END) = 'service' AND sv.removed_at IS NULL AND coalesce(sv.status, '') NOT IN ('cancelled', 'removed', 'voided')`
   : sql`false`);
@@ -161,6 +163,20 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
     { key: 'addon_duplicate_charge', severity: 'WARNING', count: (t, b) => n(sql`SELECT k.ticket_id FROM ticket_service_lines k
         WHERE k.tenant_id = ${t}::uuid ${br('k', b)} AND ${ADDON_LINE}
         GROUP BY k.ticket_id, lower(btrim(k.service_name_snapshot)), k.technician_id HAVING count(*) > 1`) },
+    // extras (SERVICE PRICING 05 checkout and transaction wiring): a paid ticket's money must be explainable from its live
+    // lines. tickets.subtotal_cents is written AFTER discounts at payment (CheckoutService.afterPaid → setFinalTotals), so it
+    // can never exceed the lines' own charges; a discount larger than the lines, or tax with no taxable line, needs a person.
+    // Payments vs total, refunds vs payment and paid-state live in Reports / Settlements / Service Flow (not repeated here).
+    { key: 'checkout_subtotal_over_lines', severity: 'WARNING', count: (tn, b) => n(sql`SELECT 1 FROM tickets t WHERE t.tenant_id = ${tn}::uuid ${br('t', b)} AND t.paid_at IS NOT NULL AND t.removed_at IS NULL
+        AND EXISTS (SELECT 1 FROM ticket_service_lines k WHERE k.tenant_id = t.tenant_id AND k.ticket_id = t.id AND ${LIVE_LINE})
+        AND coalesce(t.subtotal_cents, 0) > (SELECT coalesce(sum(k.line_total_cents), 0) FROM ticket_service_lines k WHERE k.tenant_id = t.tenant_id AND k.ticket_id = t.id AND ${LIVE_LINE})`) },
+    { key: 'checkout_discount_over_lines', severity: 'WARNING', count: (tn, b) => n(sql`SELECT 1 FROM tickets t WHERE t.tenant_id = ${tn}::uuid ${br('t', b)} AND t.paid_at IS NOT NULL AND t.removed_at IS NULL
+        AND coalesce(t.discount_cents, 0) > 0
+        AND coalesce(t.discount_cents, 0) > (SELECT coalesce(sum(k.line_total_cents), 0) FROM ticket_service_lines k WHERE k.tenant_id = t.tenant_id AND k.ticket_id = t.id AND ${LIVE_LINE})`) },
+    { key: 'checkout_tax_without_taxable_line', severity: 'WARNING', count: (tn, b) => n(sql`SELECT 1 FROM tickets t WHERE t.tenant_id = ${tn}::uuid ${br('t', b)} AND t.paid_at IS NOT NULL AND t.removed_at IS NULL
+        AND coalesce(t.tax_cents, 0) > 0
+        AND EXISTS (SELECT 1 FROM ticket_service_lines k WHERE k.tenant_id = t.tenant_id AND k.ticket_id = t.id AND ${LIVE_LINE})
+        AND NOT EXISTS (SELECT 1 FROM ticket_service_lines k WHERE k.tenant_id = t.tenant_id AND k.ticket_id = t.id AND ${LIVE_LINE} AND k.is_taxable)`) },
     { key: 'addon_on_archived_service', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM service_add_ons a JOIN services s ON s.tenant_id = a.tenant_id AND s.id = a.service_id
         WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.is_active AND (s.archived_at IS NOT NULL OR s.status <> 'active')`) },
   ] },

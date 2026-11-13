@@ -122,13 +122,45 @@ export interface CiCheck { key: string; state: CiCheckState; count?: number | nu
 export type SettingsFn = (ctx: CiCtx) => Promise<{ enabled: boolean; tunables: ProfileTunables }>;
 export type AuditFn = (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<unknown>;
 
+/** Customer Intelligence 23: at most this many branches in one "selected branches" view */
+export const CI_MAX_SELECTED_BRANCHES = 20;
+
 export class CustomerIntelligenceCenter {
   private readonly ret: RetentionRepository;
   constructor(private readonly db: Kysely<any>, private readonly settings: SettingsFn, private readonly now: () => number = () => Date.now()) { this.ret = new RetentionRepository(db); }
 
+  /** Customer Intelligence 23 — which branches: '' / 'all' = every authorized branch, 'current' = the session's branch, one id, or a
+   *  comma list of ids ("selected authorized branches"). Every id must be authorized for this session (CR-02, the Retention rule:
+   *  RetentionRepository.branchScope decides what is authorized); one outside → 403 BRANCH_NOT_AUTHORIZED. */
   private async scope(ctx: CiCtx, branch?: unknown): Promise<BranchScope> {
-    try { return await this.ret.branchScope(ctx, branch); }
-    catch (e: any) { throw new CustomerIntelligenceError(e?.message ?? 'Unknown branch.', e?.code === 'BRANCH_NOT_AUTHORIZED' ? 'BRANCH_NOT_AUTHORIZED' : 'INTELLIGENCE_INVALID_BRANCH', e?.status ?? 400); }
+    try {
+      const raw = typeof branch === 'string' ? branch.trim() : '';
+      if (raw === 'current') return await this.ret.branchScope(ctx, isUuid(ctx.branchId) ? ctx.branchId : 'all');
+      if (!raw.includes(',')) return await this.ret.branchScope(ctx, raw);
+      const ids = [...new Set(raw.split(',').map((x) => x.trim()).filter(Boolean))];
+      if (!ids.length || ids.length > CI_MAX_SELECTED_BRANCHES || !ids.every(isUuid)) throw new CustomerIntelligenceError('Unknown branch.', 'INTELLIGENCE_INVALID_BRANCH');
+      const all = await this.ret.branchScope(ctx, 'all');
+      if (!ids.every((id) => all.authorized.some((b) => b.branchId === id))) throw new CustomerIntelligenceError('You do not have access to that branch.', 'BRANCH_NOT_AUTHORIZED', 403);
+      return { mode: 'branches', branchIds: ids, selected: null, label: 'branch_activity', confined: all.confined, authorized: all.authorized };
+    } catch (e: any) {
+      if (e instanceof CustomerIntelligenceError) throw e;
+      throw new CustomerIntelligenceError(e?.message ?? 'Unknown branch.', e?.code === 'BRANCH_NOT_AUTHORIZED' ? 'BRANCH_NOT_AUTHORIZED' : 'INTELLIGENCE_INVALID_BRANCH', e?.status ?? 400);
+    }
+  }
+  /** the scope said out loud: which branches, how many distinct customers it covers, each branch's own count and how many people
+   *  are counted under more than one branch (a customer seen at two branches is ONE customer in the total — never added twice) */
+  private async scopeOut(T: string, s: BranchScope) {
+    const inScope = s.branchIds ? s.authorized.filter((b) => s.branchIds!.includes(b.branchId)) : s.authorized;
+    const base = { mode: s.mode, label: s.label, branchIds: s.branchIds, confined: s.confined, branches: s.authorized };
+    if (inScope.length < 2) return { ...base, perBranch: null, distinctCustomers: null, countedInMoreThanOne: null };
+    const ids = inScope.map((b) => b.branchId);
+    const rows = (await sql<Row>`select b.id::text as id, (select count(*)::int from customers c where c.tenant_id = ${T} and c.archived_at is null and (c.branch_id = b.id
+        or exists (select 1 from tickets t where t.tenant_id = c.tenant_id and t.customer_id = c.id and t.branch_id = b.id and t.removed_at is null)
+        or exists (select 1 from pos_tech_appointments a where a.tenant_id = c.tenant_id and a.customer_id = c.id and a.branch_id = b.id))) as n
+      from unnest(${ids}::uuid[]) as b(id)`.execute(this.db)).rows;
+    const distinct = N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and c.archived_at is null and ${this.custVisible({ ...s, branchIds: ids })}`.execute(this.db)).rows[0]?.n);
+    const perBranch = inScope.map((b) => ({ branchId: b.branchId, name: b.name, customers: N(rows.find((r) => r.id === b.branchId)?.n) }));
+    return { ...base, perBranch, distinctCustomers: distinct, countedInMoreThanOne: Math.max(0, perBranch.reduce((a, b) => a + b.customers, 0) - distinct) };
   }
   private custVisible(s: BranchScope) {
     if (!s.branchIds) return sql`true`;
@@ -374,6 +406,7 @@ export class CustomerIntelligenceCenter {
       applied: { q: q || null, status, flag: flag ?? null, dateField, preset: per.preset, from: per.from, to: per.to, sort },
       period: { from: per.from, to: per.to, timeZone: per.tz, today: per.today }, contact: opts.fullContact ? 'full' : 'masked',
       freshness: await this.freshness(T),
+      scope: await this.scopeOut(T, s),
     };
   }
   private async period(ctx: CiCtx, f: CiQuery) {

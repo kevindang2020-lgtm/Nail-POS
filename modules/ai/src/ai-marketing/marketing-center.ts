@@ -21,7 +21,7 @@
 // Nothing here sends, schedules or approves a campaign. save-draft creates an UNSENT Segments audience draft and an UNAPPROVED
 // Campaign Center draft that uses it.
 import { hasPermission } from '@aipowersalon/permissions';
-import { sql, type Kysely } from 'kysely';
+import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { estimateSmsSegments } from '@aipowersalon/api-contracts';
@@ -170,8 +170,10 @@ export class MarketingCenter {
     const booked = N(conv.booked);
     const allSubmitted = N(all.submitted);
     const budgets = N(st.budgets);
+    const rewardLiability = await this.rewardLiability(ctx, p);
+    const branchComparison = await this.branchComparison(ctx, p);
     return {
-      period: p, scope: B ? 'branch' : 'salon',
+      period: p, scope: B ? 'branch' : 'salon', rewardLiability, branchComparison,
       cards: {
         activeCampaigns: N(st.active), scheduledCampaigns: N(st.scheduled), draftCampaigns: N(st.drafts), awaitingApproval: N(st.awaiting), assistantDrafts: N(st.assistant_drafts),
         messagesSent: submitted, delivered: N(ps.delivered), failed: N(ps.failed), skippedAtSend: N(ps.skipped), queued: N(ps.queued), simulated: N(ps.simulated),
@@ -194,6 +196,109 @@ export class MarketingCenter {
         cost: 'Provider cost reported on each sent message. A campaign budget is a limit someone typed, not money spent.',
       },
       generatedAt: new Date(this.now()).toISOString(),
+    };
+  }
+
+  /**
+   * AI Marketing 12 — Permission-safe branch comparisons. Aggregated campaign metrics side by side for the branches the session is
+   * authorized for (authz.branchIds when it names them, every live branch of the salon otherwise) — counts and cents only, never
+   * a recipient, a phone or a customer; each salon's recipient lists stay its own (every query is keyed by the session tenant).
+   * Needs pos.reports.view and at least two branches in scope; a branch-confined session with one branch gets {visible:false}.
+   * Campaigns with no branch (salon-wide) are their own row, never spread over the branches. Same period as the cards.
+   */
+  private async branchComparison(ctx: McCtx, p: McPeriod) {
+    if (!has(ctx, 'pos.reports.view')) return { visible: false as const };
+    const T = ctx.tenantId;
+    const named = ctx.authz?.branchIds;
+    const allowed = Array.isArray(named) ? named.filter(isUuid).map(String) : null;
+    if (ctx.authz?.scope === 'BRANCH' && !(allowed && allowed.length > 1)) return { visible: false as const };
+    const inList = allowed && allowed.length ? sql`and b.id = any(${allowed}::uuid[])` : sql``;
+    const branches = (await sql<{ id: string; name: string }>`select b.id, b.name from branches b where b.tenant_id = ${T} and b.deleted_at is null ${inList} order by lower(b.name), b.id`.execute(this.db)).rows;
+    if (branches.length < 2) return { visible: false as const };
+    const ids = branches.map((b) => String(b.id));
+    const inB = (col: RawBuilder<unknown>) => sql`(${col} is null or ${col} = any(${ids}::uuid[]))`;
+    type G = { bid: string | null } & Row;
+    const camp = (await sql<G>`select c.branch_id::text as bid, count(*) filter (where c.status = 'in_progress')::int as active, count(*) filter (where c.status = 'scheduled')::int as scheduled,
+        count(*) filter (where c.status <> 'cancelled')::int as campaigns from campaigns c where c.tenant_id = ${T} and ${inB(sql`c.branch_id`)} group by 1`.execute(this.db)).rows;
+    const sends = (await sql<G>`select s.branch_id::text as bid, count(*) filter (where s.status = 'sent')::int as sent,
+        count(*) filter (where s.status = 'sent' and n.status = 'delivered')::int as delivered,
+        count(*) filter (where s.status = 'failed' or (s.status = 'sent' and n.status = 'failed'))::int as failed,
+        coalesce(sum(n.provider_cost_micros) filter (where s.status = 'sent'), 0)::bigint as cost_micros, count(*) filter (where s.status = 'sent' and n.provider_cost_micros is not null)::int as costed
+      from ai_marketing_campaign_sends s
+      left join notifications n on n.tenant_id = s.tenant_id and s.provider_id is not null and n.provider_id = s.provider_id
+      where s.tenant_id = ${T} and ${inB(sql`s.branch_id`)} and ${this.inP(sql`s.updated_at`, p)} group by 1`.execute(this.db)).rows;
+    const conv = (await sql<G>`select e.branch_id::text as bid, count(distinct coalesce(e.appointment_id::text, e.id::text))::int as bookings
+      from ai_booking_conversion_events e where e.tenant_id = ${T} and e.campaign_id is not null and e.stage = 'BOOKING_SUCCEEDED' and (e.outcome = 'succeeded' or e.outcome is null)
+        and ${inB(sql`e.branch_id`)} and ${this.inP(sql`e.created_at`, p)} group by 1`.execute(this.db)).rows;
+    const rev = (await sql<G>`select x.bid, count(*)::int as tickets, coalesce(sum(x.total), 0)::bigint as revenue from (
+        select distinct t.id, t.branch_id::text as bid, t.total_cents::bigint as total
+        from deal_coupon_batches cb
+        join deal_coupon_codes k on k.batch_id = cb.id and k.tenant_id = cb.tenant_id
+        join deal_redemptions dr on dr.coupon_code_id = k.id and dr.tenant_id = cb.tenant_id and dr.status in ('redeemed', 'partially_reversed')
+        join tickets t on t.id = dr.ticket_id and t.tenant_id = dr.tenant_id and t.status in ('paid', 'closed')
+        where cb.tenant_id = ${T} and cb.campaign_id is not null and ${inB(sql`t.branch_id`)} and ${this.inP(sql`coalesce(t.paid_at, t.created_at)`, p)}) x group by 1`.execute(this.db)).rows;
+    const at = (rows: G[], bid: string | null) => rows.find((r) => (r.bid ?? null) === bid) ?? ({} as G);
+    const row = (bid: string | null, name: string | null) => {
+      const c = at(camp, bid), sd = at(sends, bid), cv = at(conv, bid), rv = at(rev, bid);
+      const sent = N(sd.sent);
+      return { branchId: bid, name, campaigns: N(c.campaigns), active: N(c.active), scheduled: N(c.scheduled), messagesSent: sent, delivered: N(sd.delivered), failed: N(sd.failed),
+        bookings: N(cv.bookings), associatedRevenueCents: N(rv.revenue), associatedTickets: N(rv.tickets),
+        actualCostCents: sent === 0 ? 0 : N(sd.costed) === sent ? micros(sd.cost_micros) : null };
+    };
+    const salonWide = row(null, null);
+    return { visible: true as const, branches: branches.map((b) => row(String(b.id), String(b.name))),
+      salonWide: salonWide.campaigns + salonWide.messagesSent + salonWide.bookings > 0 ? salonWide : null };
+  }
+
+  /**
+   * Marketing Growth 09 — Reward Liability Reconciliation. Four obligations, each from its OWN ledger and never summed into one
+   * number (they are different kinds of debt): salon loyalty POINTS (no single cash rate exists, so no dollar value is invented),
+   * the prepaid TOKEN wallet that funds global-network points, REFERRAL expense (cash payouts and salon vouchers) and GIFT-CARD
+   * balances (the canonical Decision 31 rule: active / frozen / partially redeemed cards with a positive balance). Salon-wide
+   * (customers, wallets and gift cards are salon-wide); period amounts use the same salon-local period as the cards. Read only.
+   * Money amounts need pos.reports.view (the gift-card liability report's permission); without it only `visible: false`.
+   */
+  private async rewardLiability(ctx: McCtx, p: McPeriod) {
+    if (!has(ctx, 'pos.reports.view')) return { visible: false as const };
+    const T = ctx.tenantId;
+    const one = async (q: { execute: (db: Kysely<any>) => Promise<{ rows: Row[] }> }): Promise<Row> => (await q.execute(this.db)).rows[0] ?? {};
+    const pts = await one(sql<Row>`select count(*) filter (where lp.points_balance > 0)::int as members, coalesce(sum(lp.points_balance), 0)::bigint as balance
+      from customer_loyalty_profiles lp where lp.tenant_id = ${T}`);
+    const led = await one(sql<Row>`select coalesce(sum(ll.delta), 0)::bigint as ledger,
+        coalesce(sum(ll.delta) filter (where ll.delta > 0 and ${this.inP(sql`ll.created_at`, p)}), 0)::bigint as earned,
+        coalesce(-sum(ll.delta) filter (where ll.delta < 0 and ${this.inP(sql`ll.created_at`, p)}), 0)::bigint as used
+      from loyalty_ledger ll where ll.tenant_id = ${T}`);
+    const w = await one(sql<Row>`select tw.tenant_id as wallet, tw.available_cents, tw.deficit_cents, tw.lifetime_funded_cents, tw.lifetime_allocated_cents
+      from tenant_token_wallets tw where tw.tenant_id = ${T}`);
+    const wl = await one(sql<Row>`select coalesce(-sum(tl.delta_cents) filter (where tl.entry_type = 'earn_allocation'), 0)::bigint as allocated,
+        coalesce(sum(tl.delta_cents) filter (where tl.entry_type = 'purchase_funded'), 0)::bigint as funded
+      from token_wallet_ledger tl where tl.tenant_id = ${T} and ${this.inP(sql`tl.created_at`, p)}`);
+    const rr = await one(sql<Row>`select coalesce(sum(rw.amount_cents) filter (where rw.reward_type = 'cash_payout'), 0)::bigint as cash,
+        count(*) filter (where rw.reward_type = 'cash_payout')::int as cash_n,
+        coalesce(sum(rw.points) filter (where rw.reward_type = 'loyalty_points'), 0)::bigint as points
+      from referral_rewards rw where rw.tenant_id = ${T} and rw.state = 'ISSUED' and ${this.inP(sql`rw.issued_at`, p)}`);
+    const rv = await one(sql<Row>`select coalesce(sum(v.face_cents) filter (where v.state = 'REDEEMED' and ${this.inP(sql`v.redeemed_at`, p)}), 0)::bigint as redeemed,
+        count(*) filter (where v.state = 'REDEEMED' and ${this.inP(sql`v.redeemed_at`, p)})::int as redeemed_n,
+        coalesce(sum(v.face_cents) filter (where v.state = 'AVAILABLE'), 0)::bigint as available, count(*) filter (where v.state = 'AVAILABLE')::int as available_n,
+        coalesce(sum(v.face_cents) filter (where v.state = 'PENDING'), 0)::bigint as pending, count(*) filter (where v.state = 'PENDING')::int as pending_n
+      from referral_vouchers v where v.tenant_id = ${T}`);
+    const gc = await one(sql<Row>`select coalesce(sum(g.balance_cents), 0)::bigint as outstanding, count(*)::int as cards
+      from gift_cards g where g.tenant_id = ${T} and g.status in ('active', 'frozen', 'partially_redeemed') and g.balance_cents > 0`);
+    const balance = N(pts.balance), ledger = N(led.ledger);
+    return {
+      visible: true as const, scope: 'salon' as const,
+      points: { members: N(pts.members), outstandingPoints: balance, ledgerPoints: ledger, driftPoints: balance - ledger, earnedInPeriod: N(led.earned), usedInPeriod: N(led.used), valueCents: null },
+      tokens: w.wallet == null ? { wallet: false as const } : {
+        wallet: true as const, availableCents: N(w.available_cents), deficitCents: N(w.deficit_cents),
+        fundedAllTimeCents: N(w.lifetime_funded_cents), allocatedAllTimeCents: N(w.lifetime_allocated_cents),
+        fundedInPeriodCents: N(wl.funded), allocatedInPeriodCents: N(wl.allocated),
+      },
+      referrals: {
+        cashPaidInPeriodCents: N(rr.cash), cashPaidInPeriod: N(rr.cash_n), pointsIssuedInPeriod: N(rr.points),
+        vouchersRedeemedInPeriodCents: N(rv.redeemed), vouchersRedeemedInPeriod: N(rv.redeemed_n),
+        vouchersOpenCents: N(rv.available), vouchersOpen: N(rv.available_n), vouchersPendingCents: N(rv.pending), vouchersPending: N(rv.pending_n),
+      },
+      giftCards: { outstandingCents: N(gc.outstanding), cards: N(gc.cards) },
     };
   }
 

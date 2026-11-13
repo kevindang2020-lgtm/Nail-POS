@@ -15,6 +15,8 @@ import { EventsCoreModule } from '@aipowersalon/events/nest';
 import { Module } from '@nestjs/common';
 import { CheckoutController, POSCustomerDisplayController } from './checkout.controller';
 import { PosPaymentGatewayController } from './pos-payment-gateway.controller';
+import { CheckoutPricePreviewController, CHECKOUT_PRICE_PREVIEW } from './checkout-price-preview.controller';
+import { CheckoutPricePreview } from './checkout-price-preview';
 import { CheckoutService, type BookingDepositCheckoutPort, type GlobalRewardsCheckoutPort } from './checkout.service';
 import { CommerceHubTapToPayRefunds } from '../mobile-checkout/ttp-refund-processor';
 import { TENANT_APPROVALS_TOKEN, type RefundApprovalsPort } from './refund-approval';
@@ -43,7 +45,7 @@ const giftCardLookupThrottle = new InMemoryGiftCardLookupThrottle();
 
 @Module({
   imports: [EventsCoreModule, CheckoutLockModule, SalonPromotionsModule, AiReviewReputationModule, DealsModule, PushModule, InventoryModule],   // InventoryModule: not @Global — without it the optional InventoryService never resolves (same lesson as serving.module)
-  controllers: [CheckoutController, POSCustomerDisplayController, PosPaymentGatewayController],
+  controllers: [CheckoutController, POSCustomerDisplayController, PosPaymentGatewayController, CheckoutPricePreviewController],
   providers: [
     // merge Oct 12 2026: Ready Technicians read the ONE workforce state (@Global WorkforceStatusModule) when bound
     { provide: 'CheckoutRepositoryPort', useFactory: (db: AppDatabase, outbox: OutboxWriter, wf?: WorkforceStatusService | null): CheckoutRepositoryPort => (db ? new KyselyCheckoutRepository(db, outbox, wf ?? null) : new InMemoryCheckoutRepository()), inject: [DATABASE, OutboxWriter, { token: WorkforceStatusService, optional: true }] },
@@ -51,6 +53,8 @@ const giftCardLookupThrottle = new InMemoryGiftCardLookupThrottle();
     { provide: CompensationService, useFactory: (db: AppDatabase) => (db ? new CompensationService(new KyselyCompensationPorts(db)) : undefined), inject: [DATABASE] },
     { provide: MembershipCompService, useFactory: (db: AppDatabase) => new MembershipCompService(db ? new KyselyMembershipCompRepository(db) : new InMemoryMembershipCompRepository()), inject: [DATABASE] },
     { provide: 'ReviewRequestHook', useFactory: (requests: ReviewRequestService, db: AppDatabase) => new CheckoutReviewRequestHook(requests, db ? new KyselySettings(db) : { async load() { return []; }, async tenantContextInput(c: any, cfg: any) { return { tenantId: c.tenantId, brandName: '', config: cfg }; } }, db ? (t: string, b: string | null) => branchTimeZone(db, t, b) : undefined), inject: [ReviewRequestService, DATABASE] },
+    // SERVICE PRICING 08: the live price preview (read only) — the deals engine's hypothetical-ticket pricing + Checkout's own tax totals
+    { provide: CHECKOUT_PRICE_PREVIEW, useFactory: (db?: AppDatabase, deals?: DealsCheckoutService | null) => (db ? new CheckoutPricePreview(db as unknown as Kysely<any>, deals ?? null) : null), inject: [{ token: DATABASE, optional: true }, { token: DealsCheckoutService, optional: true }] },
     { provide: CheckoutService, useFactory: (repo: CheckoutRepositoryPort, gateway: PaymentGatewayResolver, realtime: RealtimeEmitter, compensation: CompensationService | undefined, membershipComp: MembershipCompService, locks: CheckoutLockService, reviewHook: CheckoutReviewRequestHook, deals: DealsCheckoutService | null, messenger?: TenantMessenger, approvals?: RefundApprovalsPort | null, push?: PushService | null, stock?: InventoryService | null, deposits?: BookingDepositCheckoutPort | null, rewards?: GlobalRewardsCheckoutPort | null, db?: AppDatabase) => new CheckoutService(repo, smsFromEnv(), emailFromEnv(), processorFromEnv(), gateway, realtime, compensation, membershipComp, locks, reviewHook, giftCardLookupThrottle, messenger ?? undefined).useDeals(deals).usePush(push ?? null).useStock(stock ?? null)   // BUILD_PLAN Phase 5: deals + coupons on tickets
         .useTapToPayRefunds(gateway ? new CommerceHubTapToPayRefunds(gateway) : null)   // Oct 28 2026: Tap to Pay refunds / voids go back to the location's CommerceHub merchant
         .useApprovals(approvals ?? null)   // BUILD_PLAN Phase 9: refunds past the salon's limit go to the salon approvals engine (@Global token; absent → the old 403)

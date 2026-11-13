@@ -393,4 +393,32 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.health.d.anomaly_balance_drift.PASSED": "Mọi số dư điểm tích lũy đều khớp với lịch sử.", // DRAFT — Kevin reviews
   "amk.health.d.anomaly_balance_drift.WARNING": "Một số số dư điểm không khớp với lịch sử tích điểm. Bước kiểm tra tích điểm hằng đêm sẽ sửa theo lịch sử; ở đây không thay đổi gì.", // DRAFT — Kevin reviews
   "amk.health.ad.anomaly_balance_drift": "{profiles} khách · lệch {pointsOff} điểm", // DRAFT — Kevin reviews
+  "amk.liab.title": "Nghĩa vụ thưởng", // DRAFT — Kevin reviews
+  "amk.liab.note": "Mỗi khoản lấy từ sổ riêng của nó và không bao giờ cộng chung thành một tổng. Số dư là số đang nợ hiện tại (toàn tiệm); dòng ghi \"kỳ này\" theo kỳ đã chọn ở trên. Chỉ xem.", // DRAFT — Kevin reviews
+  "amk.liab.points": "Điểm thưởng đang nợ", // DRAFT — Kevin reviews
+  "amk.liab.pointsVal": "{p} điểm · {m} thành viên", // DRAFT — Kevin reviews
+  "amk.liab.pointsLedger": "…sổ điểm cộng lại được", // DRAFT — Kevin reviews
+  "amk.liab.pointsDrift": "Số dư lệch với sổ điểm {d} điểm — Kiểm tra hệ thống AI Marketing liệt kê các khách này.", // DRAFT — Kevin reviews
+  "amk.liab.pointsMove": "Kỳ này: tích {e} điểm · dùng {u}", // DRAFT — Kevin reviews
+  "amk.liab.pointsNoValue": "Điểm không có một giá trị tiền mặt cố định nên không hiện số tiền.", // DRAFT — Kevin reviews
+  "amk.liab.tokens": "Ví token trả trước (cấp điểm mạng lưới)", // DRAFT — Kevin reviews
+  "amk.liab.tokensNone": "Chưa có ví token", // DRAFT — Kevin reviews
+  "amk.liab.tokensMove": "Kỳ này: nạp {f} · cấp {a} cho điểm đã tích", // DRAFT — Kevin reviews
+  "amk.liab.deficit": "Thiếu hụt {d}", // DRAFT — Kevin reviews
+  "amk.liab.refPaid": "Tiền mặt giới thiệu đã trả (kỳ này)", // DRAFT — Kevin reviews
+  "amk.liab.refPoints": "Điểm giới thiệu đã cấp (kỳ này)", // DRAFT — Kevin reviews
+  "amk.liab.refVouchers": "Phiếu giới thiệu đã dùng (kỳ này)", // DRAFT — Kevin reviews
+  "amk.liab.refOpen": "Phiếu giới thiệu còn hiệu lực (đang nợ)", // DRAFT — Kevin reviews
+  "amk.liab.refPending": "Thêm {n} phiếu đang chờ ({m}) — chỉ nợ sau lần ghé đầu tiên có thanh toán của người được giới thiệu", // DRAFT — Kevin reviews
+  "amk.liab.gift": "Số dư thẻ quà tặng đang nợ", // DRAFT — Kevin reviews
+  "amk.bcmp.title": "So sánh chi nhánh", // DRAFT — Kevin reviews
+  "amk.bcmp.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "amk.bcmp.campaigns": "Chiến dịch", // DRAFT — Kevin reviews
+  "amk.bcmp.sent": "Đã gửi", // DRAFT — Kevin reviews
+  "amk.bcmp.delivered": "Đã nhận", // DRAFT — Kevin reviews
+  "amk.bcmp.bookings": "Lượt đặt", // DRAFT — Kevin reviews
+  "amk.bcmp.revenue": "Doanh thu liên quan", // DRAFT — Kevin reviews
+  "amk.bcmp.cost": "Chi phí tin nhắn", // DRAFT — Kevin reviews
+  "amk.bcmp.salonWide": "Chiến dịch toàn tiệm", // DRAFT — Kevin reviews
+  "amk.bcmp.note": "Chỉ là số tổng, cho các chi nhánh bạn được xem, trong kỳ đã chọn ở trên. Khách hàng và danh sách người nhận của từng chi nhánh vẫn tách riêng; ở đây không gộp hay chuyển gì.", // DRAFT — Kevin reviews
 };

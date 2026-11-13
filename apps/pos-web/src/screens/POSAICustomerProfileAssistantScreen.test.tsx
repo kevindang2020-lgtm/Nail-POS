@@ -99,4 +99,29 @@ describe('AI Customer Profile Assistant', () => {
     expect(screen.getByTestId('cpx-ev-dup')).toHaveTextContent('has not run yet');
     expect(ci.summary).toHaveBeenCalledTimes(1);                                                // no second fetch for the evidence
   });
+  it('CPA-05 slow network / AI outage: a dropped summary read is retried and the cards fill; a 403 is not retried; an AI package outage keeps the customer dashboard visible with Retry', { timeout: 15000 }, async () => {
+    ci.summary.mockRejectedValueOnce({}).mockResolvedValue({ cards: { scanned: 40, active: 22, withUpcoming: 9, inactive: 11, churnWatch: 3, rebooking: 5 } });
+    const { unmount } = wrap();
+    await waitFor(() => expect(screen.getByTestId('as-kpi-scanned')).toHaveTextContent('40'), { timeout: 4000 });
+    expect(ci.summary.mock.calls.length).toBeGreaterThanOrEqual(2);   // the failed read was tried again
+    expect(screen.queryByRole('alert')).toBeNull();
+    unmount(); ci.summary.mockReset();
+    ci.summary.mockRejectedValue({ status: 403 });
+    const b = wrap();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    const n = ci.summary.mock.calls.length;
+    await new Promise((r) => setTimeout(r, 1200));                // past the first retry pause
+    expect(ci.summary.mock.calls.length).toBe(n);                 // a permission answer is final — never retried
+    expect(screen.getByTestId('cpx-dashboard')).toBeInTheDocument();   // the list still renders under the card error
+    b.unmount(); ci.summary.mockReset(); ci.summary.mockResolvedValue({ cards: null });
+    // the AI package read is down (503): the header says so with Retry, the customer dashboard under it stays
+    pkg.detail.mockRejectedValueOnce({ status: 503 }).mockResolvedValue(CARD);
+    wrap();
+    expect(await screen.findByTestId('pkg-retry')).toBeInTheDocument();
+    expect(screen.getByTestId('pkg-outage-children')).toBeInTheDocument();
+    expect(await screen.findByTestId('cpx-dashboard')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pkg-retry'));
+    await waitFor(() => expect(screen.queryByTestId('pkg-retry')).toBeNull());
+    expect(pkg.detail.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
 });

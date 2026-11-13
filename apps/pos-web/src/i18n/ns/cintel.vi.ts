@@ -186,4 +186,8 @@ export const CINTEL_VI: Record<string, string> = {
   "cix.health.d.indexes.PASSED": "Đã có chỉ mục phân loại và lượt khách.",
   "cix.health.d.indexes.WARNING": "Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất.",
   "cix.ret.sub": "Lấy từ Giữ chân khách — mở để xử lý", // DRAFT — Kevin reviews
+  "cix.scope.label": "Chi nhánh", // DRAFT — Kevin reviews
+  "cix.scope.all": "Tất cả chi nhánh của tôi", // DRAFT — Kevin reviews
+  "cix.scope.current": "Chi nhánh này", // DRAFT — Kevin reviews
+  "cix.scope.line": "Theo chi nhánh: {b} — tổng {d} khách hàng khác nhau ({o} khách ghé nhiều chi nhánh và chỉ được tính một lần).", // DRAFT — Kevin reviews
 };

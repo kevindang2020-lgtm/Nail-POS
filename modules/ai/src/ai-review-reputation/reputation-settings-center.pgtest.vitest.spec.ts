@@ -191,3 +191,29 @@ describe('Review & Reputation Settings — health and fail-closed', () => {
     expect(await code(broken.load(ctx()))).toBe('DB_DOWN');
   });
 });
+
+describe('Review Reputation 08 — provider inventory: what is really connected and what the code can do', () => {
+  it('per site: connection state, real sync times, reply by API only where the publish path supports it, no connector for Yelp, reviews per source; the salon\'s own feedback apart; nothing written', async () => {
+    const T8 = id(80), B8 = id(81);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T8}, 'S8', 'Inventory', 'rss-808', 'RSS808', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B8}, ${T8}, 'Inv', 'America/New_York')`);
+    await q(sql`insert into integration_connections (tenant_id, provider_key, category, connection_status, last_successful_sync_at, last_failed_sync_at) values
+      (${T8}, 'google_business_profile', 'reviews', 'active', '2026-11-10T12:00:00Z', null),
+      (${T8}, 'facebook_pages', 'reviews', 'disconnected', '2026-10-01T08:00:00Z', '2026-10-02T08:00:00Z')`);
+    for (const [n, src] of [[82, 'google'], [83, 'google'], [84, 'yelp'], [85, 'internal'], [86, 'survey']] as const)
+      await q(sql`insert into reviews (id, tenant_id, branch_id, rating, comment, source) values (${id(n)}, ${T8}, ${B8}, 5, 'great', ${src})`);
+    await q(sql`insert into review_requests (tenant_id, branch_id, channel, status, idempotency_key) values (${T8}, ${B8}, 'sms', 'sent', 'inv-1'), (${T8}, ${B8}, 'sms', 'scheduled', 'inv-2')`);
+    const before = (await q(sql`select count(*)::int as n from integration_connections where tenant_id = ${T8}`))[0].n;
+    const s: any = await rss.state(ctx({ tenantId: T8, branchId: null }));
+    const by = Object.fromEntries(s.providerInventory.external.map((x: any) => [x.source, x]));
+    expect(by.google).toMatchObject({ provider: 'google_business_profile', connector: 'connected', connections: 1, lastSuccessfulSyncAt: '2026-11-10T12:00:00.000Z', replyByApi: true, autoImport: false, reviews: 2 });
+    expect(by.facebook).toMatchObject({ provider: 'facebook_pages', connector: 'disconnected', connections: 0, lastFailedSyncAt: '2026-10-02T08:00:00.000Z', replyByApi: false, reviews: 0 });
+    expect(by.yelp).toMatchObject({ provider: null, connector: 'no_connector', replyByApi: false, reviews: 1 });
+    expect(s.providerInventory.internal).toEqual({ sources: [{ source: 'internal', reviews: 1, lastReviewAt: expect.any(String) }, { source: 'survey', reviews: 1, lastReviewAt: expect.any(String) }], reviews: 2, requestsSent: 1 });
+    // another salon's inventory never includes these
+    const other: any = await rss.state(ctx());
+    const ownGoogle = (await q(sql`select count(*)::int as n from reviews where tenant_id = ${T} and source = 'google'`))[0].n;
+    expect(other.providerInventory.external.find((x: any) => x.source === 'google').reviews).toBe(ownGoogle);
+    expect((await q(sql`select count(*)::int as n from integration_connections where tenant_id = ${T8}`))[0].n).toBe(before);
+  });
+});

@@ -223,4 +223,25 @@ export const REPSETTINGS_VI: Record<string, string> = {
   "rssx.fresh.waiting": "{n} phản hồi công khai đã duyệt đang chờ đăng.", // DRAFT — Kevin reviews
   "rssx.fresh.publishFailed": "{n} phản hồi công khai đăng không thành công — mở Trợ lý đánh giá AI để thử lại.", // DRAFT — Kevin reviews
   "rssx.fresh.overdue": "{n} yêu cầu đánh giá đã quá giờ gửi mà chưa gửi.", // DRAFT — Kevin reviews
+  "rssx.inv.title": "Trang đánh giá và nguồn phản hồi", // DRAFT — Kevin reviews
+  "rssx.inv.site": "Trang", // DRAFT — Kevin reviews
+  "rssx.inv.connection": "Kết nối", // DRAFT — Kevin reviews
+  "rssx.inv.sync": "Đồng bộ thành công gần nhất", // DRAFT — Kevin reviews
+  "rssx.inv.replies": "Trả lời", // DRAFT — Kevin reviews
+  "rssx.inv.import": "Đánh giá mới", // DRAFT — Kevin reviews
+  "rssx.inv.reviews": "Đánh giá đã lưu", // DRAFT — Kevin reviews
+  "rssx.inv.src.google": "Google Business Profile", // DRAFT — Kevin reviews
+  "rssx.inv.src.facebook": "Facebook", // DRAFT — Kevin reviews
+  "rssx.inv.src.yelp": "Yelp", // DRAFT — Kevin reviews
+  "rssx.inv.conn.connected": "Đã kết nối", // DRAFT — Kevin reviews
+  "rssx.inv.conn.disconnected": "Đã ngắt kết nối", // DRAFT — Kevin reviews
+  "rssx.inv.conn.not_connected": "Chưa kết nối", // DRAFT — Kevin reviews
+  "rssx.inv.conn.no_connector": "Chưa có bộ kết nối", // DRAFT — Kevin reviews
+  "rssx.inv.failedAt": "lỗi lúc {at}", // DRAFT — Kevin reviews
+  "rssx.inv.replyApi": "Có thể đăng câu trả lời đã duyệt từ đây", // DRAFT — Kevin reviews
+  "rssx.inv.replyManual": "Trả lời ngay trên trang đó", // DRAFT — Kevin reviews
+  "rssx.inv.importOn": "Tự động nhập", // DRAFT — Kevin reviews
+  "rssx.inv.importOff": "Không tự động nhập", // DRAFT — Kevin reviews
+  "rssx.inv.internal": "Phản hồi của tiệm (tại tiệm, khảo sát, tin nhắn, nhập tay): {n} đã lưu · đã gửi {r} lời mời đánh giá.", // DRAFT — Kevin reviews
+  "rssx.inv.note": "Chỉ những kết nối nền tảng hỗ trợ mới được ghi là đã kết nối; ở đây không kết nối, nhập hay đăng gì.", // DRAFT — Kevin reviews
 };
