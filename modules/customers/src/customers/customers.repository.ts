@@ -11,6 +11,7 @@ import {
   CustomerNotes, CustomerLoyalty, CustomerMembership, CustomerGiftCard, DuplicateGroup, CreateCustomerRequest,
   EditCustomerRequest, CustomerKpis, CustomerInsights, POSCustomersKpisFull, Pagination, detectDuplicates, BulkCustomerInsert, BulkCustomerUpdate, CustomerVersionConflict } from './customers.dto';
 import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
+import type { CustomerQuickActivity } from '@aipowersalon/api-contracts/tenant';
 
 export interface CustomersContext { tenantId: string; branchId: string; userId: string; role: string; permissions: string[]; }
 
@@ -54,6 +55,8 @@ export interface CustomersRepositoryPort {
   appointments(ctx: CustomersContext, id: string): Promise<CustomerAppointmentRow[] | null>;
   tickets(ctx: CustomersContext, id: string): Promise<CustomerTicketRow[] | null>;
   receipts(ctx: CustomersContext, id: string): Promise<CustomerReceiptRow[] | null>;
+  /** extras Customer 03: the Quick View's newest receipts + activity (read-only); null when the customer is not the caller's */
+  quickActivity(ctx: CustomersContext, id: string, limits: { receipts: number; activity: number }): Promise<CustomerQuickActivity | null>;
   getNotes(ctx: CustomersContext, id: string): Promise<CustomerNotes | null>;
   setNotes(ctx: CustomersContext, id: string, n: CustomerNotes): Promise<CustomerNotes | null>;
   getTags(ctx: CustomersContext, id: string): Promise<string[] | null>;
@@ -265,6 +268,13 @@ export class InMemoryCustomersRepository implements CustomersRepositoryPort {
   async appointments(ctx: CustomersContext, id: string) { return this.find(ctx, id)?.appointments ?? null; }
   async tickets(ctx: CustomersContext, id: string) { return this.find(ctx, id)?.tickets ?? null; }
   async receipts(ctx: CustomersContext, id: string) { return this.find(ctx, id)?.receipts ?? null; }
+  async quickActivity(ctx: CustomersContext, id: string, limits: { receipts: number; activity: number }): Promise<CustomerQuickActivity | null> {
+    const c = this.find(ctx, id); if (!c) return null;
+    const all = [...(c.receipts ?? [])].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const receipts = all.slice(0, limits.receipts).map((r) => ({ receiptId: r.receiptId, receiptNumber: null, ticketId: null, date: r.date, totalCents: r.totalCents, channel: r.channel === 'email' ? 'email' as const : 'issued' as const }));
+    const activity = receipts.slice(0, limits.activity).map((r) => ({ at: r.date, kind: 'receipt' as const, code: 'receipt_issued', actorName: null, amountCents: r.totalCents, refId: r.receiptId }));
+    return { customerId: id, receipts, receiptsTotal: all.length, activity, limit: limits };
+  }
   async getNotes(ctx: CustomersContext, id: string) { return this.find(ctx, id)?.notes ?? null; }
   async setNotes(ctx: CustomersContext, id: string, n: CustomerNotes) { const c = this.find(ctx, id); if (!c) return null; c.notes = n; c.updatedAt = now(); return c.notes; }
   async getTags(ctx: CustomersContext, id: string) { return this.find(ctx, id)?.tags ?? null; }

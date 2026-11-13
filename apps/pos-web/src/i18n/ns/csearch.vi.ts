@@ -603,4 +603,15 @@ export const CSEARCH_VI: Record<string, string> = {
   "cnx.src.set": "Ghi nguồn", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Hãy chọn ghi chú và nguồn của nó.", // DRAFT — Kevin reviews
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Hãy ghi tên nguồn đã xác nhận.", // DRAFT — Kevin reviews
+  "cpf.tab.activity": "Hóa đơn & Hoạt động", // DRAFT — Kevin reviews
+  "cpf.qa.receipts": "Hóa đơn ({n})", // DRAFT — Kevin reviews
+  "cpf.qa.noReceipts": "Chưa có hóa đơn.", // DRAFT — Kevin reviews
+  "cpf.qa.number": "Số hóa đơn", // DRAFT — Kevin reviews
+  "cpf.qa.sent": "Gửi", // DRAFT — Kevin reviews
+  "cpf.qa.channel.email": "Đã gửi email", // DRAFT — Kevin reviews
+  "cpf.qa.channel.issued": "Đã xuất", // DRAFT — Kevin reviews
+  "cpf.qa.more": "Còn {n} hóa đơn ở Xem đầy đủ", // DRAFT — Kevin reviews
+  "cpf.qa.activity": "Hoạt động gần đây", // DRAFT — Kevin reviews
+  "cpf.qa.noActivity": "Chưa có hoạt động.", // DRAFT — Kevin reviews
+  "cpf.qa.receiptIssued": "Đã xuất hóa đơn · {amount}", // DRAFT — Kevin reviews
 };

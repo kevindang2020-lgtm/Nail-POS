@@ -21,6 +21,7 @@ import {
   CustomerNotes, CustomerLoyalty, CustomerMembership, DuplicateGroup, CreateCustomerRequest,
   EditCustomerRequest, CustomerKpis, POSCustomersKpisFull, Pagination, detectDuplicates, BulkCustomerInsert, BulkCustomerUpdate, CustomerVersionConflict } from './customers.dto';
 import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
+import type { CustomerQuickActivity, CustomerQuickActivityItem, CustomerQuickReceipt } from '@aipowersalon/api-contracts/tenant';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
 import { applyLoyaltyEntry, lockLoyaltyCustomer, LoyaltyLedgerError } from '../loyalty/loyalty-ledger.service';
 import { mergeCustomersTx } from './customer-merge';
@@ -663,7 +664,28 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     if (!(await this.exists(ctx, id))) return null;
     const rows = await this.scoped(this.db.selectFrom('receipts as r'), ctx, 'r').innerJoin('tickets as t', 't.id', 'r.ticket_id').where('t.customer_id', '=', id)
       .select(['r.id as id', 'r.created_at as date', 'r.total_cents as totalCents', 'r.emailed_to as emailedTo']).orderBy('r.created_at', 'desc').execute().catch(() => []);
-    return rows.map((r: any) => ({ receiptId: r.id, date: iso(r.date), totalCents: Number(r.total_cents || 0), channel: r.emailedTo ? 'email' : 'unknown' }));
+    // extras Customer 03 (Nov 13 2026): the select aliases total_cents AS totalCents — reading r.total_cents always gave 0
+    return rows.map((r: any) => ({ receiptId: r.id, date: iso(r.date), totalCents: Number(r.totalCents || 0), channel: r.emailedTo ? 'email' : 'unknown' }));
+  }
+  /** extras Customer 03 (Nov 13 2026): the Quick View's newest receipts + activity. The SAME receipts read as receipts() (salon
+   *  receipts joined through this customer's tickets) and the durable audit_events trail written for this customer (module
+   *  'customers', resource_id = the customer) — read-only, no before / after state, no printing. Errors propagate (no silent []). */
+  async quickActivity(ctx: CustomersContext, id: string, limits: { receipts: number; activity: number }): Promise<CustomerQuickActivity | null> {
+    if (!(await this.exists(ctx, id))) return null;
+    const base = () => this.scoped(this.db.selectFrom('receipts as r'), ctx, 'r').innerJoin('tickets as t', (j: any) => j.onRef('t.id', '=', 'r.ticket_id').onRef('t.tenant_id', '=', 'r.tenant_id')).where('t.customer_id', '=', id);
+    const [rows, cnt, events] = await Promise.all([
+      base().select(['r.id as id', 'r.receipt_number as receiptNumber', 'r.ticket_id as ticketId', 'r.created_at as createdAt', 'r.total_cents as totalCents', 'r.emailed_to as emailedTo'])
+        .orderBy('r.created_at', 'desc').orderBy('r.id', 'desc').limit(limits.receipts).execute(),
+      base().select((eb: any) => eb.fn.countAll().as('n')).executeTakeFirst(),
+      this.db.selectFrom('audit_events').where('tenant_id', '=', ctx.tenantId).where('module', '=', 'customers').where('resource_id', '=', id)
+        .select(['occurred_at', 'action', 'actor_name', 'id']).orderBy('occurred_at', 'desc').orderBy('id', 'desc').limit(limits.activity).execute(),
+    ]);
+    const receipts: CustomerQuickReceipt[] = rows.map((r: any) => ({ receiptId: r.id, receiptNumber: r.receiptNumber ?? null, ticketId: r.ticketId ?? null, date: iso(r.createdAt), totalCents: Number(r.totalCents || 0), channel: r.emailedTo ? 'email' : 'issued' }));
+    const activity: CustomerQuickActivityItem[] = [
+      ...receipts.map((r) => ({ at: r.date, kind: 'receipt' as const, code: 'receipt_issued', actorName: null, amountCents: r.totalCents, refId: r.receiptId })),
+      ...events.map((e) => ({ at: iso(e.occurred_at), kind: 'profile' as const, code: e.action, actorName: e.actor_name ?? null, amountCents: null, refId: null })),
+    ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)).slice(0, limits.activity);
+    return { customerId: id, receipts, receiptsTotal: Number((cnt as { n?: unknown } | undefined)?.n ?? 0), activity, limit: limits };
   }
   private async exists(ctx: CustomersContext, id: string) {
     const r = await this.scoped(this.db.selectFrom('customers'), ctx).where('id', '=', id).select('id').executeTakeFirst().catch(() => undefined);
