@@ -28,6 +28,17 @@ beforeEach(() => {
 });
 
 describe('POSTipsScreen', () => {
+  // extras TIPS & GRATUITY 04 (round 10): the server says where a cash tip went — into the drawer or handed to the technician
+  it('cash source: the KPI splits cash into drawer / to technician and each cash row says where it went', async () => {
+    api.summary.mockResolvedValue({ ...summary, kpis: { ...summary.kpis, cashTipsCents: 1200, cashDrawerTipsCents: 500, cashToTechnicianTipsCents: 700 } });
+    api.transactions.mockResolvedValue(pageOf([row({ ticketId: 'tc', ticketNumber: '1060', method: 'cash', cardCents: 0, cashCents: 700, cashSource: 'technician' }), row({ ticketId: 'td', ticketNumber: '1053', method: 'cash', cardCents: 0, cashCents: 500, cashSource: 'drawer' }), row()]));
+    mount();
+    expect(await screen.findByTestId('kpi-cash')).toHaveTextContent('Drawer $5.00 · to technician $7.00');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'x' } });   // typing a search opens the transactions tab
+    expect(await screen.findByTestId('tip-cash-source-tc')).toHaveTextContent('handed to the technician');
+    expect(screen.getByTestId('tip-cash-source-td')).toHaveTextContent('into the drawer');
+    expect(screen.queryByTestId('tip-cash-source-t1')).toBeNull();   // a card tip has no cash source
+  });
   it('shows the five server KPIs and the photo reconciled: Vishal $9.60 allocated, the $19.20 snapshot flagged — not summed', async () => {
     mount();
     expect(await screen.findByRole('heading', { name: 'Tips & Gratuity' })).toBeInTheDocument();

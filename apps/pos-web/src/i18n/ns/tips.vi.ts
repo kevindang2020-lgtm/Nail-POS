@@ -80,4 +80,7 @@ export const TIPS_VI: Record<string, string> = {
   'tp.ri.post.future_period_pending': 'Kỳ lương này đã trả: khoản hoàn chuyển sang kỳ sau và chờ duyệt.', // DRAFT — Kevin reviews
   'tp.ri.post.pending_review': 'Chargeback không bị trừ tự động — chờ quản lý xem xét.', // DRAFT — Kevin reviews
   'tp.ri.readOnly': 'Chỉ xem trước — không hoàn tiền, hủy hay ghi sổ gì từ đây.', // DRAFT — Kevin reviews
+  'tp.kpi.cashSourceSub': 'Ngăn kéo {d} · đưa thợ {t}', // DRAFT — Kevin reviews
+  'tp.cashSource.drawer': 'vào ngăn kéo', // DRAFT — Kevin reviews
+  'tp.cashSource.technician': 'đưa trực tiếp cho thợ', // DRAFT — Kevin reviews
 };
