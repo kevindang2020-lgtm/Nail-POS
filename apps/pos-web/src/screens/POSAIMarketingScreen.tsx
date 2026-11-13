@@ -170,16 +170,16 @@ function RewardLiability({ r }: { r: any }) {
 function BranchComparison({ c }: { c: any }) {
   const rows: any[] = [...(c.branches ?? []), ...(c.salonWide ? [c.salonWide] : [])];
   return (
-    <section className="panel" style={{ padding: 12, marginTop: 12, minWidth: 0 }} data-testid="amk-cmp">
-      <div className="p-h">{mt('amk.cmp.title')}</div>
+    <section className="panel" style={{ padding: 12, marginTop: 12, minWidth: 0 }} data-testid="amk-bcmp">
+      <div className="p-h">{mt('amk.bcmp.title')}</div>
       <div style={{ overflowX: 'auto' }}><table className="tbl"><thead><tr>
-        <th>{mt('amk.cmp.branch')}</th><th className="num">{mt('amk.cmp.campaigns')}</th><th className="num">{mt('amk.cmp.sent')}</th><th className="num">{mt('amk.cmp.delivered')}</th>
-        <th className="num">{mt('amk.cmp.bookings')}</th><th className="num">{mt('amk.cmp.revenue')}</th><th className="num">{mt('amk.cmp.cost')}</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.branchId ?? 'salon'} data-testid={`amk-cmp-${r.branchId ?? 'salon'}`}>
-          <td>{r.branchId ? r.name : mt('amk.cmp.salonWide')}</td><td className="num">{mkNum(r.campaigns)}</td><td className="num">{mkNum(r.messagesSent)}</td>
+        <th>{mt('amk.bcmp.branch')}</th><th className="num">{mt('amk.bcmp.campaigns')}</th><th className="num">{mt('amk.bcmp.sent')}</th><th className="num">{mt('amk.bcmp.delivered')}</th>
+        <th className="num">{mt('amk.bcmp.bookings')}</th><th className="num">{mt('amk.bcmp.revenue')}</th><th className="num">{mt('amk.bcmp.cost')}</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.branchId ?? 'salon'} data-testid={`amk-bcmp-${r.branchId ?? 'salon'}`}>
+          <td>{r.branchId ? r.name : mt('amk.bcmp.salonWide')}</td><td className="num">{mkNum(r.campaigns)}</td><td className="num">{mkNum(r.messagesSent)}</td>
           <td className="num">{mkNum(r.delivered)}</td><td className="num">{mkNum(r.bookings)}</td><td className="num">{mkMoney(r.associatedRevenueCents)}</td>
           <td className="num">{r.actualCostCents == null ? mt('amk.notReported') : mkMoney(r.actualCostCents)}</td></tr>)}</tbody></table></div>
-      <p className="sub">{mt('amk.cmp.note')}</p>
+      <p className="sub">{mt('amk.bcmp.note')}</p>
     </section>
   );
 }

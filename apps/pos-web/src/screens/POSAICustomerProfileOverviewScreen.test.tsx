@@ -130,7 +130,7 @@ describe('POSAICustomerProfileOverviewScreen', () => {
     fireEvent.click(screen.getByTestId('cix-br-current'));
     await waitFor(() => expect(ci.customers).toHaveBeenLastCalledWith(expect.objectContaining({ branch: 'current' })));
     fireEvent.click(screen.getByTestId('cix-br-all'));
-    await waitFor(() => expect(ci.customers.mock.calls.at(-1)?.[0].branch).toBeUndefined());
+    await waitFor(() => expect(ci.customers.mock.calls[ci.customers.mock.calls.length - 1]?.[0].branch).toBeUndefined());
   });
   it('Customer Intelligence 23: a session with one branch in scope shows no branch picker', async () => {
     ci.customers.mockResolvedValue({ ...LIST, scope: { mode: 'branches', branchIds: ['b2'], confined: true, branches: [{ branchId: 'b2', name: 'Second' }], perBranch: null, distinctCustomers: null, countedInMoreThanOne: null } });

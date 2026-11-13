@@ -58,10 +58,10 @@ export class ServiceCompensationPreviewService {
     const raw = q.priceCents === undefined || q.priceCents === null || q.priceCents === '' ? current : Number(q.priceCents);
     if (!Number.isInteger(raw) || raw < 0 || raw > 10_000_000) throw withCode(new ServicePreviewError('Price must be a whole number of cents, 0 or more.', 'PRICE_INVALID', 400), 'PRICE_INVALID');
 
-    const techW = sql`te.tenant_id = ${T} and te.is_active = true and te.archived_at is null and (${B}::uuid is null or te.branch_id = ${B}::uuid)`;
-    const total = N((await sql<{ n: number }>`select count(*)::int as n from technicians te where ${techW}`.execute(this.db)).rows[0]?.n);
+    const techW = sql`te.is_active = true and te.archived_at is null and (${B}::uuid is null or te.branch_id = ${B}::uuid)`;
+    const total = N((await sql<{ n: number }>`select count(*)::int as n from technicians te where te.tenant_id = ${T} and ${techW}`.execute(this.db)).rows[0]?.n);
     const techs = (await sql<{ id: string; name: string | null; branch_id: string | null }>`select te.id, nullif(btrim(coalesce(nullif(te.full_name, ''), te.first_name || ' ' || te.last_name)), '') as name, te.branch_id
-      from technicians te where ${techW} order by lower(coalesce(te.full_name, te.first_name)), te.id limit ${SERVICE_PREVIEW_MAX_TECHNICIANS}`.execute(this.db)).rows;
+      from technicians te where te.tenant_id = ${T} and ${techW} order by lower(coalesce(te.full_name, te.first_name)), te.id limit ${SERVICE_PREVIEW_MAX_TECHNICIANS}`.execute(this.db)).rows;
 
     // the money path's precedence, loaded once: authored rules, the salon default, the service row's own rate
     const [rules, tenantDefault] = await Promise.all([loadEffectiveRules(this.db, T), defaultCommissionForTenant(this.db, T)]);

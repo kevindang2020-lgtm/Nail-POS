@@ -411,14 +411,14 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.liab.refOpen": "Phiếu giới thiệu còn hiệu lực (đang nợ)", // DRAFT — Kevin reviews
   "amk.liab.refPending": "Thêm {n} phiếu đang chờ ({m}) — chỉ nợ sau lần ghé đầu tiên có thanh toán của người được giới thiệu", // DRAFT — Kevin reviews
   "amk.liab.gift": "Số dư thẻ quà tặng đang nợ", // DRAFT — Kevin reviews
-  "amk.cmp.title": "So sánh chi nhánh", // DRAFT — Kevin reviews
-  "amk.cmp.branch": "Chi nhánh", // DRAFT — Kevin reviews
-  "amk.cmp.campaigns": "Chiến dịch", // DRAFT — Kevin reviews
-  "amk.cmp.sent": "Đã gửi", // DRAFT — Kevin reviews
-  "amk.cmp.delivered": "Đã nhận", // DRAFT — Kevin reviews
-  "amk.cmp.bookings": "Lượt đặt", // DRAFT — Kevin reviews
-  "amk.cmp.revenue": "Doanh thu liên quan", // DRAFT — Kevin reviews
-  "amk.cmp.cost": "Chi phí tin nhắn", // DRAFT — Kevin reviews
-  "amk.cmp.salonWide": "Chiến dịch toàn tiệm", // DRAFT — Kevin reviews
-  "amk.cmp.note": "Chỉ là số tổng, cho các chi nhánh bạn được xem, trong kỳ đã chọn ở trên. Khách hàng và danh sách người nhận của từng chi nhánh vẫn tách riêng; ở đây không gộp hay chuyển gì.", // DRAFT — Kevin reviews
+  "amk.bcmp.title": "So sánh chi nhánh", // DRAFT — Kevin reviews
+  "amk.bcmp.branch": "Chi nhánh", // DRAFT — Kevin reviews
+  "amk.bcmp.campaigns": "Chiến dịch", // DRAFT — Kevin reviews
+  "amk.bcmp.sent": "Đã gửi", // DRAFT — Kevin reviews
+  "amk.bcmp.delivered": "Đã nhận", // DRAFT — Kevin reviews
+  "amk.bcmp.bookings": "Lượt đặt", // DRAFT — Kevin reviews
+  "amk.bcmp.revenue": "Doanh thu liên quan", // DRAFT — Kevin reviews
+  "amk.bcmp.cost": "Chi phí tin nhắn", // DRAFT — Kevin reviews
+  "amk.bcmp.salonWide": "Chiến dịch toàn tiệm", // DRAFT — Kevin reviews
+  "amk.bcmp.note": "Chỉ là số tổng, cho các chi nhánh bạn được xem, trong kỳ đã chọn ở trên. Khách hàng và danh sách người nhận của từng chi nhánh vẫn tách riêng; ở đây không gộp hay chuyển gì.", // DRAFT — Kevin reviews
 };

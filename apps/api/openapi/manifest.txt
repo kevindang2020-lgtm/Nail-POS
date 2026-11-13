@@ -236,6 +236,7 @@ GET /owner/compensation/reports/supply  realm=staff  auth=session  domain=financ
 GET /owner/compensation/reports/tips  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/retail-policy  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/rules  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
+GET /owner/compensation/service-preview  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/tier-plans  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/tip-policy  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
 GET /owner/compensation/wage-config  realm=staff  auth=session  domain=finance  perm=compensation.view_all  resource=TENANT/permission
@@ -587,6 +588,7 @@ GET /pos/check-in/wait-estimate  realm=staff  auth=session  domain=booking  perm
 GET /pos/check-in/{checkInId}  realm=staff  auth=session  domain=booking  perm=pos.check_in.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/gift-cards/{code}  realm=staff  auth=session  domain=checkout  perm=pos.checkout.gift_card_payment  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/kpis  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/checkout/price-preview  realm=staff  auth=session  domain=checkout  perm=pos.services.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/settings  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/skip-line/state  realm=staff  auth=session  domain=checkout  perm=checkout.view  resource=BRANCH/permission
 GET /pos/checkout/state  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -984,6 +986,7 @@ GET /pos/rebooking/history  realm=staff  auth=session  domain=ai  perm=pos.ai_cu
 GET /pos/rebooking/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/receipt-center/documents  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/receipt-center/documents/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/receipt-center/processing  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/receipt-center/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/approvals  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/codes  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
