@@ -65,8 +65,10 @@ export function InventoryCenterPanel({ actions, showDetail = true }: { actions?:
         {c?.critical ? <div>{t('icx.reasons', { e: fmtNumber(r.criticalExplicit), d: fmtNumber(r.criticalDerived) })}</div> : null}
         {r?.noThreshold ? <div className="warn">{t('icx.noThreshold', { n: fmtNumber(r.noThreshold) })}</div> : null}
         {r?.ledgerMismatch ? <div className="bad">{t('icx.mismatch', { n: fmtNumber(r.ledgerMismatch) })}</div> : null}
+        <div className="sub">{t('icx.fresh', { at: when(s.stockUpdatedAt) })}</div>
       </div> : null}
-      {showDetail ? <><ProductsList tick={tick} />
+      {showDetail && s?.commandCenter ? <CommandSignals cc={s.commandCenter} /> : null}
+      {showDetail ? <><ProductsList tick={tick} categories={s?.categories ?? []} />
       <ActivityList tick={tick} /></> : null}
       {health ? <FitDialog wide testId="icx-health" title={t('icx.check')} onClose={() => setHealth(null)}
         subtitle={health !== 'loading' && !health.error ? t('icx.health.overall', { s: t('icx.health.' + health.overall), at: when(health.checkedAt) }) : undefined}
@@ -78,10 +80,37 @@ export function InventoryCenterPanel({ actions, showDetail = true }: { actions?:
               <div><span className={'chip ' + (STATE_TONE[x.state] ?? '')}>{t('icx.health.' + x.state)}</span> <b>{t('icx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
               <div className="sub">{t('icx.health.d.' + x.key + '.' + x.state)}</div>
               <div className="sub">{t('icx.health.part', { c: t('icx.comp.' + x.component) })} · {x.lastPassedAt ? t('icx.health.lastPassed', { at: when(x.lastPassedAt) }) : t('icx.health.neverPassed')}</div>
+              {x.key === 'count_variance_applied' && x.detail?.lines?.length ? <VarianceLines lines={x.detail.lines} /> : null}
             </div>))}
         </>}
       </FitDialog> : null}
     </div>
+  );
+}
+
+/** extras (AI Inventory 08): the Command Center's signals from the summary — the worst products first, active purchase orders
+ *  by status (overdue named), stock counts still open, how many flagged products have nothing on order. Read-only. */
+function CommandSignals({ cc }: { cc: any }) {
+  const po = cc.purchaseOrders ?? {}; const pc = cc.pendingCounts ?? {};
+  return (
+    <div className="panel" data-testid="icx-signals" style={{ padding: 10, marginTop: 8 }}>
+      <div className="p-h">{t('icx.cc.title')}</div>
+      <div data-testid="icx-cc-po">{t('icx.cc.po', { a: fmtNumber(po.approved ?? 0), o: fmtNumber(po.ordered ?? 0), p: fmtNumber(po.partial ?? 0) })}{po.overdue ? <span className="warn"> · {t('icx.cc.overdue', { n: fmtNumber(po.overdue) })}</span> : null}</div>
+      <div data-testid="icx-cc-counts">{t('icx.cc.counts', { i: fmtNumber(pc.inProgress ?? 0), s: fmtNumber(pc.submitted ?? 0) })}</div>
+      <div data-testid="icx-cc-reorder">{t('icx.cc.reorder', { n: fmtNumber(cc.needsReorder ?? 0) })}</div>
+      {cc.priority?.length ? <ul className="sub" data-testid="icx-cc-priority" style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+        {cc.priority.map((p: any) => <li key={p.id}><b>{p.name}</b> · {t('icx.st.' + p.status)} · {t('icx.cc.onHand', { n: fmtNumber(p.onHand) })}{p.openOrderQty ? ` · ${t('icx.cc.onOrder', { n: fmtNumber(p.openOrderQty) })}` : ''}</li>)}
+      </ul> : <div className="sub">{t('icx.cc.none')}</div>}
+    </div>
+  );
+}
+
+/** extras (AI Inventory 18): the per-SKU list behind a FAILED count check — counted vs expected vs what the ledger moved */
+function VarianceLines({ lines }: { lines: any[] }) {
+  return (
+    <div className="rvw-table-wrap"><table className="tbl rvw-table" data-testid="icx-variance"><thead><tr><th>{t('icx.col.product')}</th><th>{t('icx.var.expected')}</th><th>{t('icx.var.counted')}</th><th>{t('icx.var.posted')}</th><th>{t('icx.var.unexplained')}</th><th>{t('icx.var.when')}</th></tr></thead>
+      <tbody>{lines.map((l) => <tr key={l.countId + l.productId} data-testid="icx-variance-row"><td><b>{l.product}</b>{l.sku ? <div className="sub">{l.sku}</div> : null}</td>
+        <td>{fmtNumber(l.expected)}</td><td>{fmtNumber(l.counted)}</td><td>{(l.applied > 0 ? '+' : '') + fmtNumber(l.applied)}</td><td className="bad">{(l.unexplained > 0 ? '+' : '') + fmtNumber(l.unexplained)}</td><td className="nowrap">{when(l.reconciledAt)}</td></tr>)}</tbody></table></div>
   );
 }
 
@@ -101,8 +130,8 @@ function Frame({ testId, title, searchPh, onSearch, filters, children, pager }: 
   );
 }
 
-function ProductsList({ tick }: { tick: number }) {
-  const [f, setF] = useState<{ q?: string; status: string; sort: string; page: number; pageSize: number }>({ status: 'all', sort: 'attention', page: 1, pageSize: 25 });
+function ProductsList({ tick, categories }: { tick: number; categories: string[] }) {
+  const [f, setF] = useState<{ q?: string; status: string; sort: string; category?: string; page: number; pageSize: number }>({ status: 'all', sort: 'attention', page: 1, pageSize: 25 });
   const [list, setList] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState<any | null>(null);
@@ -114,11 +143,12 @@ function ProductsList({ tick }: { tick: number }) {
     <Frame testId="icx-products" title={t('icx.products')} searchPh={t('icx.searchPh')} onSearch={(q) => set({ q })}
       filters={<>
         <select data-testid="icx-status" aria-label={t('icx.statusLabel')} value={f.status} onChange={(e) => set({ status: e.target.value })}>{STATUSES.map((k) => <option key={k} value={k}>{t('icx.st.' + k)}</option>)}</select>
+        <select data-testid="icx-category" aria-label={t('icx.categoryLabel')} value={f.category ?? ''} onChange={(e) => set({ category: e.target.value || undefined })}><option value="">{t('icx.allCategories')}</option>{categories.map((k) => <option key={k} value={k}>{k}</option>)}</select>
         <select data-testid="icx-sort" aria-label={t('icx.sortLabel')} value={f.sort} onChange={(e) => set({ sort: e.target.value })}>{SORTS.map((k) => <option key={k} value={k}>{t('icx.sort.' + k)}</option>)}</select>
       </>}
       pager={<div className="rvw-pager"><Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(n) => set({ page: n }, true)} />
         <label className="rvw-f"><span>{t('icx.rows')}</span><select data-testid="icx-rows" value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label></div>}>
-      {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{t('icx.loading')}</div> : !rows.length ? <Empty title={f.q || f.status !== 'all' ? t('icx.noMatch') : t('icx.noProducts')} /> : (
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{t('icx.loading')}</div> : !rows.length ? <Empty title={f.q || f.category || f.status !== 'all' ? t('icx.noMatch') : t('icx.noProducts')} /> : (
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('icx.col.product')}</th><th>{t('icx.col.onHand')}</th><th>{t('icx.col.levels')}</th><th>{t('icx.col.ordered')}</th><th>{t('icx.col.status')}</th><th>{t('icx.col.ledger')}</th></tr></thead>
           <tbody>{rows.map((p) => (
             <tr key={p.id} data-testid="icx-product-row" className="inv2-click" tabIndex={0} onClick={() => setOpen(p)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(p); }}>
@@ -184,6 +214,7 @@ function ActivityList({ tick }: { tick: number }) {
     <Frame testId="icx-activity" title={t('icx.activity')} searchPh={t('icx.actSearchPh')} onSearch={(q) => set({ q })}
       filters={<select data-testid="icx-type" aria-label={t('icx.typeLabel')} value={f.type} onChange={(e) => set({ type: e.target.value })}>{TYPES.map((k) => <option key={k} value={k}>{t('icx.type.' + k)}</option>)}</select>}
       pager={<div className="rvw-pager"><Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(n) => set({ page: n }, true)} /></div>}>
+      <div className="sub" data-testid="icx-date-basis">{t('icx.dateBasis')}</div>
       <div className="rvw-dates">
         <button className={'btn ghost' + (!period.preset ? ' on' : '')} onClick={() => setPer({})}>{t('icx.preset.all')}</button>
         {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`icx-preset-${p}`} onClick={() => setPer({ preset: p })}>{t('icx.preset.' + p)}</button>)}

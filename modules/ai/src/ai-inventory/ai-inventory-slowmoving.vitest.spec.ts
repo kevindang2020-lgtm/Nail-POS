@@ -60,3 +60,22 @@ describe('isolation', () => {
     await expect(svc([row({})]).getSlowMoving(ctx({ permissions: [] }))).rejects.toThrow();
   });
 });
+
+describe('extras AI Inventory 15 (round 10): units in the window, weeks of cover, waste', () => {
+  it('states units sold/used, coverage at that pace (null when nothing moved) and the units written off with their cost', async () => {
+    // 90-day window: 90 units sold → 7 a week; 21 on hand → 3.0 weeks of cover · a healthy item with waste is listed for its waste
+    const out = await svc([
+      row({ productId: 'healthy-waste', daysSinceLastSale: 2, onHand: 21, retailUnitsInWindow: 90, wasteUnitsInWindow: 4, costCents: 250 }),
+      row({ productId: 'dead', daysSinceLastSale: 200, retailUnitsInWindow: 0, onHand: 10 }),
+      row({ productId: 'healthy', daysSinceLastSale: 2, retailUnitsInWindow: 90 }),
+    ]).getSlowMoving(ctx());
+    expect(out.items.map((i) => i.productId)).toEqual(['dead', 'healthy-waste']);
+    const w = out.items.find((i) => i.productId === 'healthy-waste')!;
+    expect(w).toMatchObject({ classification: 'healthy', unitsInWindow: 90, coverageWeeks: 3, wasteUnitsInWindow: 4, wasteValueCents: 1000 });
+    expect(out.items.find((i) => i.productId === 'dead')).toMatchObject({ unitsInWindow: 0, coverageWeeks: null, wasteUnitsInWindow: 0 });
+  });
+  it('waste cost is hidden from cost-blind roles; the units stay', async () => {
+    const out = await svc([row({ daysSinceLastSale: 2, wasteUnitsInWindow: 3 })]).getSlowMoving(ctx({ role: 'TECHNICIAN', permissions: ['inventory.view', 'inventory.view_limited'] }));
+    expect(out.items[0]).toMatchObject({ wasteUnitsInWindow: 3, wasteValueCents: null });
+  });
+});

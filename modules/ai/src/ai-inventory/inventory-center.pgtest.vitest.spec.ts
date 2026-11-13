@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { InventoryCenter, InventoryCenterError, criticalOf } from './inventory-center';
+import { KyselyInventoryRead } from './ai-inventory.kysely.port';
 
 const id = (n: number) => `77790000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const T = id(1), B = id(2), B2 = id(3), X = id(4), OWNER = id(10), V = id(20);
@@ -140,6 +141,49 @@ describe('Check Inventory System', () => {
     expect(k.sku_unique).toMatchObject({ state: 'WARNING', count: 2, component: 'catalog' });       // A + B; the archived one and the other salon's are not counted
     expect(k.barcode_unique).toMatchObject({ state: 'WARNING', count: 2 });
     expect(k.count_variance_applied).toMatchObject({ state: 'FAILED', count: 1, detail: { countedLines: 2 } });
+    // extras AI Inventory 18 (round 10): the per-SKU variance list names the one line — counted 7 of 9 (−2), only −1 posted
+    expect(k.count_variance_applied.detail.lines).toEqual([expect.objectContaining({ countId: C1, productId: P.gel, product: 'Gel base coat', sku: 'GEL-01', expected: 9, counted: 7, variance: -2, applied: -1, unexplained: -1 })]);
     expect((await q(`select count(*)::int as n from inventory_stock_movements`))[0].n).toBe(before);
+  });
+  it('extras AI Inventory 08 / 11 (round 10): Command Center signals, the category dropdown, the stated date basis — read-only', async () => {
+    const B3 = id(648), CAT = id(649), CATX = id(650);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'South','active','UTC')`, [B3, T]);
+    await q(`insert into inventory_categories (id, tenant_id, name) values ($1,$2,'Zz Gels'), ($3,$4,'Zz Other salon')`, [CAT, T, CATX, X]);
+    await q(`update inventory_products set category_id = $1 where id = $2`, [CAT, P.gel]);
+    await q(`insert into inventory_location_stock (tenant_id, branch_id, product_id, quantity_on_hand) values ($1,$2,$3,0), ($1,$2,$4,50)`, [T, B3, P.gel, P.files]);
+    await q(`insert into purchase_orders (tenant_id, branch_id, status, expected_date) values ($1,$2,'ordered', current_date - 2), ($1,$2,'approved', null), ($1,$2,'received', null), ($1,$3,'ordered', null)`, [T, B3, B]);
+    await q(`insert into inventory_counts (tenant_id, branch_id, status) values ($1,$2,'submitted'), ($1,$2,'in_progress'), ($1,$2,'cancelled')`, [T, B3]);
+    const moves = (await q(`select count(*)::int as n from inventory_stock_movements`))[0].n;
+    const s: any = await ic.summary(ctx({ branchId: B3 }));
+    expect(s.commandCenter.purchaseOrders).toEqual({ approved: 1, ordered: 1, partial: 0, overdue: 1 });   // received + other branch not counted
+    expect(s.commandCenter.pendingCounts).toEqual({ inProgress: 1, submitted: 1 });                     // cancelled not counted
+    // South: worst first (out of stock before critical / low), at most five; gel (0 on hand) is among them; files (50) is not
+    const pr = s.commandCenter.priority; const rank: Record<string, number> = { out_of_stock: 0, critical: 1, low: 2 };
+    expect(pr.length).toBeGreaterThan(0); expect(pr.length).toBeLessThanOrEqual(5);
+    expect(pr.map((x: any) => rank[x.status])).toEqual([...pr.map((x: any) => rank[x.status])].sort((a, b) => a - b));
+    expect(pr.find((x: any) => x.id === P.gel)).toMatchObject({ status: 'out_of_stock', onHand: 0, openOrderQty: 0 });
+    expect(pr.find((x: any) => x.id === P.files)).toBeUndefined();
+    // no purchase-order lines at South → every flagged product needs a reorder
+    expect(s.commandCenter.needsReorder).toBe(s.cards.low + s.cards.critical + s.cards.outOfStock);
+    expect(s.categories).toContain('Zz Gels');
+    expect(s.categories).not.toContain('Zz Other salon');
+    const byCat: any = await ic.productsList(ctx({ branchId: B3 }), { category: 'zz gels' });
+    expect(byCat.items.map((x: any) => x.id)).toEqual([P.gel]);
+    expect(byCat.applied.category).toBe('zz gels');
+    const act: any = await ic.activity(ctx(), {});
+    expect(act.applied.dateBasis).toBe('movement_time');
+    expect((await q(`select count(*)::int as n from inventory_stock_movements`))[0].n).toBe(moves);
+  });
+  it('extras AI Inventory 15 (round 10): the slow-moving read counts damaged / waste / expired units in the window, at that branch only', async () => {
+    const B4 = id(651);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'East','active','UTC')`, [B4, T]);
+    await q(`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_before, quantity_change, quantity_after, reason, created_at) values
+      ($1,$2,$3,'damaged',10,-2,8,'dropped', now() - interval '2 days'), ($1,$2,$3,'expired',8,-3,5,'expired', now() - interval '10 days'),
+      ($1,$2,$3,'waste',5,-1,4,'old', now() - interval '200 days'), ($1,$2,$3,'retail_sale',4,-1,3,'sale', now() - interval '1 day'),
+      ($1,$4,$3,'damaged',9,-7,2,'other branch', now() - interval '1 day')`, [T, B4, P.oil, B]);
+    const rows = await new KyselyInventoryRead(db).listSlowMovingInputs(T, B4, 90, 500);
+    const oil = rows.find((r) => r.productId === P.oil)!;
+    expect(oil).toMatchObject({ wasteUnitsInWindow: 5, retailUnitsInWindow: 1 });     // 2 + 3 in the window; the 200-day-old one and Main's are not
+    expect(rows.find((r) => r.productId === P.gel)!.wasteUnitsInWindow).toBe(0);
   });
 });

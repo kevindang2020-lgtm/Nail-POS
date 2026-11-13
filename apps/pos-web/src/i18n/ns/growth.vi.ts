@@ -1248,4 +1248,15 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.community.corr.appealStatus.upheld": "giữ nguyên quyết định", // DRAFT — Kevin reviews
   "growth.community.corr.appealStatus.overturned": "đã đảo ngược quyết định", // DRAFT — Kevin reviews
   "growth.community.corr.appealStatus.withdrawn": "đã rút", // DRAFT — Kevin reviews
+  "growth.aiInventory.slowView.all": "Bán chậm", // DRAFT — Kevin reviews
+  "growth.aiInventory.slowView.overstock": "Tồn dư", // DRAFT — Kevin reviews
+  "growth.aiInventory.slowView.waste": "Hao hụt", // DRAFT — Kevin reviews
+  "growth.aiInventory.slowView.none": "Không có gì trong mục này.", // DRAFT — Kevin reviews
+  "growth.aiInventory.window": "Khoảng xem: {n} ngày gần nhất", // DRAFT — Kevin reviews
+  "growth.aiInventory.col.units": "Đã bán / dùng", // DRAFT — Kevin reviews
+  "growth.aiInventory.col.cover": "Đủ dùng", // DRAFT — Kevin reviews
+  "growth.aiInventory.col.waste": "Đã loại bỏ", // DRAFT — Kevin reviews
+  "growth.aiInventory.never": "chưa bao giờ", // DRAFT — Kevin reviews
+  "growth.aiInventory.noMovement": "không biến động", // DRAFT — Kevin reviews
+  "growth.aiInventory.weeks": "{n} tuần", // DRAFT — Kevin reviews
 };

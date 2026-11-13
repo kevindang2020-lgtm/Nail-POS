@@ -30,6 +30,7 @@ export interface SlowMovingInputs {
   retailUnitsInWindow: number;
   consumptionUnitsInWindow: number;
   isConsumable: boolean;               // drives which velocity matters
+  wasteUnitsInWindow?: number;         // extras (AI Inventory 15): damaged / waste / expired units in the window
 }
 
 export interface SlowMovingResult {
@@ -39,6 +40,12 @@ export interface SlowMovingResult {
   salesVelocityPerWeek: number;
   usageVelocityPerWeek: number;
   inventoryValueCents: number | null;   // onHand × cost (null when cost unknown)
+  /** extras (AI Inventory 15): units sold + used in the window, weeks the stock on hand lasts at that pace (null = no movement,
+   *  never "infinite"), the units written off and their cost (null when cost unknown) */
+  unitsInWindow: number;
+  coverageWeeks: number | null;
+  wasteUnitsInWindow: number;
+  wasteValueCents: number | null;
   confidence: SlowMovingConfidence;
   recommendation: string;
 }
@@ -71,6 +78,11 @@ export function classifySlowMoving(i: SlowMovingInputs, t: SlowMovingThresholds 
   const usageVelocityPerWeek = perWeek(Math.max(0, i.consumptionUnitsInWindow), t.windowDays);
   const inventoryValueCents = i.costCents == null ? null : Math.max(0, i.onHand) * i.costCents;
   const overstock = i.maximumStock != null && i.maximumStock > 0 && i.onHand > i.maximumStock;
+  const unitsInWindow = Math.round((Math.max(0, i.retailUnitsInWindow) + Math.max(0, i.consumptionUnitsInWindow)) * 100) / 100;
+  const weekly = t.windowDays > 0 ? (unitsInWindow / t.windowDays) * 7 : 0;
+  const coverageWeeks = weekly > 0 ? Math.round((Math.max(0, i.onHand) / weekly) * 10) / 10 : null;
+  const wasteUnitsInWindow = Math.max(0, Math.round(i.wasteUnitsInWindow ?? 0));
+  const wasteValueCents = i.costCents == null ? null : wasteUnitsInWindow * i.costCents;
 
   // The activity signal that matters for this item's type; fall back to whichever exists.
   const primary = i.isConsumable ? i.daysSinceLastUsage : i.daysSinceLastSale;
@@ -94,7 +106,7 @@ export function classifySlowMoving(i: SlowMovingInputs, t: SlowMovingThresholds 
   return {
     classification, overstock,
     daysSinceLastActivity: daysSinceLastActivity(i.daysSinceLastSale, i.daysSinceLastUsage),
-    salesVelocityPerWeek, usageVelocityPerWeek, inventoryValueCents, confidence,
+    salesVelocityPerWeek, usageVelocityPerWeek, inventoryValueCents, unitsInWindow, coverageWeeks, wasteUnitsInWindow, wasteValueCents, confidence,
     recommendation: recommend(classification, overstock),
   };
 }
