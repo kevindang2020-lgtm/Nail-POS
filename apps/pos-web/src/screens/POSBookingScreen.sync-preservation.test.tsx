@@ -7,6 +7,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSBookingScreen } from './POSBookingScreen';
+import { runOnClassicBookingBoard } from './booking/boardMode.testkit';
+// these tests pin the CLASSIC calendar (recoverable behind "Classic board" since the Booking Schedule Board merge, Nov 13 2026)
+runOnClassicBookingBoard();
 import { REALTIME_EVENT, REALTIME_RECONCILE } from '../realtime/realtime-client';
 
 const TECHS = Array.from({ length: 12 }, (_, i) => ({ technicianId: `t${i}`, name: `Tech ${String.fromCharCode(65 + i)}` }));

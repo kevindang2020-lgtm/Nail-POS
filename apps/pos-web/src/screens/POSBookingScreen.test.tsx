@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSBookingScreen, calMinutes, calLabel, calRangeLabel, calGapText, calSnap, calHHMM, openTodayState, isArrivingSoon, ARRIVING_SOON_MINUTES, type GridColumn } from './POSBookingScreen';
+import { runOnClassicBookingBoard } from './booking/boardMode.testkit';
+// these tests pin the CLASSIC calendar (recoverable behind "Classic board" since the Booking Schedule Board merge, Nov 13 2026)
+runOnClassicBookingBoard();
 
 const state = {
   kpis: { totalBookingsToday: 0, confirmedBookings: 0, checkedInBookings: 0, waitingBookings: 0, inServiceBookings: 0, completedBookings: 0, cancelledBookings: 0, noShowBookings: 0, onlineBookings: 0, googleBookings: 0, aiBookings: 0, conflictCount: 0, depositsCollectedCents: 0 },

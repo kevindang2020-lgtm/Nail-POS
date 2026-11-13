@@ -258,7 +258,7 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
     return Number(res?.numDeletedRows ?? 0) > 0;
   }
 
-  private cols = ['id', 'technician_id', 'customer_id', 'customer_name', 'customer_phone', 'is_vip', 'source', 'services', 'appt_date', 'start_time', 'end_time', 'duration_minutes', 'status', 'deposit_status', 'notes', 'queue_idempotency_key', 'tech_queue_idempotency_key', 'serving_idempotency_key', 'arrived_at', 'overbook_ok'] as const;
+  private cols = ['id', 'technician_id', 'customer_id', 'customer_name', 'customer_phone', 'is_vip', 'source', 'services', 'appt_date', 'start_time', 'end_time', 'duration_minutes', 'status', 'deposit_status', 'notes', 'queue_idempotency_key', 'tech_queue_idempotency_key', 'serving_idempotency_key', 'arrived_at', 'overbook_ok', 'version'] as const;   // + version (merge Nov 13 2026): every read answered version 1 — a row edited once could never be moved with its expectedVersion
 
   /** pg returns DATE columns as JS Date objects; the domain uses plain 'YYYY-MM-DD' strings everywhere. */
   private isoDate(v: unknown): string { return v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? '').slice(0, 10); }

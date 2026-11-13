@@ -28,6 +28,12 @@ import { takeBookingHandoff } from '../api/posRebookingApi';
 
 import { statusLabel } from '../i18n/status-label';
 import { deviceToday } from '../lib/deviceToday';
+import { useAuth } from '../auth/AuthContext';
+import { BookingBoardRegion, createBoardRealtime, BOARD_STATE_KEY } from './booking/BookingBoardRegion';
+import { useBookingBoardMode, readBoardMode, boardModeKey } from './booking/boardMode';
+import { readSession, writeSession } from '../components/useSessionState';
+/** the Day / Week choice kept for this tab while the new board is in use (spec §26) */
+const BOARD_VIEW_KEY = 'aps.booking.board.view';
 // POS Booking — reads the real /pos/booking/state (POSBookingFullState) and now WIRES the full appointment lifecycle.
 // Quick actions (no-body, idempotent): Check In, Move to Queue, Start Service. Per-appointment "Manage" drawer wires
 // the previously-deferred body-carrying actions with their exact backend shapes: Assign Technician ({technicianId}),
@@ -963,7 +969,13 @@ export function POSBookingScreen() {
   const [fs, setFs] = useState<null | 'all' | string>(null);
   // '' = today (server default). AI Calendar guide §13: "Open in POS Booking" may pass ?date=YYYY-MM-DD — it only picks the
   // day shown; navigating never changes a booking.
-  const [calDate, setCalDate] = useState(() => { try { const d = new URLSearchParams(window.location.search).get('date') ?? ''; return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''; } catch { return ''; } });
+  const { principal } = useAuth();
+  // spec §26 (Booking Schedule Board merge): coming back from New Booking / Walk-In / an appointment returns to the board's
+  // date and Day/Week view — read from this tab's board state (new board only; '' = today, so a new day still opens on today)
+  const restoreBoard = readBoardMode(boardModeKey(principal?.tenantId, principal?.userId)) === 'new';
+  const [calDate, setCalDate] = useState(() => { try { const d = new URLSearchParams(window.location.search).get('date') ?? ''; if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d; } catch { /* no URL */ }
+    if (restoreBoard) { const kept = readSession<{ date?: string }>(BOARD_STATE_KEY, {}).date; if (kept && /^\d{4}-\d{2}-\d{2}$/.test(kept) && kept !== deviceToday()) return kept; }
+    return ''; });
   const [techFilter, setTechFilter] = useState('');
   const [techFilterName, setTechFilterName] = useState<string | undefined>(undefined);
   // §57: the quick-book technician comes from the server-paged picker; its name is kept here (the page may not hold it)
@@ -991,10 +1003,20 @@ export function POSBookingScreen() {
   const [branchId, setBranchId] = useState('');
   const [depositStatus, setDepositStatus] = useState('');
   const [conflictOnly, setConflictOnly] = useState(false);
-  const [calendarView, setCalendarView] = useState<'day' | 'week'>('day');
+  const [calendarView, setCalendarView] = useState<'day' | 'week'>(() => (restoreBoard && readSession<string>(BOARD_VIEW_KEY, 'day') === 'week' ? 'week' : 'day'));
   // Phase 7: AI Scheduling Optimizer overlay — reloaded with every grid load (realtime schedule_* events reach this
   // screen through the 'booking' key and reload the grid). Only for roles that may see the optimizer.
   const canSched = useCan()('ai_scheduling.view');
+  // Booking Schedule Board merge (Nov 13 2026): the new board is the default schedule region; "Classic board" (per person,
+  // remembered on this device) keeps the previous calendar recoverable. The new board loads its own server page.
+  const [boardMode, setBoardMode] = useBookingBoardMode(principal?.tenantId, principal?.userId);
+  const newBoard = boardMode === 'new';
+  const newBoardRef = useRef(newBoard); newBoardRef.current = newBoard;
+  const boardRealtime = useRef<ReturnType<typeof createBoardRealtime> | null>(null);
+  if (!boardRealtime.current) boardRealtime.current = createBoardRealtime();
+  const boardVisible = useRef<BoardView>({ date: null, visibleTechnicianIds: [], visibleAppointmentIds: [] });
+  const [focusTech, setFocusTech] = useState<{ technicianId: string; nonce: number } | null>(null);
+  useEffect(() => { if (newBoard) writeSession(BOARD_VIEW_KEY, calendarView); }, [newBoard, calendarView]);
   const [sched, setSched] = useState<SchedCalendarIndicators | null>(null);
 
   // ── 200-technician mandate (Oct 23 2026): the board pages its technician columns ON THE SERVER (12 a page → 200 = 17
@@ -1060,6 +1082,7 @@ export function POSBookingScreen() {
           return;
         }
         setTechPageData(tp);
+        if (newBoardRef.current) return;   // the new board reads its own page (technicians + day grid); no classic grid / prefetch
         if (locate) {
           locateRef.current = null;
           if (tp.located) { setTechPage(tp.page); setHighlightTech(locate); setTimeout(() => setHighlightTech((h) => (h === locate ? null : h)), 2500); }
@@ -1108,14 +1131,23 @@ export function POSBookingScreen() {
   }, [techSearch, calDate]);
   const jumpToTechnician = (technicianId: string) => {
     setTechSearch(''); setTechMatches(null); setFs((f) => (f && f !== 'all' ? null : f));
+    if (newBoardRef.current) { setFocusTech({ technicianId, nonce: Date.now() }); return; }   // the board pages to them (server locate)
     locateRef.current = technicianId;
     load(filtersNow());
   };
 
-  const refetch = (scope: 'full' | 'partial' = 'full') => { if (calendarView === 'week' && scope === 'full') void loadWeek(1); return load(filtersNow(), scope); };
+  const refetch = (scope: 'full' | 'partial' = 'full') => {
+    if (calendarView === 'week' && scope === 'full') void loadWeek(1);
+    // the new board reloads ONLY its visible page when something on it may have changed (a 'partial' change is off-screen)
+    if (newBoardRef.current && scope === 'full') boardRealtime.current?.bridge.resync(calDate || grid?.date || s?.dateRange?.from || null);
+    return load(filtersNow(), scope);
+  };
   // what is on screen right now — the date, the 12 visible technicians and the appointments drawn in their columns
   const boardView = useRef<BoardView>({ date: null, visibleTechnicianIds: [] });
-  boardView.current = { date: grid?.date ?? null, visibleTechnicianIds: (techPageData?.technicians ?? []).map((t) => t.technicianId), visibleAppointmentIds: (grid?.appointments ?? []).map((a) => a.appointmentId) };
+  boardView.current = newBoard ? boardVisible.current : { date: grid?.date ?? null, visibleTechnicianIds: (techPageData?.technicians ?? []).map((t) => t.technicianId), visibleAppointmentIds: (grid?.appointments ?? []).map((a) => a.appointmentId) };
+  // switching back to the classic board loads its day grid (the new board never asked for it)
+  const firstMode = useRef(true);
+  useEffect(() => { if (firstMode.current) { firstMode.current = false; return; } if (!newBoard) load(filtersNow()); }, [newBoard]);   // eslint-disable-line react-hooks/exhaustive-deps
   const weekOpen = calendarView === 'week';
   const loadWeek = async (page: number) => {
     const from = weekStart(calDate || grid?.date || deviceToday()); const to = weekDays(from)[6];
@@ -1263,6 +1295,14 @@ export function POSBookingScreen() {
     const techName = grid?.columns.find((c) => c.technicianId === technicianId)?.name ?? techPageData?.technicians.find((t) => t.technicianId === technicianId)?.name;
     setFormTechName(techName);
     setCreateMsg({ ok: true, text: tx('pos.prefilled_v0_v1_pick_the_service_y0xa', { v0: String(techName ? techName + ' · ' : ''), v1: String(calLabel(calMinutes(time) ?? 0)) }) });
+    assistantRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  // the new board's open time / Find an Opening / Best Matches pick → the SAME Booking Assistant, prefilled (never a second form)
+  const prefillFromBoard = (b: { technicianId: string; technicianName?: string; date: string; time: string; serviceId?: string }) => {
+    setForm((f) => ({ ...f, technicianId: b.technicianId, date: b.date, time: b.time, ...(b.serviceId ? { primaryService: b.serviceId } : {}) }));
+    setSlots(null); setBookTab('new');
+    setFormTechName(b.technicianName);
+    setCreateMsg({ ok: true, text: tx('pos.prefilled_v0_v1_pick_the_service_y0xa', { v0: String(b.technicianName ? b.technicianName + ' · ' : ''), v1: String(calLabel(calMinutes(b.time) ?? 0)) }) });
     assistantRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   // Rebooking Opportunities / Service Recommendations (Nov 1 2026): "Open AI Booking Assistant" hands over a one-use prefill (customer · service ·
@@ -1554,11 +1594,12 @@ export function POSBookingScreen() {
             <option value="">{tx('pos.all_sources_2')}</option>
             {s.filters.sources.map((x) => <option key={x} value={x}>{statusLabel('source', x)}</option>)}
           </select>
+          {newBoard ? <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{tx('pos.15_min_grid')}</span> : (   /* the new board is always the 15-minute grid (spec §13) */
           <select aria-label={tx('pos.grid_increment')} value={slotIncrement} onChange={(e) => setSlotIncrement(Number(e.target.value))} style={{ ...inputStyle, height: 34 }}>
             <option value={15}>{tx('pos.15_min_grid')}</option>
             <option value={30}>{tx('pos.30_min_grid')}</option>
             <option value={60}>{tx('pos.60_min_grid')}</option>
-          </select>
+          </select>)}
           <button
             type="button"
             className={`btn ${fitDay ? '' : 'ghost'}`}
@@ -1571,10 +1612,16 @@ export function POSBookingScreen() {
             onClick={() => setFs(fs ? null : 'all')}
             style={{ fontSize: 12, padding: '6px 10px' }}
           >{fs === 'all' ? tx('pos.exit_full_screen') : tx('pos.full_screen_3')}</button>
+          <label className="pos-booking-board-switch" title={tx('bsb.host.classicHint')}>
+            <input type="checkbox" data-testid="booking-classic-board" checked={!newBoard} onChange={(e) => setBoardMode(e.target.checked ? 'classic' : 'new')} />
+            {tx('bsb.host.classic')}
+          </label>
         </div>
       </div>
 
-      {/* Toolbar 2 (Section B4): Find opening, Service & duration, Best matches, Working techs, 12 per page, Paging */}
+      {/* Toolbar 2 (Section B4): Find opening, Service & duration, Best matches, Working techs, 12 per page, Paging —
+          the classic board's; the new board (BookingBoardRegion) carries its own second toolbar */}
+      {newBoard ? null : (<>
       <div className="flex flex-wrap items-center gap-2.5 mb-3 px-3 py-2 bg-[#F8F9FA] border border-[var(--line)] rounded-[10px]">
         <button
           type="button"
@@ -1658,6 +1705,7 @@ export function POSBookingScreen() {
           {best.hasMore ? <button type="button" className="btn ghost" style={{ marginTop: 8 }} onClick={() => void loadBest(best.offset + best.limit)}>{tx('pos.view_more')}</button> : null}
         </section>
       ) : null}
+      </>)}
 
       {moreOpen ? (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #E7DCC8' }}>
@@ -1704,6 +1752,21 @@ export function POSBookingScreen() {
           )}
           {week && week.total > week.items.length ? <button type="button" className="btn ghost" style={{ marginTop: 10 }} onClick={() => void loadWeek(week.page + 1)}>{tx('pos.view_more')}</button> : null}
         </section>
+      ) : newBoard ? (
+        <BookingBoardRegion
+          date={calDate || s.dateRange.from}
+          timezone={s.dateRange.timezone}
+          services={s.filters.services}
+          filters={{ status: status || undefined, source: source || undefined, serviceCategory: catFilter || undefined, search: search || undefined, depositStatus: depositStatus || undefined, conflictOnly: conflictOnly || undefined }}
+          fitDay={fitDay}
+          fullScreen={fs === 'all'}
+          onExitFullScreen={() => setFs(null)}
+          realtime={boardRealtime.current!}
+          focusTechnician={focusTech}
+          onPrefill={prefillFromBoard}
+          onOpenAppointment={(row) => openIPad(appointmentRequest(row as unknown as Parameters<typeof appointmentRequest>[0], refetch))}
+          onVisibleChange={(v) => { boardVisible.current = { date: v.date, visibleTechnicianIds: v.technicianIds, visibleAppointmentIds: v.appointmentIds }; if (newBoardRef.current) boardView.current = boardVisible.current; }}
+        />
       ) : (
         <BookingCalendar
           rows={grid?.appointments ?? []}

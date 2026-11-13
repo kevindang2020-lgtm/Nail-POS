@@ -1,0 +1,34 @@
+{
+  "appointmentId": "1c8395e5-ab21-41ff-a75d-31542ad8d42f",
+  "tenantId": "b0a10000-0000-4000-8000-000000000001",
+  "branchId": "b0a10000-0000-4000-8000-000000000002",
+  "customerName": "Guest One",
+  "isVip": false,
+  "customerAvatarUrl": null,
+  "technicianId": "b0a10000-0000-4000-8000-0000000000a1",
+  "technicianName": "Ava Able",
+  "services": [
+    {
+      "serviceId": "b0a10000-0000-4000-8000-000000000051",
+      "priceCents": 4000,
+      "serviceName": "Gel Polish",
+      "durationMinutes": 45
+    }
+  ],
+  "source": "manual",
+  "startTime": "09:00",
+  "endTime": "09:45",
+  "durationMinutes": 45,
+  "version": 2,
+  "status": "booked",
+  "depositStatus": "not_required",
+  "conflictStatus": "none",
+  "notes": "",
+  "createdAt": "",
+  "updatedAt": "",
+  "date": "2031-03-04",
+  "arrivedAt": null,
+  "lateMinutes": null,
+  "lateness": null,
+  "displayStatus": "booked"
+}
