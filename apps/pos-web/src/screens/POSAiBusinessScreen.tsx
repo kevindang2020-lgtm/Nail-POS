@@ -15,13 +15,13 @@ import { growthCode } from './growthLabels';
 import { RangeCalendar } from '../components/FinanceKit';
 import { BzHealthButton } from '../components/BusinessKit';
 import { deviceToday } from '../lib/deviceToday';
-import { RecordResults, ProfitResults, GrowthResults, AssistantHistory } from './ai-business/AssistantExtras';
+import { RecordResults, ProfitResults, GrowthResults, AssistantHistory, TrustBar, scopedDrilldown, type AibTrust } from './ai-business/AssistantExtras';
 import { useSessionState } from '../components/useSessionState';
 type Ask = {
   ok: boolean; needsClarification: boolean; intent: string | null; toolUsed: string | null;
   answer: string | null; structured: any | null;
   access: { allowed: boolean; reason: string; label: string } | null;
-  suggestions?: string[]; usage?: unknown;
+  suggestions?: string[]; usage?: unknown; trust?: AibTrust;
 };
 
 type Saved = {
@@ -132,7 +132,7 @@ export function POSAiBusinessScreen() {
       // this session's questions and answers, newest first (nothing is stored on the server)
       setSessionLog((l) => [{ at: new Date().toISOString(), label: body.question ?? (CHIPS.find((c) => c.intent === body.intent)?.label ?? String(body.intent)), preset, answer: out?.answer ?? null }, ...l].slice(0, 50));
     }
-    catch (e: any) { setError(reportError(e, t('growth.noun.theBusinessAssistant'))); }
+    catch (e: any) { setError(reportError(e, t('growth.noun.theBusinessAssistant')) + (e?.status === 403 ? ' ' + t('aib.empty.forbidden') : '')); }
     finally { setLoading(false); }
   }, [period, range]);
 
@@ -296,10 +296,12 @@ export function POSAiBusinessScreen() {
           {(fresh || drill) && (
             <div className="sub" style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
               {fresh && <span>{t('pos.data_freshness')}{' '}{statusLabel('freshness', fresh)}</span>}
-              {drill && <Link to={drill} style={{ color: 'var(--aps-orange)' }}>{t('pos.view_the_supporting_report')}</Link>}
+              {drill && <Link to={scopedDrilldown(drill, res.trust)} data-testid="aib-drill" style={{ color: 'var(--aps-orange)' }}>{t('pos.view_the_supporting_report')}</Link>}
             </div>
           )}
 
+          {res.trust ? <TrustBar trust={res.trust} onRefresh={() => { setSnapTick((n) => n + 1); if (last) void ask(last); }}
+            onWiderPeriod={() => { setPeriod('last30'); void ask({ intent: last?.intent ?? res.intent ?? undefined, question: last?.question, preset: 'last30' }); }} /> : null}
           {notes.length > 0 && (
             <ul className="sub" style={{ marginTop: 10, paddingLeft: 18 }}>
               {notes.map((n, i) => (<li key={i} style={{ marginBottom: 4 }}>{n}</li>))}

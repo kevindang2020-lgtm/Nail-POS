@@ -256,4 +256,23 @@ describe('AI Business Assistant 09 — multi-branch fairness notes', () => {
     expect(await screen.findByTestId('bcx-share-net')).toHaveTextContent('N/A');
     expect(screen.getByTestId('bcx-share-bookings')).toHaveTextContent('N/A');
   });
+  it('round 10: per-staffed-hour figures from recorded shifts (N/A without staffed time; open shifts named apart)', async () => {
+    const row = (id: string, name: string, net: number, staffing: any) => ({ branchId: id, branchName: name, status: 'active', netSalesCents: net, averageTicketCents: 5000, ticketsCount: 10, totalBookings: 20, completed: 18, cancelledPercent: 0, noShowPercent: 0, revenuePerCompletedAppointmentCents: 4444, completionRate: 90, staffing });
+    compareMock.mockReset().mockResolvedValue({ preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: 160000, ticketsCount: 20, averageTicketCents: 8000, totalBookings: 40, completed: 36, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [],
+      branches: [row('b1', 'Marlton', 120000, { technicianCount: 2, staffMinutes: 720, openShifts: 1, netSalesPerStaffHourCents: 10000, completedPer10StaffHours: 15 }), row('b2', 'Deptford', 40000, { technicianCount: 0, staffMinutes: 0, openShifts: 0, netSalesPerStaffHourCents: null, completedPer10StaffHours: null })] });
+    const v = render1();
+    fireEvent.click((await screen.findAllByTestId('bcx-row'))[0]);
+    let d = await screen.findByTestId('bcx-detail');
+    expect(within(d).getByTestId('bcx-staff-hours')).toHaveTextContent('12 h · 2 technicians · 1 shifts still open');
+    expect(within(d).getByTestId('bcx-per-staff-hour')).toHaveTextContent('$100.00');
+    expect(within(d).getByTestId('bcx-done-per-hours')).toHaveTextContent('15');
+    expect(within(d).getByTestId('bcx-staff-note')).toHaveTextContent('no separate opening-hours schedule');
+    v.unmount();
+    render1();
+    fireEvent.click((await screen.findAllByTestId('bcx-row'))[1]);
+    d = await screen.findByTestId('bcx-detail');
+    expect(within(d).getByTestId('bcx-per-staff-hour')).toHaveTextContent('N/A');
+    expect(within(d).getByTestId('bcx-done-per-hours')).toHaveTextContent('N/A');
+  });
 });

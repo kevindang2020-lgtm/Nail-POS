@@ -562,7 +562,7 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.fair.shareBookings": "Tỷ lệ trong lượt đặt hẹn của tiệm", // DRAFT — Kevin reviews
   "bcx.fair.ofTotal": "{pct}% của {total}", // DRAFT — Kevin reviews
   "bcx.fair.ofCount": "{pct}% ({n} trên {total})", // DRAFT — Kevin reviews
-  "bcx.fair.note": "Tỷ lệ tính trên tổng của tất cả {n} chi nhánh trong phần so sánh này. Chi nhánh lớn hơn (nhiều ghế, nhân viên hoặc giờ mở cửa hơn) đương nhiên có tổng cao hơn — hãy so sánh các tỷ lệ (hóa đơn trung bình, tỷ lệ hoàn thành, doanh thu mỗi lượt hẹn hoàn thành) để đánh giá chi nhánh. Số nhân viên và giờ mở cửa không được dùng để điều chỉnh các số liệu này.", // DRAFT — Kevin reviews
+  "bcx.fair.note": "Tỷ lệ tính trên tổng của tất cả {n} chi nhánh trong phần so sánh này. Chi nhánh lớn hơn (nhiều ghế, nhân viên hoặc giờ mở cửa hơn) đương nhiên có tổng cao hơn — hãy so sánh các tỷ lệ (hóa đơn trung bình, tỷ lệ hoàn thành, doanh thu mỗi lượt hẹn hoàn thành) để đánh giá chi nhánh. Các tỷ lệ này không điều chỉnh theo nhân viên hay giờ — các dòng mỗi giờ làm thì có.", // DRAFT — Kevin reviews
   "bcx.def.fair": "Công bằng — tổng phụ thuộc vào quy mô chi nhánh; mở một chi nhánh để xem tỷ lệ của nó trong tổng của tiệm và mẫu số. Các tỷ lệ tính theo hóa đơn hoặc lượt đặt hẹn, nên so sánh được các chi nhánh khác quy mô.", // DRAFT — Kevin reviews
   "bcx.ready.ready": "Sẵn sàng so sánh", // DRAFT — Kevin reviews
   "bcx.ready.limited": "So sánh thận trọng", // DRAFT — Kevin reviews
@@ -699,4 +699,45 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bzx.cmp.cannot.no_snapshot": "Một báo cáo không có số liệu Báo cáo doanh số đã xác minh để so sánh.", // DRAFT — Kevin reviews
   "bzx.cmp.cannot.no_permission": "Vai trò của bạn không xem được số liệu Báo cáo doanh số.", // DRAFT — Kevin reviews
   "bzx.cmp.cannot.same_report": "Hãy chọn báo cáo khác.", // DRAFT — Kevin reviews
+  "aib.trust.title": "Câu trả lời này dựa trên gì", // DRAFT — Kevin reviews
+  "aib.trust.answered": "Trả lời lúc", // DRAFT — Kevin reviews
+  "aib.trust.check": "Lần kiểm tra dữ liệu gần nhất", // DRAFT — Kevin reviews
+  "aib.trust.checkAt": "{s} lúc {at}", // DRAFT — Kevin reviews
+  "aib.trust.noCheck": "Chưa có lần kiểm tra dữ liệu — hãy chạy Kiểm tra dữ liệu kinh doanh", // DRAFT — Kevin reviews
+  "aib.trust.state.PASSED": "Đạt", // DRAFT — Kevin reviews
+  "aib.trust.state.WARNING": "Có cảnh báo", // DRAFT — Kevin reviews
+  "aib.trust.state.FAILED": "Lỗi", // DRAFT — Kevin reviews
+  "aib.trust.state.INSUFFICIENT_DATA": "Chưa đủ dữ liệu", // DRAFT — Kevin reviews
+  "aib.trust.sources": "Nguồn", // DRAFT — Kevin reviews
+  "aib.trust.src.sales": "Báo cáo doanh thu", // DRAFT — Kevin reviews
+  "aib.trust.src.appointments": "Lịch hẹn", // DRAFT — Kevin reviews
+  "aib.trust.src.customers": "Khách hàng", // DRAFT — Kevin reviews
+  "aib.trust.src.technicians": "Thợ", // DRAFT — Kevin reviews
+  "aib.trust.src.expenses": "Chi phí", // DRAFT — Kevin reviews
+  "aib.trust.src.branches": "Chi nhánh", // DRAFT — Kevin reviews
+  "aib.trust.src.tickets": "Phiếu", // DRAFT — Kevin reviews
+  "aib.trust.reason.included": "có", // DRAFT — Kevin reviews
+  "aib.trust.reason.no_permission": "không có — vai trò của bạn không được xem", // DRAFT — Kevin reviews
+  "aib.trust.reason.no_data": "không có dữ liệu", // DRAFT — Kevin reviews
+  "aib.trust.pending": "Đang chờ cập nhật", // DRAFT — Kevin reviews
+  "aib.trust.openTickets": "{n} phiếu đang mở chưa thanh toán", // DRAFT — Kevin reviews
+  "aib.trust.expensesWaiting": "{n} chi phí chờ duyệt", // DRAFT — Kevin reviews
+  "aib.trust.events": "{n} cập nhật chưa gửi xong", // DRAFT — Kevin reviews
+  "aib.trust.lag": "lâu nhất {n} phút", // DRAFT — Kevin reviews
+  "aib.trust.stale.event_lag": "Một số cập nhật bị trễ nên số liệu có thể chưa mới nhất.", // DRAFT — Kevin reviews
+  "aib.trust.stale.check_failed": "Lần kiểm tra dữ liệu gần nhất bị lỗi.", // DRAFT — Kevin reviews
+  "aib.trust.stale.source_missing": "Một nguồn không có dữ liệu.", // DRAFT — Kevin reviews
+  "aib.empty.noData": "Kỳ này không có dữ liệu nên chưa có gì để giải thích.", // DRAFT — Kevin reviews
+  "aib.empty.wider": "Thử 30 ngày qua", // DRAFT — Kevin reviews
+  "aib.empty.denied": "Một phần câu trả lời bị ẩn vì vai trò của bạn không được xem. Hãy hỏi chủ tiệm hoặc quản lý nếu cần.", // DRAFT — Kevin reviews
+  "aib.empty.forbidden": "Hãy chọn câu hỏi khác hoặc hỏi chủ tiệm hoặc quản lý.", // DRAFT — Kevin reviews
+  "aib.prov.title": "Bản ghi", // DRAFT — Kevin reviews
+  "aib.prov.tool": "Trả lời bằng công cụ {tool}", // DRAFT — Kevin reviews
+  "aib.prov.private": "Chỉ bạn xem được bản ghi này; nó không bao giờ bị sửa.", // DRAFT — Kevin reviews
+  "bcx.fair.staffHours": "Giờ làm có người (ca đã ghi)", // DRAFT — Kevin reviews
+  "bcx.fair.staffHoursV": "{h} giờ · {n} thợ", // DRAFT — Kevin reviews
+  "bcx.fair.openShifts": "{n} ca chưa đóng", // DRAFT — Kevin reviews
+  "bcx.fair.netPerHour": "Doanh thu thuần mỗi giờ làm", // DRAFT — Kevin reviews
+  "bcx.fair.donePer10": "Dịch vụ hoàn thành mỗi 10 giờ làm", // DRAFT — Kevin reviews
+  "bcx.fair.staffNote": "Mỗi giờ làm là chia cho thời gian ca đã chấm công tại chi nhánh này trong các ngày đó, để chi nhánh nhiều người hoặc mở lâu hơn được so sánh công bằng. Ca chưa đóng không được tính. Hệ thống không có lịch giờ mở cửa riêng nên giờ làm là cơ sở thời gian hoạt động.", // DRAFT — Kevin reviews
 };

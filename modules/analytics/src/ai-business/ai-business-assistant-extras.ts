@@ -61,11 +61,15 @@ export class ConversationHistory {
     const limit = [10, 25, 50, 100].includes(Number(f.limit)) ? Number(f.limit) : 25, page = Math.max(1, Math.min(100000, Math.floor(Number(f.page) || 1)));
     const w = this.where(ctx, String(f.q ?? ''));
     const total = Number((await sql<Row>`select count(*)::int as n from ai_business_conversations c where c.tenant_id = ${ctx.tenantId} and ${w}`.execute(this.db)).rows[0]?.n ?? 0);
-    const rows = (await sql<Row>`select c.id, c.question, c.intent, c.preset, to_char(c.period_from, 'YYYY-MM-DD') as period_from, to_char(c.period_to, 'YYYY-MM-DD') as period_to, c.answer, c.answered_by, c.created_at from ai_business_conversations c where c.tenant_id = ${ctx.tenantId} and ${w}
+    const rows = (await sql<Row>`select c.id, c.question, c.intent, c.preset, to_char(c.period_from, 'YYYY-MM-DD') as period_from, to_char(c.period_to, 'YYYY-MM-DD') as period_to, c.answer, c.answered_by, c.tool_used, c.language, c.headline, c.branch_id, c.created_at from ai_business_conversations c where c.tenant_id = ${ctx.tenantId} and ${w}
       order by c.created_at desc, c.id desc limit ${limit} offset ${(page - 1) * limit}`.execute(this.db)).rows;
     return { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)), retentionDays: 365,
       items: rows.map((r) => ({ id: String(r.id), question: r.question, intent: r.intent, preset: r.preset, period: r.period_from ? { from: String(r.period_from), to: String(r.period_to) } : null,
-        answer: r.answer, answeredBy: r.answered_by, at: iso(r.created_at) })) };
+        answer: r.answer, answeredBy: r.answered_by, at: iso(r.created_at),
+        // round 10 — History Provenance (row 13): the stored record is never edited (no update path; only its owner may delete it);
+        // each entry names the tool and report sources it stood on, the figures kept with it and its language
+        provenance: { recordId: String(r.id), toolUsed: r.tool_used ?? null, sources: r.intent ? [...(ANSWER_SOURCES[String(r.intent)] ?? [])] : [], language: r.language ?? null,
+          branchId: r.branch_id ? String(r.branch_id) : null, headline: (r.headline && typeof r.headline === 'object' ? r.headline : {}) as Record<string, number>, visibleTo: 'asker_only' as const, editable: false as const } })) };
   }
   async remove(ctx: AiBusinessContext, id: string) {
     if (!isUuid(id)) throw new AssistantExtrasError('Not found.', 'NOT_FOUND', 404);
@@ -179,4 +183,54 @@ export async function checkBusinessData(db: Kysely<any>, ctx: AiBusinessContext,
   const row = (await sql<Row>`insert into ai_business_health_runs (tenant_id, branch_id, area, actor_user_id, overall, checks) values (${T}, ${B}, 'assistant', ${isUuid(ctx.userId) ? ctx.userId : null}, ${overall}, ${JSON.stringify(checks)}::jsonb)
     returning id, created_at`.execute(db)).rows[0];
   return { id: String(row.id), overall, checks, checkedAt: iso(row.created_at), reused: false, changesAnything: false };
+}
+
+// ── Answer Trust Bar (Extras · AI Business Assistant 01 / 07 / 11 / 13 — round 10) ─────────────────────────────────
+/** Which report sources each answer stands on (a fixed map over the tools — nothing guessed per answer). */
+export const ANSWER_SOURCES: Record<string, readonly string[]> = {
+  daily_summary: ['sales', 'appointments'], revenue_summary: ['sales'], explain_revenue: ['sales'], appointments: ['appointments'],
+  compare_branches: ['sales', 'appointments', 'branches'], customer_growth: ['customers'], technician_performance: ['technicians', 'sales'],
+  profit_expenses: ['sales', 'expenses'], growth_advice: ['customers', 'appointments', 'sales'], find_record: ['customers', 'tickets'],
+};
+const SOURCE_PERMISSION: Record<string, string> = { expenses: 'owner.expenses.view', customers: 'pos.customers.view', tickets: 'pos.checkout.view' };
+/** event lag older than this (seconds) marks the answer's data as possibly stale */
+export const EVENT_LAG_STALE_SECONDS = 15 * 60;
+export interface AnswerTrust {
+  answeredAt: string; period: { from: string; to: string; timeZone: string } | null; branchId: string | null;
+  sources: { key: string; included: boolean; reason: 'included' | 'no_permission' | 'no_data' }[];
+  lastCheck: { overall: string; checkedAt: string; warnings: string[] } | null;
+  pending: { openTickets: number; expensesWaiting: number | null; eventsWaiting: number; oldestEventLagSeconds: number | null };
+  stale: boolean; staleReasons: string[]; changesAnything: false;
+}
+/** Computed from REAL rows only (the last recorded Check Business Data run, open tickets in the period, expenses waiting for
+ *  review, undelivered outbox events) — never a made-up score. Read-only: it writes nothing. */
+export async function answerTrust(db: Kysely<any>, ctx: AiBusinessContext, intent: string | null, preset: string, structured: unknown, now: Date = new Date()): Promise<AnswerTrust> {
+  const T = ctx.tenantId, B = branchOf(ctx);
+  const period = intent ? await periodOf(db, ctx, preset, now) : null;
+  const s = (structured ?? null) as Record<string, unknown> | null;
+  const empty = s == null || (typeof s === 'object' && Object.keys(s).length === 0);
+  const sources = (intent ? ANSWER_SOURCES[intent] ?? [] : []).map((key) => {
+    const perm = SOURCE_PERMISSION[key];
+    if (perm && !has(ctx, perm)) return { key, included: false, reason: 'no_permission' as const };
+    if (key === 'expenses' && (s as { expensesCents?: unknown } | null)?.expensesCents == null) return { key, included: false, reason: 'no_data' as const };
+    return { key, included: !empty, reason: empty ? 'no_data' as const : 'included' as const };
+  });
+  const lc = (await sql<Row>`select r.overall, r.checks, r.created_at from ai_business_health_runs r where r.tenant_id = ${T} and r.area = 'assistant' and r.branch_id is not distinct from ${B}
+    order by r.created_at desc limit 1`.execute(db)).rows[0];
+  const lastCheck = lc ? { overall: String(lc.overall), checkedAt: iso(lc.created_at)!, warnings: (Array.isArray(lc.checks) ? lc.checks : []).filter((c: Row) => c.state !== 'PASSED').map((c: Row) => String(c.key)) } : null;
+  const p = period;
+  const open = p ? (await sql<Row>`select count(*)::int as n from tickets t where t.tenant_id = ${T} and t.paid_at is null
+    and t.status not in ('paid', 'closed', 'refunded', 'partially_refunded', 'voided', 'void', 'cancelled')
+    and (t.created_at at time zone ${p.timeZone})::date between ${p.from}::date and ${p.to}::date ${B ? sql`and t.branch_id = ${B}::uuid` : sql``}`.execute(db)).rows[0] : null;
+  const exp = p && has(ctx, 'owner.expenses.view') ? (await sql<Row>`select count(*)::int as n from expenses e where e.tenant_id = ${T} and e.status in ('draft', 'pending_review') and e.archived_at is null
+    and e.incurred_on between ${p.from}::date and ${p.to}::date ${B ? sql`and e.branch_id = ${B}::uuid` : sql``}`.execute(db)).rows[0] : null;
+  const ev = (await sql<Row>`select count(*)::int as n, min(o.occurred_at) as oldest from outbox_events o where o.tenant_id = ${T} and o.publish_status in ('pending', 'claimed', 'failed')`.execute(db)).rows[0];
+  const lag = ev?.oldest ? Math.max(0, Math.round((now.getTime() - new Date(ev.oldest as string).getTime()) / 1000)) : null;
+  const staleReasons: string[] = [];
+  if (lag != null && lag > EVENT_LAG_STALE_SECONDS) staleReasons.push('event_lag');
+  if (lastCheck && lastCheck.overall === 'FAILED') staleReasons.push('check_failed');
+  if (sources.some((x) => x.reason === 'no_data')) staleReasons.push('source_missing');
+  return { answeredAt: now.toISOString(), period: p, branchId: B, sources, lastCheck,
+    pending: { openTickets: Number(open?.n ?? 0), expensesWaiting: exp ? Number(exp.n ?? 0) : null, eventsWaiting: Number(ev?.n ?? 0), oldestEventLagSeconds: lag },
+    stale: staleReasons.length > 0, staleReasons, changesAnything: false };
 }

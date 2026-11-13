@@ -86,6 +86,8 @@ export function AssistantHistory({ tick, onReplay }: { tick: number; onReplay: (
           <li key={h.id} data-testid="aib-h-row" style={{ borderBottom: '1px solid var(--line)', padding: '6px 0' }}>
             <b>{h.question || t('aib.h.topic.' + (h.intent ?? 'none'))}</b> <span className="sub">· {h.period ? `${h.period.from} – ${h.period.to}` : h.preset ? t('bzx.period.' + h.preset) : ''} · {h.at ? fmtInZone(h.at, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span>
             {h.answer ? <div className="sub" style={{ whiteSpace: 'pre-wrap' }}>{h.answer.length > 280 ? h.answer.slice(0, 280) + '…' : h.answer}</div> : null}
+            {h.provenance ? <div className="sub" data-testid="aib-h-prov" style={{ fontSize: 11 }}>{t('aib.prov.title')} {h.provenance.recordId.slice(0, 8)} · {h.provenance.toolUsed ? t('aib.prov.tool', { tool: h.provenance.toolUsed }) : '—'}
+              {h.provenance.sources?.length ? ` · ${h.provenance.sources.map((x: string) => t('aib.trust.src.' + x)).join(', ')}` : ''} · {t('aib.prov.private')}</div> : null}
             <div className="rvw-actions">
               {h.intent ? <button type="button" className="btn ghost" data-testid="aib-h-replay" onClick={() => onReplay(h)}>{t('aib.h.again')}</button> : null}
               <button type="button" className="btn ghost" data-testid="aib-h-delete" disabled={busy} onClick={() => remove(h.id)}>{t('pos.delete')}</button>
@@ -93,6 +95,48 @@ export function AssistantHistory({ tick, onReplay }: { tick: number; onReplay: (
           </li>))}</ul>)}
       {list ? <Pager info={{ page: list.page, pageSize: list.limit, totalItems: list.total, totalPages: list.totalPages }} onPage={(p) => setF({ ...f, page: p })} /> : null}
       <div className="sub">{t('aib.h.note', { n: list?.retentionDays ?? 365 })}</div>
+    </section>
+  );
+}
+
+/** Answer Trust Bar (Extras · AI Business Assistant 01 · 02 · 07 · 11 — round 10): what this answer stands on, from the
+ *  server's answerTrust (the last recorded Check Business Data run, report sources included / not permitted / empty, open
+ *  tickets and expenses still waiting in the period, undelivered events). Nothing here is a score; nothing is changed. */
+export type AibTrust = {
+  answeredAt: string; period: { from: string; to: string; timeZone: string } | null; branchId: string | null;
+  sources: { key: string; included: boolean; reason: 'included' | 'no_permission' | 'no_data' }[];
+  lastCheck: { overall: string; checkedAt: string; warnings: string[] } | null;
+  pending: { openTickets: number; expensesWaiting: number | null; eventsWaiting: number; oldestEventLagSeconds: number | null };
+  stale: boolean; staleReasons: string[];
+};
+/** the supporting report opened on the SAME days the answer used (custom From–To); the location is the session's own */
+export function scopedDrilldown(route: string, trust: AibTrust | null | undefined): string {
+  if (!trust?.period) return route;
+  const sep = route.includes('?') ? '&' : '?';
+  return `${route}${sep}preset=custom&from=${encodeURIComponent(trust.period.from)}&to=${encodeURIComponent(trust.period.to)}`;
+}
+export function TrustBar({ trust, onRefresh, onWiderPeriod }: { trust: AibTrust; onRefresh: () => void; onWiderPeriod: () => void }) {
+  const lagMin = trust.pending.oldestEventLagSeconds == null ? null : Math.round(trust.pending.oldestEventLagSeconds / 60);
+  const missing = trust.sources.filter((s) => s.reason === 'no_data');
+  const denied = trust.sources.filter((s) => s.reason === 'no_permission');
+  return (
+    <section className="panel sub" style={{ marginTop: 12, padding: 12 }} data-testid="aib-trust">
+      <div className="p-h" style={{ padding: 0, marginBottom: 6 }}>{t('aib.trust.title')}</div>
+      <dl className="aifu-dl">
+        <dt>{t('aib.trust.answered')}</dt><dd>{fmtInZone(trust.answeredAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{trust.period ? ` · ${trust.period.from} – ${trust.period.to}` : ''}</dd>
+        <dt>{t('aib.trust.check')}</dt><dd data-testid="aib-trust-check">{trust.lastCheck ? t('aib.trust.checkAt', { s: t('aib.trust.state.' + trust.lastCheck.overall), at: fmtInZone(trust.lastCheck.checkedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }) : t('aib.trust.noCheck')}</dd>
+        <dt>{t('aib.trust.sources')}</dt><dd data-testid="aib-trust-sources">{trust.sources.length ? trust.sources.map((s) => `${t('aib.trust.src.' + s.key)} (${t('aib.trust.reason.' + s.reason)})`).join(' · ') : '—'}</dd>
+        <dt>{t('aib.trust.pending')}</dt><dd data-testid="aib-trust-pending">{t('aib.trust.openTickets', { n: fmtNumber(trust.pending.openTickets) })}
+          {trust.pending.expensesWaiting != null ? ` · ${t('aib.trust.expensesWaiting', { n: fmtNumber(trust.pending.expensesWaiting) })}` : ''}
+          {` · ${t('aib.trust.events', { n: fmtNumber(trust.pending.eventsWaiting) })}`}{lagMin != null ? ` · ${t('aib.trust.lag', { n: fmtNumber(lagMin) })}` : ''}</dd>
+      </dl>
+      {trust.stale ? (
+        <div className="err" role="status" data-testid="aib-trust-stale">
+          {trust.staleReasons.map((r) => t('aib.trust.stale.' + r)).join(' ')}{' '}
+          <button type="button" className="btn ghost" data-testid="aib-trust-refresh" onClick={onRefresh}>{t('aib.retry')}</button>
+        </div>) : null}
+      {missing.length ? <div data-testid="aib-empty-nodata">{t('aib.empty.noData')} <button type="button" className="btn ghost" data-testid="aib-empty-wider" onClick={onWiderPeriod}>{t('aib.empty.wider')}</button></div> : null}
+      {denied.length ? <div data-testid="aib-empty-denied">{t('aib.empty.denied')}</div> : null}
     </section>
   );
 }

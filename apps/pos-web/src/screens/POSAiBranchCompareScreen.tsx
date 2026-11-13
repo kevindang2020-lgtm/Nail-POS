@@ -23,6 +23,8 @@ type Row = {
   netSalesCents: number | null; averageTicketCents: number | null; ticketsCount: number | null;
   totalBookings: number; completed: number; cancelledPercent: number; noShowPercent: number;
   revenuePerCompletedAppointmentCents: number | null; completionRate: number | null;
+  /** round 10 (AI Business Assistant 09): recorded shift time — the server's per-staffed-hour figures (N/A without staffed time) */
+  staffing?: { technicianCount: number; staffMinutes: number; openShifts: number; netSalesPerStaffHourCents: number | null; completedPer10StaffHours: number | null };
 };
 type Comparison = {
   preset: string; range: { from: string; to: string } | null; asOf: string; partialCurrentPeriod: boolean; financialsIncluded: boolean;
@@ -182,7 +184,13 @@ export function POSAiBranchCompareScreen() {
           {/* AI Business Assistant 09: share of the salon totals with the denominators shown — a bigger branch naturally has bigger totals */}
           <tr data-testid="bcx-share-net"><td>{bt('bcx.fair.shareNet')}</td><td className="num">{!fin ? '—' : (() => { const v = branchShare(open.netSalesCents, T?.netSalesCents); return v == null ? bt('bcx.na') : bt('bcx.fair.ofTotal', { pct: String(v), total: money(T?.netSalesCents) }); })()}</td></tr>
           <tr data-testid="bcx-share-bookings"><td>{bt('bcx.fair.shareBookings')}</td><td className="num">{(() => { const v = branchShare(open.totalBookings, T?.totalBookings); return v == null ? bt('bcx.na') : bt('bcx.fair.ofCount', { pct: String(v), n: bzNum(open.totalBookings), total: bzNum(T?.totalBookings ?? 0) }); })()}</td></tr>
+          {open.staffing ? <>
+            <tr data-testid="bcx-staff-hours"><td>{bt('bcx.fair.staffHours')}</td><td className="num">{bt('bcx.fair.staffHoursV', { h: bzNum(Math.round(open.staffing.staffMinutes / 6) / 10), n: bzNum(open.staffing.technicianCount) })}{open.staffing.openShifts ? ` · ${bt('bcx.fair.openShifts', { n: bzNum(open.staffing.openShifts) })}` : ''}</td></tr>
+            <tr data-testid="bcx-per-staff-hour"><td>{bt('bcx.fair.netPerHour')}</td><td className="num">{!fin ? '—' : open.staffing.netSalesPerStaffHourCents == null ? bt('bcx.na') : money(open.staffing.netSalesPerStaffHourCents)}</td></tr>
+            <tr data-testid="bcx-done-per-hours"><td>{bt('bcx.fair.donePer10')}</td><td className="num">{open.staffing.completedPer10StaffHours == null ? bt('bcx.na') : bzNum(open.staffing.completedPer10StaffHours)}</td></tr>
+          </> : null}
         </tbody></table>
+        {open.staffing ? <p className="sub" data-testid="bcx-staff-note">{bt('bcx.fair.staffNote')}</p> : null}
         <p className="sub" data-testid="bcx-fair-note">{bt('bcx.fair.note', { n: bzNum(T?.branches ?? 0) })}</p>
         <p className="sub">{bt('bcx.d.note')}</p>
       </FitDialog> : null}

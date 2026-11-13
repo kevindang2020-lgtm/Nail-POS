@@ -55,6 +55,7 @@ export interface AskResult {
   usage?: unknown;
   language?: 'en' | 'vi';           // Vietnamese POS §120: the language `answer` was asked in (the reader's POS language)
   conversationId?: string | null;   // A4 (Nov 6 2026): the stored history row
+  trust?: unknown;                  // round 10: Answer Trust Bar (answerTrust) — real checks only, read-only
   records?: { customers: number; tickets: number };   // A4: a record search's counts (the rows are in `structured`)
 }
 
@@ -64,6 +65,8 @@ export interface AssistantExtras {
   searchRecords?: (ctx: AiBusinessContext, question: string) => Promise<unknown>;
   profitAndExpenses?: (ctx: AiBusinessContext, preset: string, netSalesCents: number) => Promise<unknown>;
   periodOf?: (ctx: AiBusinessContext, preset: string) => Promise<{ from: string; to: string }>;
+  /** round 10 — Answer Trust Bar: last check, source coverage, pending reconciliation, event lag (ai-business-assistant-extras answerTrust) */
+  trust?: (ctx: AiBusinessContext, intent: string | null, preset: string, structured: unknown) => Promise<unknown>;
 }
 
 const PACKAGE = 'ai_business_assistant';
@@ -132,6 +135,7 @@ export class AiBusinessAssistantService {
       ctx = { ...ctx0, range }; params = { ...params0, preset: 'custom' };
     }
     const out = await this.answer(ctx, params);
+    if (this.extras.trust && !out.needsClarification) out.trust = await this.extras.trust(ctx, out.intent, params.preset ?? 'today', out.structured);
     if (this.extras.history) {
       const period = out.needsClarification ? null : params.preset === 'custom' && ctx.range ? ctx.range : this.extras.periodOf ? await this.extras.periodOf(ctx, params.preset ?? 'today') : null;
       out.conversationId = await this.extras.history.record(ctx, { question: params.question ?? null, intent: out.intent, toolUsed: out.toolUsed, preset: params.preset ?? null, period,

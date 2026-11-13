@@ -193,4 +193,48 @@ describe('POSAiBusinessScreen', () => {
     renderScreen();
     expect((await screen.findByTestId('aib-composer') as HTMLTextAreaElement).value).toBe('Why were Tuesdays slow?');
   });
+
+  it('round 10 (rows 01 · 02 · 07 · 11): the trust bar shows the last check, sources, what is still settling; stale → Retry asks again; the report opens on the same days', async () => {
+    const trust = { answeredAt: '2026-11-05T15:00:00Z', period: { from: '2026-11-01', to: '2026-11-05', timeZone: 'UTC' }, branchId: null,
+      sources: [{ key: 'sales', included: true, reason: 'included' }, { key: 'expenses', included: false, reason: 'no_permission' }],
+      lastCheck: { overall: 'FAILED', checkedAt: '2026-11-05T14:00:00Z', warnings: ['sales_report'] },
+      pending: { openTickets: 2, expensesWaiting: null, eventsWaiting: 3, oldestEventLagSeconds: 1200 }, stale: true, staleReasons: ['event_lag', 'check_failed'] };
+    askMock.mockResolvedValue({ ok: true, needsClarification: false, intent: 'revenue_summary', toolUsed: 'get_revenue_summary', answer: 'Net sales steady.',
+      structured: { netSalesCents: 84200, evidence: { drilldownRoute: '/tenant/reports/sales' } }, access: { allowed: true }, trust });
+    renderScreen();
+    fireEvent.click(screen.getByText('Revenue summary'));
+    await screen.findByTestId('aib-trust');
+    expect(screen.getByTestId('aib-trust-check').textContent).toMatch(/^Failed at /);
+    expect(screen.getByTestId('aib-trust-sources').textContent).toBe('Sales Report (included) · Expenses (not included — your role cannot see it)');
+    expect(screen.getByTestId('aib-trust-pending').textContent).toBe('2 open tickets not paid yet · 3 updates not delivered yet · oldest 20 min');
+    expect(screen.getByTestId('aib-trust-stale').textContent).toMatch(/updates are late.*last data check failed/);
+    expect(screen.getByTestId('aib-empty-denied')).toBeInTheDocument();
+    expect(screen.getByTestId('aib-drill').getAttribute('href')).toBe('/tenant/reports/sales?preset=custom&from=2026-11-01&to=2026-11-05');
+    fireEvent.click(screen.getByTestId('aib-trust-refresh'));
+    await waitFor(() => expect(askMock).toHaveBeenCalledTimes(2));
+    expect(askMock).toHaveBeenLastCalledWith({ intent: 'revenue_summary', preset: 'today' });
+  });
+  it('round 10 (row 11): no records → explains and offers the last 30 days; a 403 explains the role limit and the next step', async () => {
+    const trust = { answeredAt: '2026-11-05T15:00:00Z', period: null, branchId: null, sources: [{ key: 'customers', included: false, reason: 'no_data' }], lastCheck: null,
+      pending: { openTickets: 0, expensesWaiting: null, eventsWaiting: 0, oldestEventLagSeconds: null }, stale: true, staleReasons: ['source_missing'] };
+    askMock.mockResolvedValueOnce({ ok: true, needsClarification: false, intent: 'customer_growth', toolUsed: 'x', answer: 'Nothing yet.', structured: {}, access: { allowed: true }, trust })
+      .mockResolvedValueOnce({ ok: true, needsClarification: false, intent: 'customer_growth', toolUsed: 'x', answer: 'Thirty days.', structured: {}, access: { allowed: true } })
+      .mockRejectedValueOnce(Object.assign(new Error('Forbidden'), { status: 403 }));
+    renderScreen();
+    fireEvent.click(screen.getByText('Customer growth'));
+    await screen.findByTestId('aib-empty-nodata');
+    expect(screen.getByTestId('aib-trust-check').textContent).toMatch(/No data check recorded yet/);
+    fireEvent.click(screen.getByTestId('aib-empty-wider'));
+    await screen.findByText('Thirty days.');
+    expect(askMock).toHaveBeenLastCalledWith({ intent: 'customer_growth', preset: 'last30' });
+    fireEvent.click(screen.getByText('Technician performance'));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/do not have permission.*Pick another question, or ask an owner or manager/);
+  });
+  it('round 10 (row 13): a history entry shows its record id, the tool and sources it stood on, and that it is private and never edited', async () => {
+    center.assistantHistory.mockResolvedValue({ page: 1, limit: 10, total: 1, totalPages: 1, retentionDays: 365,
+      items: [{ id: 'abcdef12-0000', question: 'Revenue?', intent: 'revenue_summary', preset: 'today', period: null, answer: 'Up.', answeredBy: 'ai', at: '2026-11-06T15:00:00Z',
+        provenance: { recordId: 'abcdef12-0000', toolUsed: 'get_revenue_summary', sources: ['sales'], language: 'en', branchId: null, headline: {}, visibleTo: 'asker_only', editable: false } }] });
+    renderScreen();
+    expect((await screen.findByTestId('aib-h-prov')).textContent).toBe('Record abcdef12 · Answered by tool get_revenue_summary · Sales Report · Only you can see this record; it is never edited.');
+  });
 });
