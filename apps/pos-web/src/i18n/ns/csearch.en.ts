@@ -603,4 +603,10 @@ export const CSEARCH_EN: Record<string, string> = {
   "cnx.src.set": "Set source",
   "cnx.err.CUSTOMER_NOTES_INVALID_SOURCE": "Choose a note and where it came from.",
   "cnx.err.CUSTOMER_NOTES_REFERENCE_REQUIRED": "Name the source that confirmed it.",
+  "cnx.pr.title": "Possibly stale or conflicting preferences — please review:",
+  "cnx.pr.technician_inactive": "Preferred technician {tech} is {status} at this salon",
+  "cnx.pr.technician_differs_from_profile": "The note names a different technician than the profile ({profile})",
+  "cnx.pr.notes_older_than_visits": "These notes were last updated {notes}, over a year before the latest visit ({visit})",
+  "cnx.pr.status.archived": "archived",
+  "cnx.pr.status.inactive": "inactive",
 };

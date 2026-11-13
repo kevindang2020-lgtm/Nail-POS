@@ -55,6 +55,8 @@ export interface CustomersRepositoryPort {
   tickets(ctx: CustomersContext, id: string): Promise<CustomerTicketRow[] | null>;
   receipts(ctx: CustomersContext, id: string): Promise<CustomerReceiptRow[] | null>;
   getNotes(ctx: CustomersContext, id: string): Promise<CustomerNotes | null>;
+  /** extras Customer Notes 6 · 02: stale / conflicting preferences with evidence (Postgres adapter; absent in memory) */
+  notesPreferenceReview?(ctx: CustomersContext, id: string, notes: CustomerNotes): Promise<import('./customers.dto').CustomerNotesPreferenceFlag[]>;
   setNotes(ctx: CustomersContext, id: string, n: CustomerNotes): Promise<CustomerNotes | null>;
   getTags(ctx: CustomersContext, id: string): Promise<string[] | null>;
   setTags(ctx: CustomersContext, id: string, t: string[]): Promise<string[] | null>;

@@ -18,6 +18,8 @@ export const posCustomersApi = {
   getDetail: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}`),
   appointments: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}/appointments`),
   getNotes: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}/notes`),
+  /** extras Customer Notes 6 · 02: stale / conflicting preferences with evidence (read only, server-computed) */
+  notesReview: (customerId: string) => api.get<{ customerId: string; flags: { code: string; field: string; evidence: Record<string, string | null> }[]; checked: boolean }>(`/pos/customers/${enc(customerId)}/notes/review`),
   setNotes: (customerId: string, notes: Record<string, unknown>) => api.patch(`/pos/customers/${enc(customerId)}/notes`, notes),
   setTags: (customerId: string, tags: string[]) => api.patch(`/pos/customers/${enc(customerId)}/tags`, { tags }),
   getLoyaltyLedger: (customerId: string) => api.get<any[]>(`/pos/customers/${enc(customerId)}/loyalty-ledger`),

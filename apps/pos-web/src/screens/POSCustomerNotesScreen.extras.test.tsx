@@ -5,7 +5,9 @@ vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: {
   quickSearch: vi.fn(async () => ({ items: [{ customerId: 'c1', fullName: 'Grace Kim', phone: '', visitsCount: 2 }] })),
   getNotes: vi.fn(async () => ({ salonNotes: 'Likes almond shape', preferredStyle: 'Prefers nude tones' })),
   setNotes: vi.fn(),
+  notesReview: vi.fn(async () => ({ customerId: 'c1', flags: [], checked: true })),
 } }));
+import { posCustomersApi } from '../api/posCustomersApi';
 import { POSCustomerNotesScreen, applyQuickNote, noteConflicts } from './POSCustomerNotesScreen';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -90,5 +92,27 @@ describe('conflicting preferences (extras Customer Notes 6 · 02)', () => {
     const row = await screen.findByTestId('cnx-pref-conflict-row');
     expect(row).toHaveTextContent('Shape: Almond (Preferred Style) · Square (Service Preferences)');
     expect(screen.getByTestId('cnx-ed-servicePreferences')).toHaveValue('Square tips');
+  });
+});
+
+// extras Customer Notes 6 · 02 (round 10): the server's stale / conflicting preference review is shown in the editor with its evidence
+describe('stale / conflicting preference review (round 10)', () => {
+  it('lists each server flag with its evidence; none → no panel', async () => {
+    (posCustomersApi.notesReview as any).mockResolvedValueOnce({ customerId: 'c1', checked: true, flags: [
+      { code: 'technician_inactive', field: 'preferredTechnician', evidence: { note: 'Only Old Timer', technician: 'Old Timer', status: 'archived' } },
+      { code: 'technician_differs_from_profile', field: 'preferredTechnician', evidence: { note: 'Only Old Timer', profileTechnician: 'Mia Chen' } },
+      { code: 'notes_older_than_visits', field: 'notes', evidence: { notesUpdatedAt: '2025-01-05T10:00:00.000Z', lastVisitAt: '2026-11-01T10:00:00.000Z' } }] });
+    await openGrace();
+    const box = await screen.findByTestId('cnx-pref-review');
+    expect(posCustomersApi.notesReview).toHaveBeenCalledWith('c1');
+    expect(screen.getByTestId('cnx-pref-review-technician_inactive').textContent).toBe('Preferred technician Old Timer is archived at this salon — “Only Old Timer”');
+    expect(screen.getByTestId('cnx-pref-review-technician_differs_from_profile').textContent).toContain('different technician than the profile (Mia Chen)');
+    expect(screen.getByTestId('cnx-pref-review-notes_older_than_visits').textContent).toMatch(/last updated .*2025.*over a year before the latest visit/);
+    expect(box.textContent).toContain('Possibly stale or conflicting preferences');
+  });
+  it('no flags → nothing shown', async () => {
+    await openGrace();
+    await waitFor(() => expect(posCustomersApi.notesReview).toHaveBeenCalled());
+    expect(screen.queryByTestId('cnx-pref-review')).toBeNull();
   });
 });

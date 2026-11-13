@@ -18,7 +18,7 @@ import type { CustomersContext, CustomersRepositoryPort, CustomerFollowUpIndicat
 import {
   POSCustomersFullState, POSCustomerRow, POSCustomerDetail, buildCustomersAnalytics, CustomerFilters, CustomerListItem, CustomerListResponse,
   CustomerSource, DuplicateRisk, CustomerVisitRow, CustomerAppointmentRow, CustomerTicketRow, CustomerReceiptRow,
-  CustomerNotes, CustomerLoyalty, CustomerMembership, DuplicateGroup, CreateCustomerRequest,
+  CustomerNotes, CustomerNotesPreferenceFlag, CustomerLoyalty, CustomerMembership, DuplicateGroup, CreateCustomerRequest,
   EditCustomerRequest, CustomerKpis, POSCustomersKpisFull, Pagination, detectDuplicates, BulkCustomerInsert, BulkCustomerUpdate, CustomerVersionConflict } from './customers.dto';
 import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
@@ -43,6 +43,8 @@ const apptServiceName = (services: any): string => {
   const first = (arr && arr[0]) || {};
   return first.serviceName || first.name || '';
 };
+/** extras Customer Notes 6 · 02: notes last updated this many days before the latest paid visit are flagged as possibly stale */
+const NOTES_STALE_DAYS = 365;
 const defNotes = (salon = ''): CustomerNotes => ({ salonNotes: salon, allergyNotes: '', preferredStyle: '', preferredTechnician: '', servicePreferences: '', warnings: '', customerVisible: false });
 const defLoyalty = (points: number, tier: string): CustomerLoyalty => ({ points, earned: points, redeemed: 0, tier, tierThresholdPoints: 500, birthdayReward: true, referralReward: true });
 const defMembership = (): CustomerMembership => ({ plan: 'None', status: 'none', benefits: [], billingStatus: 'n/a' });
@@ -682,6 +684,33 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     if (json && typeof json === 'object') return { ...defNotes(''), ...json };
     const safeParse = (v: any) => { if (typeof v === 'string') { try { return JSON.parse(v).join(', '); } catch { return ''; } } if (Array.isArray(v)) return v.join(', '); return ''; };
     return { ...defNotes(row.notes || ''), warnings: row.safety_notes || '', preferredStyle: pref?.preferred_style_notes || '', favoriteProducts: safeParse(pref?.product_preferences_json), preferredNailShapeColor: safeParse(pref?.favorite_colors_json) };
+  }
+  /** extras Customer Notes 6 · 02 (round 10): stale / conflicting preferences with their source evidence — read only. The
+   *  technicians named in the Preferred technician note are matched by full name (case and accents ignored) against this
+   *  salon's technicians; the dates are the notes' own notes_updated_at and the latest paid visit. */
+  async notesPreferenceReview(ctx: CustomersContext, id: string, notes: CustomerNotes): Promise<CustomerNotesPreferenceFlag[]> {
+    const out: CustomerNotesPreferenceFlag[] = [];
+    const fold = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
+    const c = (await sql<{ preferred_technician_id: string | null; notes_updated_at: string | Date | null; pref_name: string | null; last_visit: string | Date | null }>`
+      select cu.preferred_technician_id, cu.notes_updated_at, pt.full_name as pref_name,
+        (select max(tk.paid_at) from tickets tk where tk.tenant_id = cu.tenant_id and tk.customer_id = cu.id and tk.paid_at is not null and tk.removed_at is null) as last_visit
+      from customers cu left join technicians pt on pt.id = cu.preferred_technician_id and pt.tenant_id = cu.tenant_id
+      where cu.tenant_id = ${ctx.tenantId} and cu.id = ${id}`.execute(this.db)).rows[0];
+    if (!c) return out;
+    const text = fold(notes.preferredTechnician);
+    if (text) {
+      const techs = (await sql<{ id: string; full_name: string | null; status: string | null; is_active: boolean | null; archived_at: string | Date | null }>`
+        select te.id, te.full_name, te.status, te.is_active, te.archived_at from technicians te where te.tenant_id = ${ctx.tenantId} and coalesce(te.full_name, '') <> ''`.execute(this.db)).rows;
+      const named = techs.filter((te) => { const nm = fold(te.full_name); return nm.length >= 3 && new RegExp(`(^|[^a-z0-9])${nm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`).test(text); });
+      for (const te of named) if (te.archived_at != null || te.is_active === false || te.status === 'archived' || te.status === 'inactive')
+        out.push({ code: 'technician_inactive', field: 'preferredTechnician', evidence: { note: notes.preferredTechnician, technician: te.full_name, status: te.archived_at != null ? 'archived' : String(te.status ?? 'inactive') } });
+      if (c.preferred_technician_id && named.length && !named.some((te) => String(te.id) === String(c.preferred_technician_id)))
+        out.push({ code: 'technician_differs_from_profile', field: 'preferredTechnician', evidence: { note: notes.preferredTechnician, profileTechnician: c.pref_name ?? null } });
+    }
+    const isoOrNull = (v: string | Date | null) => (v == null ? null : new Date(v).toISOString());
+    if (c.notes_updated_at && c.last_visit && new Date(c.last_visit).getTime() - new Date(c.notes_updated_at).getTime() > NOTES_STALE_DAYS * 86_400_000)
+      out.push({ code: 'notes_older_than_visits', field: 'notes', evidence: { notesUpdatedAt: isoOrNull(c.notes_updated_at), lastVisitAt: isoOrNull(c.last_visit) } });
+    return out;
   }
   async setNotes(ctx: CustomersContext, id: string, n: CustomerNotes): Promise<CustomerNotes | null> {
     // Persist the complete object in notes_json; mirror salonNotes + warnings to the legacy columns so

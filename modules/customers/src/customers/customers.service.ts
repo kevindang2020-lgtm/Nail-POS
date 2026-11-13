@@ -20,6 +20,7 @@ import type { AuditService } from '@aipowersalon/audit';
 
 export class ForbiddenError extends Error { constructor(msg = 'Forbidden') { super(msg); this.name = 'ForbiddenError'; } }
 import { normalizeCustomerLanguage, withCode } from '@aipowersalon/api-contracts';
+import type { CustomerNotesReviewResponse } from '@aipowersalon/api-contracts/tenant';
 /** detail (Vietnamese POS §2 / §21 / §58, Oct 27 2026 — additive): a stable code / field / rule / params beside the English
  *  message, so the POS words it in the cashier's language (ns/errors) — the message stays the English fallback. */
 export interface ValidationDetail { code?: string; field?: string; rule?: string; params?: Record<string, string | number> }
@@ -209,6 +210,12 @@ export class CustomersService {
 
   // ---- notes (sensitive — separate view/edit permissions) + tags ----
   async getNotes(ctx: CustomersContext, id: string): Promise<CustomerNotes> { this.need(ctx, 'pos.customers.notes.view'); return this.mustFind(await this.repo.getNotes(ctx, id)); }
+  /** extras Customer Notes 6 · 02 (round 10): stale / conflicting preferences of these notes, with evidence — read only, a separate
+   *  read so every screen that saves the notes object back keeps sending exactly the stored fields */
+  async notesReview(ctx: CustomersContext, id: string): Promise<CustomerNotesReviewResponse> {
+    this.need(ctx, 'pos.customers.notes.view'); const n = this.mustFind(await this.repo.getNotes(ctx, id));
+    return { customerId: id, flags: this.repo.notesPreferenceReview ? await this.repo.notesPreferenceReview(ctx, id, n) : [], checked: !!this.repo.notesPreferenceReview };
+  }
   async setNotes(ctx: CustomersContext, id: string, n: CustomerNotes): Promise<CustomerNotes> { this.need(ctx, 'pos.customers.notes.edit'); const out = this.mustFind(await this.repo.setNotes(ctx, id, n)); this.log(ctx, 'pos_customer_notes_updated', 'pos_customer_notes', id); return out; }
   async getTags(ctx: CustomersContext, id: string): Promise<string[]> { this.need(ctx, 'pos.customers.view'); return this.mustFind(await this.repo.getTags(ctx, id)); }
   async setTags(ctx: CustomersContext, id: string, t: string[]): Promise<string[]> { this.need(ctx, 'pos.customers.edit'); const out = this.mustFind(await this.repo.setTags(ctx, id, t)); this.log(ctx, 'pos_customer_tags_updated', 'pos_customer_tags', id, undefined, undefined, { count: t.length }); return out; }

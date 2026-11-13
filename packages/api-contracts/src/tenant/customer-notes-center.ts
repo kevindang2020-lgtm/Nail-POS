@@ -74,3 +74,11 @@ export interface AhCheckResponse {
   checks: { key: string; state: 'READY' | 'WARNING' | 'FAILED'; count?: number }[];
 }
 export interface AhOptionsResponse { technicians: { id: string; name: string }[]; statuses: readonly string[]; dateFields: readonly string[]; sorts: readonly string[]; pageSizes: readonly number[] }
+
+// ── extras Customer Notes 6 · 02 (round 10) — stale / conflicting preference detection (GET pos/customers/:customerId/notes/review,
+//    pos.customers.notes.view). Read only: each flag is for a person to review, with its source evidence; nothing is changed.
+//    technician_inactive: the Preferred technician note names a technician who is archived / inactive here;
+//    technician_differs_from_profile: the note names a technician but the profile's preferred technician is someone else;
+//    notes_older_than_visits: the notes were last updated more than a year before the customer's latest paid visit.
+export interface CustomerNotesPreferenceFlag { code: 'technician_inactive' | 'technician_differs_from_profile' | 'notes_older_than_visits'; field: 'preferredTechnician' | 'notes'; evidence: Record<string, string | null> }
+export interface CustomerNotesReviewResponse { customerId: string; flags: CustomerNotesPreferenceFlag[]; checked: boolean }

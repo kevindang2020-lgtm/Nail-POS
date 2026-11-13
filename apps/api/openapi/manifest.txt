@@ -689,6 +689,7 @@ GET /pos/customers/{customerId}/loyalty  realm=staff  auth=session  domain=custo
 GET /pos/customers/{customerId}/loyalty-ledger  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/{customerId}/membership  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/{customerId}/notes  realm=staff  auth=session  domain=customers  perm=pos.customers.notes.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customers/{customerId}/notes/review  realm=staff  auth=session  domain=customers  perm=pos.customers.notes.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/{customerId}/payment-methods  realm=staff  auth=session  domain=payments  perm=pos.customers.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/{customerId}/phone/status  realm=staff  auth=session  domain=identity  perm=pos.customers.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/{customerId}/receipts  realm=staff  auth=session  domain=customers  perm=pos.customers.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
@@ -2008,6 +2009,7 @@ GET /tenant/inventory/counts/{id}  realm=staff  auth=session  domain=inventory  
 GET /tenant/inventory/products  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/products/duplicates  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/products/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/inventory/products/{id}/reorder-draft  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.create  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/products/{id}/stock-preview  realm=staff  auth=session  domain=inventory  perm=inventory.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/purchase-orders  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/inventory/purchase-orders/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
