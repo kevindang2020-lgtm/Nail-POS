@@ -227,4 +227,12 @@ export const REFUNDSVOIDS_VI: Record<string, string> = {
   'rv.rc.ev.ticket_link_missing': 'Chưa gắn với phiếu', // DRAFT — Kevin reviews
   'rv.rc.ev.settlement': 'Lô kết toán', // DRAFT — Kevin reviews
   'rv.rc.ev.waiting_hours': 'Đã chờ', // DRAFT — Kevin reviews
+  'aal.line': 'Người thực hiện: {u} · Tiệm: {s}.', // DRAFT — Kevin reviews
+  'aal.stepUp': 'Cần mã PIN quản lý trước khi tiền được chuyển.', // DRAFT — Kevin reviews
+  'aal.unknownActor': 'người đang đăng nhập', // DRAFT — Kevin reviews
+  'aal.unknownSalon': 'tiệm này (chưa đặt tên)', // DRAFT — Kevin reviews
+  'aal.payoutPaid': 'Đánh dấu khoản chi {a} cho {t} là đã trả ({m}, mã tham chiếu {r}). Khoản này được tính là đã giao tiền và trừ khỏi số còn nợ.', // DRAFT — Kevin reviews
+  'aal.payoutCancel': 'Hủy khoản chi {a} cho {t} ({m}, mã tham chiếu {r}). Số tiền quay lại phần còn nợ.', // DRAFT — Kevin reviews
+  'aal.confirm': 'Xác nhận', // DRAFT — Kevin reviews
+  'aal.back': 'Quay lại', // DRAFT — Kevin reviews
 };

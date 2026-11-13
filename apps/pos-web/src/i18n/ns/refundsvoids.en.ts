@@ -227,4 +227,12 @@ export const REFUNDSVOIDS_EN = {
   'rv.rc.ev.ticket_link_missing': 'Not linked to a ticket',
   'rv.rc.ev.settlement': 'Settlement batch',
   'rv.rc.ev.waiting_hours': 'Waiting for',
+  'aal.line': 'Acting: {u} · Salon: {s}.',
+  'aal.stepUp': 'A manager PIN is asked before anything moves.',
+  'aal.unknownActor': 'the signed-in user',
+  'aal.unknownSalon': 'this salon (name not set)',
+  'aal.payoutPaid': 'Mark the {a} payout to {t} as paid ({m}, reference {r}). It counts as money handed over and leaves the outstanding balance.',
+  'aal.payoutCancel': 'Cancel the {a} payout to {t} ({m}, reference {r}). The amount goes back to what is owed.',
+  'aal.confirm': 'Confirm',
+  'aal.back': 'Back',
 };

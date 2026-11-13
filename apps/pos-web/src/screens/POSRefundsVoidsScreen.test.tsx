@@ -57,6 +57,7 @@ describe('POSRefundsVoidsScreen', () => {
     expect(p).toHaveTextContent('The original card (Card)');
     expect(screen.getByTestId('rcpt-left')).toHaveTextContent('$37.50');                       // 50.00 refundable − 12.50
     expect(screen.getByTestId('rcpt-note')).toHaveTextContent('Nothing is sent, printed or saved until you confirm');
+    expect(screen.getByTestId('refund-actor')).toHaveTextContent(/Acting: .* · Salon: /);   // extras PAYMENTS 14: actor + salon on the review
     expect(co.refund).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId('confirm-refund'));
     await waitFor(() => expect(co.refund).toHaveBeenCalledTimes(1));
