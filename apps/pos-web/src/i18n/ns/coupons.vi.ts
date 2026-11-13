@@ -137,4 +137,22 @@ export const COUPONS_VI = {
   'cp.roi.contrib.spend_unknown': 'Không tính khi chưa biết chi phí chiến dịch.', // DRAFT — Kevin reviews
   'cp.roi.notIncremental': 'Đây không phải lợi nhuận tăng thêm: các doanh số đó có thể vẫn xảy ra khi không có ưu đãi.', // DRAFT — Kevin reviews
   'cp.healthScheduled': 'Lịch hằng ngày', // DRAFT — Kevin reviews
+  'cp.check.ticket_repeat_use': 'Không có phiếu nào dùng cùng một mã giảm giá hai lần', // DRAFT — Kevin reviews
+  'cp10.openOffer': 'Mở ưu đãi bị đánh dấu {n}', // DRAFT — Kevin reviews
+  'cp10.openRedemptions': 'Mở lịch sử sử dụng', // DRAFT — Kevin reviews
+  'cp10.guide.counters': 'So sánh số lần dùng của ưu đãi với các lần dùng đã hoàn tất; sổ ghi là chính xác.', // DRAFT — Kevin reviews
+  'cp10.guide.paid_not_marked': 'Tìm phiếu đã thanh toán trong lịch sử sử dụng; mã vẫn ở trạng thái “đã áp dụng” vì bước thanh toán chưa xong.', // DRAFT — Kevin reviews
+  'cp10.guide.stuck_holds': 'Tìm mã đang giữ trong lịch sử sử dụng và kiểm tra phiếu có bị hủy hoặc bỏ dở không.', // DRAFT — Kevin reviews
+  'cp10.guide.confirmed_unpaid': 'Tìm lần dùng trong lịch sử sử dụng và kiểm tra thanh toán của phiếu.', // DRAFT — Kevin reviews
+  'cp10.guide.expiry_lag': 'Ưu đãi đã quá ngày kết thúc; thanh toán đã từ chối nó. Tác vụ hết hạn sẽ đóng lại.', // DRAFT — Kevin reviews
+  'cp10.guide.cap_exceeded': 'Mở các lần dùng của ưu đãi và tìm hai lần thanh toán sát nhau cùng dùng nó; hoàn lại hay hoàn tiền là do bạn quyết định.', // DRAFT — Kevin reviews
+  'cp10.guide.ticket_repeat_use': 'Mở các lần dùng của ưu đãi và tìm phiếu có hai lần dùng hoàn tất (một lần đã hoàn một phần); quyết định có cần hoàn lại một lần không.', // DRAFT — Kevin reviews
+  'cp10.guide.repeat_accounts': 'Mở các lần dùng của ưu đãi và so sánh các khách dùng chung số điện thoại.', // DRAFT — Kevin reviews
+  'cp10.guide.stacking_overlap': 'Mở ưu đãi và kiểm tra có thật sự nên cộng dồn với ưu đãi khác cùng dịch vụ và ngày không.', // DRAFT — Kevin reviews
+  'cp10.guide.approval_backlog': 'Mở ưu đãi và duyệt, từ chối hoặc yêu cầu sửa.', // DRAFT — Kevin reviews
+  'cp10.guide.tech_policy': 'Mở ưu đãi của thợ và chỉnh cho đúng quy định ưu đãi thợ hiện tại của tiệm.', // DRAFT — Kevin reviews
+  'cp.check.version_not_frozen': 'Mỗi lần dùng hoàn tất đều giữ điều kiện của nó', // DRAFT — Kevin reviews
+  'cp10.guide.version_not_frozen': 'Mở các lần dùng của ưu đãi; các lần bị đánh dấu không có bản ghi điều kiện lúc tính tiền.', // DRAFT — Kevin reviews
+  'cp10.checkBranch': 'Kiểm tra tại chi nhánh', // DRAFT — Kevin reviews
+  'cp10.checkBranchHere': 'Chi nhánh này', // DRAFT — Kevin reviews
 } as const;

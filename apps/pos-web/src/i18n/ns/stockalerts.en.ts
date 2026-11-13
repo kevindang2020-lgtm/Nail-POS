@@ -158,4 +158,11 @@ export const STOCKALERTS_EN = {
   'sa.restock.lead': 'lead time {n} d',
   'sa.restock.noLead': 'lead time not set',
   'sa.restock.noUse': 'no use in {n} days',
+  'sa.exportEvents': 'Export every use',
+  'sa.col.services': 'Services done',
+  'sa.per10': '{n} uses per 10 services',
+  'sa.per10.na': 'no services in this period',
+  'sa.col.restocked': 'Restocked',
+  'sa.restockedQty': '+{n} received since',
+  'sa.notRestocked': 'Not restocked yet',
 };

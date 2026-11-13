@@ -616,4 +616,8 @@ export const CSEARCH_EN: Record<string, string> = {
   "csx.ret.upcoming": "Upcoming booking",
   "csx.ret.source": "From Customer Retention, as of {d}. Nothing here sends a message.",
   "csx.ret.open": "Open in Customer Retention",
+  "ahx.health.k.service_done_mismatch": "Bookings vs Service Done",
+  "ahx.health.d.service_done_mismatch.READY": "Every booking that reached Service Done is marked completed, and every completed booking’s ticket reached Service Done.",
+  "ahx.health.d.service_done_mismatch.WARNING": "Some bookings disagree with their ticket — the ticket reached Service Done while the booking is still open, or the booking is completed but its ticket never reached Service Done. Open them in Booking to confirm.",
+  "ahx.health.d.service_done_mismatch.FAILED": "Bookings could not be compared with Service Done.",
 };

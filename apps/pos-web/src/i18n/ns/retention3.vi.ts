@@ -103,4 +103,14 @@ export const RETENTION3_VI = {
   'rt5.placeholders': 'Hãy thay các chỗ trống trong dấu ngoặc nhọn bằng chữ thật — chiến dịch gửi cùng một nội dung cho mọi khách.',
   'rt5.audit': 'Nhật ký kiểm tra', // DRAFT — Kevin reviews
   'rt5.auditHint': 'Ai đã xác nhận, hủy, xuất dữ liệu hoặc đổi cài đặt giữ chân khách — mở nhật ký hoạt động đã lọc theo mục này', // DRAFT — Kevin reviews
+  'rt10.bookWith': 'Đặt lịch — thợ gợi ý: {t} (lần ghé gần nhất)', // DRAFT — Kevin reviews
+  'rt10.shared': 'Dùng chung số điện thoại · {n} hồ sơ', // DRAFT — Kevin reviews
+  'rt10.sharedHint': 'Nhiều hồ sơ khách dùng cùng số điện thoại này. Các hồ sơ vẫn tách riêng; tin nhắn hàng loạt chỉ gửi một lần tới số đó.', // DRAFT — Kevin reviews
+  'rt10.thresholds': 'Có nguy cơ = không ghé {d}+ ngày · Sắp đến = {a}–{b} ngày', // DRAFT — Kevin reviews
+  'rt10.thresholdsSalon': 'cài đặt của tiệm (phiên bản {v})', // DRAFT — Kevin reviews
+  'rt10.thresholdsDefault': 'cài đặt mặc định — đổi trong Cài đặt', // DRAFT — Kevin reviews
+  'rt10.review.matching': '{n} khách trong lựa chọn này ({x} đã bỏ chọn) — mỗi khách được kiểm tra lại khi Xem trước', // DRAFT — Kevin reviews
+  'rt10.review.summary': 'Xem lại: đã chọn {s} · {e} sẽ nhận tin · {x} bị loại', // DRAFT — Kevin reviews
+  'rt10.review.notWinBack': 'Không thuộc nhóm mời quay lại', // DRAFT — Kevin reviews
+  'rt10.review.note': 'Số liệu tính từ các dòng bạn đã chọn; Xem trước sẽ kiểm tra lại từng khách trước khi gửi.', // DRAFT — Kevin reviews
 };

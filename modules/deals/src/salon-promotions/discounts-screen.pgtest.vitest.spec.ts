@@ -225,3 +225,36 @@ describe('Unified Offers Relationship Viewer (Extras · Coupons & Promotions 02)
     expect((await q(`select (select count(*) from deals) + (select count(*) from deal_redemptions) + (select count(*) from deal_services) as n`)).rows[0].n).toBe(before);
   });
 });
+
+describe('round 10 — Deals 09: each use shows the rule version it was charged under and whether those terms are kept', () => {
+  it('ruleVersion: used vs current version, changedSince after an edit, frozen from the terms snapshot or the saved version', async () => {
+    const h = await repo.redemptions(ctx, { state: 'all', page: 1, pageSize: 10 });
+    const r1 = h.items.find((x) => x.id === id('ae1'))! as any;
+    const dealId = r1.dealId as string;
+    const used = r1.ruleVersion.used as number;
+    expect(r1.ruleVersion).toMatchObject({ used: expect.any(Number), current: expect.any(Number) });
+    await q(`update deal_redemptions set terms_snapshot = null where id = $1`, [id('ae1')]);
+    await q(`delete from deal_versions where deal_id = $1 and version = $2`, [dealId, used]);
+    expect(((await repo.redemptions(ctx, { state: 'all', page: 1, pageSize: 10 })).items.find((x) => x.id === id('ae1')) as any).ruleVersion.frozen).toBe(false);
+    await q(`update deal_redemptions set terms_snapshot = '{"discountPercent":20}'::jsonb where id = $1`, [id('ae1')]);
+    await q(`update deals set version = version + 1 where id = $1`, [dealId]);
+    const after = ((await repo.redemptions(ctx, { state: 'all', page: 1, pageSize: 10 })).items.find((x) => x.id === id('ae1')) as any).ruleVersion;
+    expect(after).toMatchObject({ used, frozen: true, changedSince: true });
+    expect(after.current).toBe(r1.ruleVersion.current + 1);
+  });
+});
+
+describe('round 10 — Coupons 08: version history names the approver and shows each version against the one before', () => {
+  it('approvedBy / approvedAt from deal_approvals for that version; changes list only the fields that differ; the first version has none', async () => {
+    const D = id('d6'); const U = id('ee1');
+    await q(`insert into users (id, tenant_id, full_name, email, role, status) values ($1,$2,'Olivia Owner','oo@ex.test','OWNER','active') on conflict (id) do nothing`, [U, T]);
+    await q(`delete from deal_versions where deal_id = $1`, [D]);
+    await q(`insert into deal_versions (deal_id, tenant_id, version, terms, changed_by_user_id, created_at) values ($1,$2,1,'{"title":"Soon","discountPercent":20,"maxRedemptions":50}'::jsonb,$3, now() - interval '2 days'),
+      ($1,$2,2,'{"title":"Soon","discountPercent":25,"maxRedemptions":50}'::jsonb,$3, now() - interval '1 day')`, [D, T, U]);
+    await q(`insert into deal_approvals (deal_id, tenant_id, approver_user_id, decision, deal_version) values ($1,$2,$3,'approved',2)`, [D, T, U]);
+    const h = (await repo.detail(ctx, D)).history as any[];
+    expect(h.map((x) => x.version)).toEqual([2, 1]);
+    expect(h[0]).toMatchObject({ approvedBy: 'Olivia Owner', approvedAt: expect.any(String), changes: [{ field: 'discountPercent', before: 20, after: 25 }] });
+    expect(h[1]).toMatchObject({ approvedBy: null, changes: null });
+  });
+});

@@ -227,4 +227,7 @@ export const REFUNDSVOIDS_EN = {
   'rv.rc.ev.ticket_link_missing': 'Not linked to a ticket',
   'rv.rc.ev.settlement': 'Settlement batch',
   'rv.rc.ev.waiting_hours': 'Waiting for',
+  'rv.inflight.text': 'A {k} of {a} for {t} was being sent at {w} when this page reloaded. It was sent once and will not be sent again — check its status in the ledger before doing anything else; asking again for the same amount picks up that same request.',
+  'rv.inflight.show': 'Show in ledger',
+  'rv.inflight.clear': 'I checked — clear',
 };

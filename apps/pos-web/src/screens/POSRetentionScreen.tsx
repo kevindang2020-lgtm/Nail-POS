@@ -49,7 +49,9 @@ type Row = { customerId: string; customerName: string; avatarUrl: string | null;
   /** extras Win-Back 10 — absent from an older server → nothing shown */ phoneVerification?: 'verified' | 'unverified' | 'no_number';
   segment: 'never_visited' | 'active' | 'approaching' | 'at_risk'; returningInPeriod: boolean; recoveredInPeriod: boolean;
   lastVisitAt: string | null; firstVisitAt: string | null; daysAway: number | null; visits: number; lifetimeSpendCents: number; createdAt: string | null;
-  lastOutreachAt: string | null; lastOutreachStatus: string | null; nextAppointmentDate: string | null; priority: Priority | null };
+  lastOutreachAt: string | null; lastOutreachStatus: string | null; nextAppointmentDate: string | null; priority: Priority | null;
+  /** round 10 (Win-Back 11 · 13) — from the server; absent from an older server → nothing shown */
+  sharedPhoneProfiles?: number; lastTechnician?: { id: string; name: string } | null };
 type Period = { preset: string; from: string; to: string; today: string; timeZone: string; riskDays: number; approachingDays: number; observationWindowDays: number; settingsVersion: number; segmentationVersion: string; priorityFormulaVersion: string };
 type Scope = { mode: 'tenant' | 'branches'; label: 'tenant_wide' | 'branch_activity'; selectedBranchId: string | null; confined: boolean; branches: { branchId: string; name: string }[]; unknownBranchVisits?: number };
 type Summary = { period: Period; scope?: Scope;
@@ -207,7 +209,8 @@ export function POSRetentionScreen() {
   const [dlg, setDlg] = useState<null | { kind: 'compose'; single?: Row } | { kind: 'customer'; id: string } | { kind: 'campaigns' } | { kind: 'campaign'; id: string } | { kind: 'recovery' } | { kind: 'settings' } | { kind: 'history' } | { kind: 'health' } | { kind: 'assistant' }>(null);
   // CR-04: the existing New Appointment flow, the customer preselected by id only (no name / phone in the URL); the booking
   // screen loads the customer from the server and saves nothing until its own explicit submit
-  const book = (id: string) => nav(`/booking/new?customerId=${encodeURIComponent(id)}&from=retention`);
+  // round 10 (Win-Back 13): the last visit's technician (still active) is offered to New Appointment, which re-checks skills and times
+  const book = (id: string, techId?: string | null) => nav(`/booking/new?customerId=${encodeURIComponent(id)}${techId ? `&technicianId=${encodeURIComponent(techId)}` : ''}&from=retention`);
   const [exporting, setExporting] = useState(false);
   const doExport = async () => {
     setExporting(true);
@@ -284,7 +287,7 @@ export function POSRetentionScreen() {
           {[0, 2, 3, 5, 10].map((n) => <option key={n} value={n}>{n === 0 ? tx('rt2.visits.any') : tx('rt2.visits.min', { n: String(n) })}</option>)}
         </select>
         <select className="fk-select" aria-label={tx('wb.flt.inactivity')} value={flt.inactivity} onChange={(e) => setFilter({ inactivity: e.target.value })} data-testid="flt-inactivity">
-          <option value="">{tx('wb.flt.inactivity.any')}</option>{[30, 60, 90, 120].map((n) => <option key={n} value={String(n)}>{tx('wb.flt.inactivity.n', { n: String(n) })}</option>)}
+          <option value="">{tx('wb.flt.inactivity.any')}</option>{[30, 60, 90, 120, 180, 365].map((n) => <option key={n} value={String(n)}>{tx('wb.flt.inactivity.n', { n: String(n) })}</option>)}
           <option value="custom">{tx('wb.flt.inactivity.custom')}</option>
         </select>
         {flt.inactivity === 'custom' ? <input className="fk-input rt-days" type="number" min={1} max={3650} inputMode="numeric" aria-label={tx('wb.flt.inactivity.customLabel')} value={flt.customDays}
@@ -323,6 +326,8 @@ export function POSRetentionScreen() {
           ))}
           {segment === 'new_visitors' || segment === 'active' ? <span className="rt-chip on" aria-current="true">{segLabel(segment, per)} <span className="rt-chip-n">{segs ? nf(segs[segment]) : '…'}</span></span> : null}
         </div>
+        {/* round 10 (Customer Retention 07): the thresholds in force, and whether they are the default or this salon's own setting */}
+        {per ? <div className="fk-hint" data-testid="rt-thresholds">{tx('rt10.thresholds', { d: String(per.riskDays), a: String(per.approachingDays), b: String(per.riskDays - 1) })} · {per.settingsVersion > 0 ? tx('rt10.thresholdsSalon', { v: String(per.settingsVersion) }) : tx('rt10.thresholdsDefault')}</div> : null}
       </div>
 
       <FitPanel testId="panel-winback" className="rt-table-panel" title={<>{segLabel(segment, per)} <span className="rt-sortnote">· {sortLabel(currentSort)}{segment === 'returning' || segment === 'recovered' || segment === 'new_visitors' ? ' · ' + periodWord : ''}</span>
@@ -377,6 +382,7 @@ export function POSRetentionScreen() {
                   <td><span className="rt-name"><ProfileAvatarWithPreview name={r.customerName || '—'} url={r.avatarUrl ?? undefined} size={26} type="customer" />
                     <button type="button" className="fk-li-t link" onClick={() => setDlg({ kind: 'customer', id: r.customerId })}>{r.customerName || '—'}</button></span></td>
                   <td>{r.maskedPhone ?? <span className="fk-muted">{tx('people.retention.phoneMissing')}</span>}{r.phoneStatus === 'invalid' ? <span className="fk-muted"> · {tx('people.retention.phoneInvalid')}</span> : null}
+                    {r.sharedPhoneProfiles ? <span className="fk-chip warn" data-testid="rt-shared-phone" title={tx('rt10.sharedHint')}>{tx('rt10.shared', { n: nf(r.sharedPhoneProfiles + 1) })}</span> : null}
                     {r.phoneVerification === 'verified' || r.phoneVerification === 'unverified' ? <span className={'fk-li-s rt-pv ' + r.phoneVerification} data-testid="rt-phone-verification" title={tx('wb.phoneCheck.note')}>{tx('wb.phoneCheck.' + r.phoneVerification)}</span> : null}</td>
                   <td>{r.lastVisitAt ? when(r.lastVisitAt) : <span className="fk-muted">{tx('people.retention.never')}</span>}</td>
                   <td className="num"><b className={r.segment === 'at_risk' ? 'rt-away' : ''}>{r.daysAway == null ? '—' : nf(r.daysAway)}</b></td>
@@ -390,7 +396,7 @@ export function POSRetentionScreen() {
                   <td><span className="fk-li-acts">
                     <button type="button" className="fk-ibtn" aria-label={tx('pos.open_profile')} title={tx('pos.open_profile')} onClick={() => nav(`/customers?customerId=${encodeURIComponent(r.customerId)}&q=${encodeURIComponent(r.customerName)}`)}>👤</button>
                     <button type="button" className="fk-ibtn" aria-label={tx('people.retention.viewHistory')} title={tx('people.retention.viewHistory')} onClick={() => setDlg({ kind: 'customer', id: r.customerId })}>≡</button>
-                    <button type="button" className="fk-ibtn" aria-label={tx('rt3.book.row')} title={tx('rt3.book.row')} onClick={() => book(r.customerId)} data-testid="rt-row-book">📅</button>
+                    <button type="button" className="fk-ibtn" aria-label={tx('rt3.book.row')} onClick={() => book(r.customerId, r.lastTechnician?.id)} data-testid="rt-row-book" title={r.lastTechnician ? tx('rt10.bookWith', { t: r.lastTechnician.name }) : tx('rt3.book.row')}>📅</button>
                     <button type="button" className="fk-ibtn" aria-label={tx('people.retention.textOne')} title={pickable ? tx('people.retention.textOne') : r.segment !== 'at_risk' ? tx('rt2.onlyAtRiskSelectable') : smsLabel(r.smsStatus)} disabled={!pickable || !!smsBlocked} onClick={() => setDlg({ kind: 'compose', single: r })}>✉</button>
                   </span></td>
                 </tr>
@@ -410,6 +416,7 @@ export function POSRetentionScreen() {
         </span>
         {(sel.mode === 'matching' || selectedCount > 0) ? <button type="button" className="fk-link" onClick={() => replaceSel(EMPTY_SEL)} data-testid="sel-clear">{tx('people.retention.clear')}</button> : null}
         {undoSel ? <button type="button" className="fk-link" onClick={() => { setSel(undoSel); setUndoSel(null); }} data-testid="sel-undo">{tx('rt9.undo')}</button> : null}
+        {selectedCount > 0 ? <SelectionReview sel={sel} canPick={canPick} /> : null}
         {warnAt != null && selectedCount > warnAt ? <span className="fk-chip warn" role="status" data-testid="sel-large">{tx('rt9.large', { n: nf(selectedCount), w: nf(warnAt) })}</span> : null}
         <span className="rt-selspace" />
         {smsBlocked === 'config' ? <span className="fk-hint rt-block">{tx('people.retention.smsNotConfigured')}</span> : smsBlocked === 'perm' ? <span className="fk-hint rt-block">{tx('people.retention.smsNoPermission')}</span> : null}
@@ -908,3 +915,21 @@ function HistoryDialog({ onClose, canBackfill, openCustomer, branches = [] }: { 
 }
 /** 'YYYY-MM-DD' ± n calendar days (UTC arithmetic on a date-only value — no time-zone drift) */
 function ymdAdd(d: string, n: number): string { const t = Date.parse(d + 'T00:00:00Z'); if (Number.isNaN(t)) return d; return new Date(t + n * 86400_000).toISOString().slice(0, 10); }
+
+/** round 10 (Customer Retention 04): the compact review of a selection made across pages — selected · would get the text ·
+ *  left out (by the reason the server gave each row). In "all matching" mode the rows are not on this device, so it states the
+ *  count and that the server re-checks every customer at Preview. Display only; nothing is sent from here. */
+function SelectionReview({ sel, canPick }: { sel: Selection; canPick: (r: Row) => boolean }) {
+  if (sel.mode === 'matching') return <span className="fk-hint" data-testid="sel-review">{tx('rt10.review.matching', { n: nf(Math.max(0, sel.total - sel.excludeIds.size)), x: nf(sel.excludeIds.size) })}</span>;
+  const rows = [...sel.ids.values()];
+  const ok = rows.filter(canPick).length;
+  const reasons = new Map<string, number>();
+  for (const r of rows) if (!canPick(r)) { const k = r.smsStatus === 'eligible' ? 'not_win_back' : r.smsStatus; reasons.set(k, (reasons.get(k) ?? 0) + 1); }
+  return (
+    <details className="rt-selreview" data-testid="sel-review">
+      <summary>{tx('rt10.review.summary', { s: nf(rows.length), e: nf(ok), x: nf(rows.length - ok) })}</summary>
+      {reasons.size ? <ul className="rt-reasons">{[...reasons.entries()].map(([k, n]) => <li key={k} data-testid={'sel-review-' + k}><span>{k === 'not_win_back' ? tx('rt10.review.notWinBack') : smsLabel(k)}</span><b>{nf(n)}</b></li>)}</ul> : null}
+      <div className="fk-hint">{tx('rt10.review.note')}</div>
+    </details>
+  );
+}

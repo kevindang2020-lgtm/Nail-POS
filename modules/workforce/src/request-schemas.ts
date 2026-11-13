@@ -181,6 +181,7 @@ const MONEY_STATUS: BodySchema['x-forbidden'] = ['status', 'decidedByUserId', 'a
 export const APPROVAL_CREATE_BODY: BodySchema = S.object({ kind: str(40), subjectType: str(60), subjectId: scalar(100), amountCents: looseNum, reason: str(2000), payload: free, branchId: str(64), title: str(200) }, [], { 'x-forbidden': MONEY_STATUS });
 export const APPROVAL_DECIDE_BODY: BodySchema = S.object({ decision: str(16), note: str(2000), expectedVersion: looseNum }, [], { 'x-forbidden': MONEY_STATUS });
 export const APPROVAL_CANCEL_BODY: BodySchema = S.object({ reason: str(1000) });
+export const APPROVAL_ESCALATE_BODY: BodySchema = S.object({ reason: str(1000) });   // round 10 (Approvals 01 point 2)
 export const APPROVAL_POLICY_BODY: BodySchema = S.object({
   kind: str(40), expectedVersion: looseNum, reason: str(2000), enabled: { type: ['boolean', 'string', 'number', 'null'], maxLength: 8 },
   thresholdCents: looseNum, cashThresholdCents: looseNum, approverLimitCents: looseNum,
@@ -295,7 +296,7 @@ export const CDR_INVESTIGATE_BODY: BodySchema = S.object({ note: str(2000), expe
 export const CDR_RESOLVE_BODY: BodySchema = S.object({ resolutionCode: S.text(32), note: S.text(2000), expectedVersion: S.number() }, ['resolutionCode', 'note', 'expectedVersion']);
 export const CDR_REASON_BODY: BodySchema = S.object({ reason: S.text(2000), expectedVersion: S.number() }, ['reason', 'expectedVersion']);
 export const CDR_RUN_BODY: BodySchema = S.object({ preset: str(16), from: str(10), to: str(10) });
-export const CDR_POLICY_BODY: BodySchema = S.object({ policy: S.text(20) }, ['policy']);
+export const CDR_POLICY_BODY: BodySchema = S.object({ policy: S.text(20), expectedPolicy: S.nullable(S.text(20)) }, ['policy']);   // round 10: optimistic check on what the screen loaded
 const overrideBreak: BodySchema = S.object({ type: S.text(16), startLocalTime: S.text(5), endLocalTime: S.text(5) }, ['type', 'startLocalTime', 'endLocalTime']);
 export const SHIFT_OVERRIDE_BODY: BodySchema = S.object({
   technicianId: S.text(64), localDate: S.text(10), overrideType: S.text(20), startLocalTime: str(5), endLocalTime: str(5), endsNextDay: bool,

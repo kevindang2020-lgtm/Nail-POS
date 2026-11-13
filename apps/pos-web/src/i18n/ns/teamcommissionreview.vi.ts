@@ -147,4 +147,23 @@ export const TEAMCOMMISSIONREVIEW_VI = {
   'cr.age.oldest': 'Cũ nhất trước', // DRAFT — Kevin reviews
   'cr.age.row': 'Mở {n} ngày', // DRAFT — Kevin reviews
   'cr.age.rowOverdue': 'Quá hạn · {n} ngày', // DRAFT — Kevin reviews
+  'cr10.src.title': 'Bản ghi nguồn', // DRAFT — Kevin reviews
+  'cr10.src.line': 'Dòng dịch vụ: {s} · {v} · bản ghi {id}', // DRAFT — Kevin reviews
+  'cr10.src.removed': 'đã bỏ khỏi phiếu', // DRAFT — Kevin reviews
+  'cr10.src.rate': 'Mức hoa hồng đã chốt: {r} theo {src} (phiên bản chính sách {v}) · thu nhập {e} · {at} · bản ghi {id}', // DRAFT — Kevin reviews
+  'cr10.src.refund': 'Hoàn tiền {v} · {st} · {at} · bản ghi {id}', // DRAFT — Kevin reviews
+  'cr10.src.openRefunds': 'Mở trong Hoàn tiền & Hủy', // DRAFT — Kevin reviews
+  'cr10.src.ledger': 'Khoản trừ hoa hồng đã ghi {v} · {st} · {at} · bản ghi {id}', // DRAFT — Kevin reviews
+  'cr10.src.missing': 'Một số bản ghi mà phát hiện này nêu không còn trong hệ thống.', // DRAFT — Kevin reviews
+  'cr10.st.refunded': 'đã hoàn', // DRAFT — Kevin reviews
+  'cr10.st.pending': 'đang chờ', // DRAFT — Kevin reviews
+  'cr10.st.failed': 'thất bại', // DRAFT — Kevin reviews
+  'cr10.st.posted': 'đã ghi', // DRAFT — Kevin reviews
+  'cr10.st.draft': 'nháp', // DRAFT — Kevin reviews
+  'cr10.st.voided': 'đã hủy', // DRAFT — Kevin reviews
+  'cr10.policyConflict': 'Có người khác đã đổi chính sách trừ hoa hồng khi hoàn tiền trong lúc bạn đang xem. Đã tải lại — hãy kiểm tra và chọn lại.', // DRAFT — Kevin reviews
+  'cr10.cov.verified': 'Lần xuất đã xác minh gần nhất: {r}, {n} dòng, bởi {by} · {at} (đã ghi nhận thành công và mã kiểm tra tệp)', // DRAFT — Kevin reviews
+  'cr10.cov.noVerified': 'Chưa có lần xuất nào được xác minh', // DRAFT — Kevin reviews
+  'cr10.cov.missing': 'Lần xuất gần nhất không ghi nhận kết quả: {r} · yêu cầu lúc {at} (tổng {n}) — đã dừng, hoặc không ghi được bản ghi kiểm tra kết thúc', // DRAFT — Kevin reviews
+  'cr10.cov.noMissing': 'Mọi yêu cầu xuất đều đã ghi nhận kết quả', // DRAFT — Kevin reviews
 };

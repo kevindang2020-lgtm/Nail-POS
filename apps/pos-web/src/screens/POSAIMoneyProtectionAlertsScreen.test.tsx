@@ -270,4 +270,15 @@ describe('Money Protection — staff-fairness guardrails on peer-comparison aler
     await screen.findByTestId('mpx-alert-row');
     expect(screen.queryByTestId('mpx-alert-select')).toBeNull();
   });
+  it('round 10 (Rules 05): the alert explains why it was raised — condition, recorded values, thresholds as configured now (gates and salon overrides marked), the records it rests on', async () => {
+    mc.alert.mockResolvedValue(detail({ whyTriggered: { ruleId: 'MP_FAILED_PAYMENT_RETRY_LOOP', condition: 'Repeated declined attempts on one ticket in a short window.', matched: { declines: 7 }, baseline: null, differences: null,
+      thresholds: [{ key: 'minDeclines', value: 6, custom: true, gate: true }, { key: 'highSeverityAt', value: 8, custom: false, gate: false }], thresholdsAsOf: null, thresholdsNote: 'as_configured_now', references: { tickets: 1, payments: 2, staff: 1 }, triggeredRules: [] } }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-alert-view'));
+    const w = await screen.findByTestId('mpx-why');
+    expect(w.querySelector('[data-testid="mpx-why-condition"]')!.textContent).toBe('Rule: Repeated declined attempts on one ticket in a short window.');
+    expect(w.querySelector('[data-testid="mpx-why-matched"]')!.textContent).toBe('What it recorded: declines 7');
+    expect(w.querySelector('[data-testid="mpx-why-thresholds"]')!.textContent).toBe('Thresholds: minDeclines 6 (set by your salon) — cases below or outside it are left out · highSeverityAt 8');
+    expect(w.querySelector('[data-testid="mpx-why-refs"]')!.textContent).toBe('Based on 1 tickets, 2 payments and 1 staff records found in their own tables.');
+  });
 });

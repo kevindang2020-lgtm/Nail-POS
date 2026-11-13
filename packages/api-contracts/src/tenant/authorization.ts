@@ -82,7 +82,10 @@ export interface ApprovalRequestView {
   requiredPermission: string; canDecide: boolean; whyNot: string | null;   // e.g. 'requester_cannot_approve', 'over_your_limit'
   expiresAt: string | null; createdAt: string; version: number;
   payload: Record<string, unknown>;
+  /** round 10 (Approvals 01 point 2): marked urgent — still pending, decided by the same rules (never auto-approved) */
+  escalatedAt?: string | null; escalatedByName?: string | null; escalationReason?: string | null;
 }
+export interface ApprovalEscalateRequest { reason: string }
 export interface ApprovalListQuery { status?: TenantApprovalStatus | 'open' | 'all'; kind?: TenantApprovalKind; mine?: boolean; page?: number; pageSize?: number }
 export interface ApprovalPage { items: ApprovalRequestView[]; page: number; pageSize: number; total: number; hasMore: boolean }
 export interface ApprovalCreateRequest { kind: TenantApprovalKind; subjectType: string; subjectId?: string | null; amountCents?: number | null; reason: string; payload?: Record<string, unknown>; branchId?: string | null }

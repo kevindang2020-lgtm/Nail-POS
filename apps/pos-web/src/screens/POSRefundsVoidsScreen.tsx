@@ -14,6 +14,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { createIntentKeys } from '@aipowersalon/api-client';
+import { readSession, writeSession } from '../components/useSessionState';
 import { posRefundsVoidsApi } from '../api/posRefundsVoidsApi';
 import { posCheckoutApi } from '../api/posCheckoutApi';
 import { TicketRefundPanel } from '../components/TicketRefundPanel';
@@ -69,13 +70,35 @@ const methodLbl = (m: string, last4?: string | null) => codeLabel('rv.method.' +
 const short = (id: string) => id.replace(/-/g, '').slice(-8).toUpperCase();   // the tail: distinct per record
 const errMsg = (e: unknown) => errorTextOf(e, tx('finance.state.loadFailed'));
 
+// round 10 (REFUNDS VOIDS 13 "Recovery After Browser Reload"): while a refund / void request is on its way, this tab keeps
+// a small marker (which tender, the typed amount, and the ONE idempotency key of that request). If the page reloads before
+// the answer arrives, the screen reopens the pending state from it, and asking again for the same tender and amount reuses
+// that same key — the server answers the first request instead of starting a second payment operation. Cleared on any
+// server answer; kept on a lost connection.
+export const RV_INFLIGHT = 'aps.rv.inflight';
+type Inflight = { kind: 'refund' | 'void'; tenderId: string; intent: string; sig: string; key: string; amountCents: number; ticketNumber: string | null; at: string };
+const readInflight = (): Inflight | null => { const v = readSession<Inflight | null>(RV_INFLIGHT, null); return v && typeof v.key === 'string' && typeof v.intent === 'string' ? v : null; };
+const clearInflight = () => { try { sessionStorage.removeItem(RV_INFLIGHT); } catch { /* no storage */ } };
+/** the key for this request: the held one when the same request was cut off by a reload, otherwise this dialog's own */
+function heldKey(keys: ReturnType<typeof createIntentKeys>, intent: string, body: unknown): string {
+  const h = readInflight(); const sig = JSON.stringify(body);
+  return h && h.intent === intent && h.sig === sig ? h.key : keys.keyFor(intent, body);
+}
+function holdInflight(kind: Inflight['kind'], tender: Tender, intent: string, body: unknown, key: string, amountCents: number) {
+  writeSession(RV_INFLIGHT, { kind, tenderId: tender.id, intent, sig: JSON.stringify(body), key, amountCents, ticketNumber: tender.ticketNumber ?? null, at: new Date().toISOString() } satisfies Inflight);
+}
+/** a server answer (any HTTP status) settles the request; a lost connection / timeout (status 0) does not */
+const serverAnswered = (e: unknown) => { const st = (e as { status?: unknown } | null)?.status; return typeof st === 'number' && st > 0; };
+
 export function POSRefundsVoidsScreen() {
   const nav = useNavigate();
-  const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
+  // round 10 (Finish the Five 04): a link from a commission finding opens this list searched for its ticket (?search=)
+  const [search, setSearch] = useState(() => (new URLSearchParams(window.location.search).get('search') ?? '').slice(0, 100)); const q = useDebounced(search.trim(), 300);
   const [type, setType] = useState(''); const [state, setState] = useState(''); const [method, setMethod] = useState(''); const [processor, setProcessor] = useState(''); const [register, setRegister] = useState(''); const [sort, setSort] = useState('created_desc');
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' }); const [basis, setBasis] = useState('requested');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [note, setNote] = useState<Note>(null); const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState<{ kind: 'refund' | 'void'; id: string } | null>(null); const [finding, setFinding] = useState(false); const [inbox, setInbox] = useState(false);
+  const [held, setHeld] = useState<Inflight | null>(() => readInflight());
   const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, type: type || undefined, status: state || undefined, method: method || undefined, processor: processor || undefined, register: register || undefined, sort };
   const key = JSON.stringify(scope); useEffect(() => { setPage(1); }, [key]);
   const fit = useFitRows<HTMLDivElement>(44, { min: 3, max: 18, reserve: 34 });
@@ -98,7 +121,7 @@ export function POSRefundsVoidsScreen() {
     catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } finally { setExporting(false); }
   };
   /** after the server confirmed an action: page 1 under the default order; a new row only shows when it matches the filters */
-  const done = (tone: 'ok' | 'warn', text: string) => { setSort('created_desc'); setPage(1); setTick((t) => t + 1); setNote({ tone, text, filtersHide: chips.length > 0 || period.preset !== 'month' }); };
+  const done = (tone: 'ok' | 'warn', text: string) => { setHeld(readInflight()); setSort('created_desc'); setPage(1); setTick((t) => t + 1); setNote({ tone, text, filtersHide: chips.length > 0 || period.preset !== 'month' }); };
   if (isForbidden(list.error) || isForbidden(sum.error)) return <div className="work fit rv" data-testid="refunds-screen"><h1>{tx('pos.refunds_voids')}</h1><StateBlock error={list.error ?? sum.error} onRetry={list.reload} /></div>;
   return (
     <div className="work fit rv" data-testid="refunds-screen">
@@ -113,6 +136,11 @@ export function POSRefundsVoidsScreen() {
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>{note.filtersHide ? <button type="button" className="fk-link" onClick={clearAll}>{tx('finance.clearFilters')}</button> : null}
         <button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
+      {held ? <div className="fk-note warn" role="status" data-testid="rv-inflight">
+        <span>{tx('rv.inflight.text', { k: typeLbl(held.kind === 'void' ? 'void' : 'refund'), a: fmtMoney(held.amountCents), t: held.ticketNumber ? '#' + held.ticketNumber : tx('rv.notLinked'), w: when(held.at) })}</span>
+        {held.ticketNumber ? <button type="button" className="fk-link" data-testid="rv-inflight-show" onClick={() => { setSearch(held.ticketNumber ?? ''); setState(''); setType(''); }}>{tx('rv.inflight.show')}</button> : null}
+        <button type="button" className="fk-link" data-testid="rv-inflight-clear" onClick={() => { clearInflight(); setHeld(null); }}>{tx('rv.inflight.clear')}</button>
+      </div> : null}
       <div className="fk-kpis five" data-testid="kpis">
         {sum.error ? <StateBlock error={sum.error} onRetry={sum.reload} /> : <>
           <KpiCard testId="kpi-refunds" tone="gold" label={tx('rv.kpi.refunds')} loading={!k} value={k ? fmtMoney(k.refundedCents) : ''} sub={k ? tx('rv.kpi.refundsSub', { n: fmtNumber(k.refunds), p: fmtNumber(k.partialRefunds) }) : ''} onClick={() => { setType(''); setState('completed'); }} />
@@ -328,15 +356,17 @@ function RefundTenderDialog({ tender, onClose, onDone, onTicket }: { tender: Ten
     if (cents == null) return;
     const body = { reason: reason.trim(), amountCents: cents }; const intent = `refund:${tender.id}`;
     setBusy(true); setErr(null);
+    const key = heldKey(keys.current, intent, body); holdInflight('refund', tender, intent, body, key, cents);
     try {
-      const r: any = await stepUp.run(() => posCheckoutApi.refund(tender.id, body, keys.current.keyFor(intent, body)));
-      keys.current.done(intent);
+      const r: any = await stepUp.run(() => posCheckoutApi.refund(tender.id, body, key));
+      keys.current.done(intent); clearInflight();
       if (r?.status === 'refunded') onDone('ok', tx('rv.done.refunded', { a: fmtMoney(cents) }));
       else if (r?.status === 'approval_pending') onDone('warn', tx('rv.done.approval'));
       else if (r?.configured === false) setErr(tx('rv.notConfigured'));
       else onDone('warn', tx('rv.done.pending'));
     } catch (e: any) {
-      if (isStepUpCancelled(e)) return;
+      if (isStepUpCancelled(e)) { clearInflight(); return; }
+      if (serverAnswered(e)) clearInflight();
       // the processor answer was lost: the amount stays held, NOTHING is sent again; the sweep / a manager settles it
       if (e?.body?.code === 'REFUND_STATUS_UNKNOWN' || e?.code === 'REFUND_STATUS_UNKNOWN' || /REFUND_STATUS_UNKNOWN/.test(String(e?.message))) { keys.current.done(intent); onDone('warn', tx('rv.done.unknown')); return; }
       setErr(errorTextOf(e, tx('pos.something_went_wrong')));
@@ -369,13 +399,14 @@ function VoidDialog({ tender, onClose, onDone }: { tender: Tender; onClose: () =
   const submit = async () => {
     const body = { reason: reason.trim() }; const intent = `void:${tender.id}`;
     setBusy(true); setErr(null);
+    const key = heldKey(keys.current, intent, body); holdInflight('void', tender, intent, body, key, tender.amountCents);
     try {
-      const r: any = await stepUp.run(() => posCheckoutApi.void(tender.id, body, keys.current.keyFor(intent, body)));
-      keys.current.done(intent);
+      const r: any = await stepUp.run(() => posCheckoutApi.void(tender.id, body, key));
+      keys.current.done(intent); clearInflight();
       if (r?.status === 'voided') onDone('ok', tx('rv.done.voided', { a: fmtMoney(tender.amountCents) }));
       else if (r?.configured === false) setErr(tx('rv.notConfigured'));
       else onDone('warn', tx('rv.done.pending'));
-    } catch (e: any) { if (isStepUpCancelled(e)) return; setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); }
+    } catch (e: any) { if (isStepUpCancelled(e)) { clearInflight(); return; } if (serverAnswered(e)) clearInflight(); setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); }
   };
   return (
     <FitDialog title={tx('rv.voidTitle', { a: fmtMoney(tender.amountCents) })} subtitle={`${tender.ticketNumber ? '#' + tender.ticketNumber + ' · ' : ''}${methodLbl(tender.method, tender.giftCardLast4)}${tender.processorRef ? ' · ' + tender.processorRef : ''}`} onClose={onClose} busy={busy} testId="void-dialog"

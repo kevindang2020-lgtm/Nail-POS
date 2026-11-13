@@ -81,4 +81,40 @@ describe('POSTeamPerformanceScreen', () => {
     fireEvent.click(screen.getByTestId('export'));
     await waitFor(() => expect(tp.exportCsv).toHaveBeenCalledWith(expect.objectContaining({ preset: 'month', tier: 'all', sort: 'score', lang: 'en', requestId: expect.any(String) })));
   });
+  it('round 10 (Finish the Five 12): two saved model versions show side by side with the change; one version says there is nothing to compare', async () => {
+    const base = await tp.composite();
+    tp.composite.mockResolvedValueOnce({ ...base, versionComparison: { versions: [{ version: 'composite-v2', snapshots: 1, latestScore: 80.5, latestAt: null }, { version: 'composite-v1', snapshots: 2, latestScore: null, latestAt: null }], comparable: true, reranked: false,
+      diff: { period: { from: '2026-10-01', to: '2026-10-31' }, from: { version: 'composite-v1', score: null, at: null }, to: { version: 'composite-v2', score: 80.5, at: null }, scoreDelta: null,
+        components: [{ key: 'reviews', from: 90, to: 70, delta: -20 }] } } });
+    const v = mount();
+    fireEvent.click(await screen.findByTestId('composite-open'));
+    expect((await screen.findByTestId('composite-versions-list')).textContent).toBe('composite-v2: 1 saved · composite-v1: 2 saved');
+    const diff = screen.getByTestId('composite-version-diff');
+    expect(diff.textContent).toMatch(/composite-v1.*composite-v2/);
+    expect(diff.querySelectorAll('tbody tr')[1].textContent).toMatch(/9070-20$/);
+    v.unmount();
+    tp.composite.mockResolvedValueOnce({ ...base, versionComparison: { versions: [{ version: 'composite-v1', snapshots: 1, latestScore: null, latestAt: null }], comparable: false, diff: null, reranked: false } });
+    mount();
+    fireEvent.click(await screen.findByTestId('composite-open'));
+    expect((await screen.findByTestId('composite-version-single')).textContent).toMatch(/Only one model version/);
+  });
+  it('round 10 (TEAM PERFORMANCE 3 14): Performance Details shows service accuracy and the configured operational metrics apart from the score', async () => {
+    const base = await tp.technician('v', {});
+    tp.technician.mockResolvedValue({ ...base, accuracy: { source: 'service_done_quality_check', checked: 4, approved: 3, issueFound: 1, unchecked: 2, ratePct: 75, lowSample: false },
+      operational: { model: 'composite-v1', reliability: { completed: 15, failed: 1, excluded: 0 }, onTime: { onTime: 2, late: 1, excluded: 4 } } });
+    mount(); fireEvent.click((await screen.findAllByTestId('top-row'))[0]);
+    const sum = await screen.findByTestId('performance-summary');
+    expect(screen.getByTestId('service-accuracy')).toHaveTextContent('75% passed the Service Done quality check · 3 of 4 checked · 1 with an issue · 2 not checked (not counted)');
+    expect(screen.getByTestId('op-reliability')).toHaveTextContent('15 completed · 1 not completed');
+    expect(screen.getByTestId('op-ontime')).toHaveTextContent('2 on time · 1 late');
+    expect(sum).toHaveTextContent('5.0 / 5');                                       // the score is unchanged
+  });
+  it('round 10 (TEAM PERFORMANCE 3 14): no quality check recorded says so — never 0% or 100%', async () => {
+    const base = await tp.technician('v', {});
+    tp.technician.mockResolvedValue({ ...base, accuracy: { source: 'service_done_quality_check', checked: 0, approved: 0, issueFound: 0, unchecked: 0, ratePct: null, lowSample: false }, operational: { model: 'composite-v1', reliability: null, onTime: null } });
+    mount(); fireEvent.click((await screen.findAllByTestId('top-row'))[0]);
+    expect(await screen.findByTestId('service-accuracy')).toHaveTextContent('No Service Done quality check recorded in this period');
+    expect(screen.getByTestId('service-accuracy').textContent).not.toMatch(/%/);
+    expect(screen.queryByTestId('op-reliability')).toBeNull();
+  });
 });

@@ -180,3 +180,82 @@ describe('approver limit, branches, cancel, expiry', () => {
     clock -= 25 * 3_600_000;
   });
 });
+
+describe('round 10 (Approvals Management 01 point 2): urgent escalation never approves', () => {
+  it('a pending request marked urgent stays pending, keeps every decision rule, executes nothing, and alerts the approvers once', async () => {
+    const s = withExecutors(svc());
+    const { request } = await s.request(frontDesk, refundBody());
+    await expect(s.escalate(frontDesk, request.id, { reason: 'x' })).rejects.toMatchObject({ code: 'invalid_input', status: 400 });
+    const e = await s.escalate(frontDesk, request.id, { reason: 'Customer is waiting at the desk' });
+    expect(e).toMatchObject({ status: 'pending', escalationReason: 'Customer is waiting at the desk', version: 2 });
+    expect(e.escalatedAt).toEqual(expect.any(String));
+    expect(ran).toEqual([]);                                                               // nothing executed
+    const again = await s.escalate(manager, request.id, { reason: 'second press' });       // idempotent: the first stays
+    expect(again).toMatchObject({ escalationReason: 'Customer is waiting at the desk', version: 2 });
+    const alerts = (await sql<any>`select category, severity, branch_id, metadata->>'approvalId' as aid from owner_alerts where tenant_id = ${T} and category = 'approval_escalated'`.execute(db)).rows;
+    expect(alerts).toEqual([{ category: 'approval_escalated', severity: 'high', branch_id: BA, aid: request.id }]);
+    const hist = (await sql<any>`select action, from_status, to_status from tenant_approval_request_events where tenant_id = ${T} and request_id = ${request.id} order by created_at, id`.execute(db)).rows.map((r: any) => r.action);
+    expect(hist).toEqual(['requested', 'escalated']);
+    expect((await sql<any>`select metadata_json->>'autoApproved' as a from audit_logs where tenant_id = ${T} and action_type = 'approval_escalated' and entity_id = ${request.id}`.execute(db)).rows).toEqual([{ a: 'false' }]);
+    // the same rules still decide it: the requester cannot, front desk lacks the key, a stale version is refused
+    await expect(s.decide(frontDesk, request.id, { decision: 'approve', expectedVersion: 2 })).rejects.toMatchObject({ code: 'requester_cannot_approve' });
+    await expect(s.decide(actor(FD2, 'FRONT_DESK'), request.id, { decision: 'approve', expectedVersion: 2 })).rejects.toMatchObject({ code: 'missing_permission' });
+    await expect(s.decide(manager, request.id, { decision: 'approve', expectedVersion: 1 })).rejects.toMatchObject({ code: 'version_conflict' });
+    // escalated pending requests list first
+    await s.request(frontDesk, refundBody());
+    expect((await s.list(manager, {})).items[0].id).toBe(request.id);
+    expect(await s.decide(manager, request.id, { decision: 'approve', expectedVersion: 2 })).toMatchObject({ status: 'executed' });
+    await expect(s.escalate(frontDesk, request.id, { reason: 'too late now' })).rejects.toMatchObject({ code: 'not_pending', status: 409 });
+  });
+  it('another branch\'s manager cannot see it to escalate; another salon cannot either', async () => {
+    const s = svc();
+    const { request } = await s.request(frontDesk, refundBody());
+    await expect(s.escalate(managerB, request.id, { reason: 'not mine to push' })).rejects.toMatchObject({ code: 'not_found', status: 404 });
+    await expect(s.escalate(actor(MGR, 'MANAGER', null, T2), request.id, { reason: 'other salon' })).rejects.toMatchObject({ code: 'not_found' });
+  });
+});
+
+describe('round 10 (Approvals Management 01 point 3): platform guardrails a salon setting cannot weaken', () => {
+  const setGuard = (v: unknown) => sql`insert into platform_settings (setting_key, setting_group, value, value_type, override_policy, is_mandatory)
+      values ('approvals.tenant_guardrails', 'global_defaults', ${JSON.stringify(v)}::jsonb, 'json', 'mandatory', true)
+      on conflict (setting_key) do update set value = excluded.value`.execute(db);
+  const clearGuard = () => sql`delete from platform_settings where setting_key = 'approvals.tenant_guardrails'`.execute(db);
+  it('the baseline protections are listed per kind; a looser salon change is refused with the field and the platform limit; stricter is fine', async () => {
+    const s = svc();
+    const base = await s.policies(owner);
+    expect(base.find((p) => p.kind === 'loyalty_bonus')!.guardrail).toEqual({ alwaysEnabled: true, requireDifferentApprover: true });
+    expect(base.find((p) => p.kind === 'void')!.guardrail).toBeNull();
+    try {
+      await setGuard({ void: { requireDifferentApprover: true, maxThresholdCents: 10_000, maxApproverLimitCents: 25_000, maxExpiresAfterHours: 12 }, nonsense: { alwaysEnabled: true }, refund: { maxThresholdCents: 'lots' } });
+      const v0 = (await s.policies(owner)).find((p) => p.kind === 'void')!;
+      expect(v0.guardrail).toEqual({ requireDifferentApprover: true, maxThresholdCents: 10_000, maxApproverLimitCents: 25_000, maxExpiresAfterHours: 12 });
+      expect(v0).toMatchObject({ approverLimitCents: 25_000, expiresAfterHours: 12 });            // the code default (no cap, 24 h) read through the guardrail
+      expect(v0.clampedByPlatform).toEqual(['approverLimitCents', 'expiresAfterHours']);
+      for (const [field, body] of [['thresholdCents', { thresholdCents: 20_000 }], ['requireDifferentApprover', { requireDifferentApprover: false }], ['approverLimitCents', { approverLimitCents: null }], ['expiresAfterHours', { expiresAfterHours: 48 }]] as const) {
+        await expect(s.updatePolicy(owner, { kind: 'void', expectedVersion: 0, reason: 'loosen it please', ...body })).rejects.toMatchObject({ code: 'policy_below_platform', status: 409, extra: { field } });
+      }
+      const ok = await s.updatePolicy(owner, { kind: 'void', expectedVersion: 0, thresholdCents: 5_000, approverLimitCents: 10_000, expiresAfterHours: 6, reason: 'stricter than the platform' });
+      expect(ok).toMatchObject({ thresholdCents: 5_000, approverLimitCents: 10_000, expiresAfterHours: 6, version: 1 });
+      // the refund rule stays the baseline (the malformed platform value is ignored, not trusted)
+      expect((await s.policies(owner)).find((p) => p.kind === 'refund')!.guardrail).toEqual({ alwaysEnabled: true });
+    } finally { await clearGuard(); }
+  });
+  it('a salon rule saved before the platform tightened is read through the guardrail everywhere (needsApproval, new requests)', async () => {
+    const s = svc();
+    const cur = (await s.policies(owner)).find((p) => p.kind === 'price_override')!;
+    await s.updatePolicy(owner, { kind: 'price_override', expectedVersion: cur.version, thresholdCents: 50_000, requireDifferentApprover: false, expiresAfterHours: 48, reason: 'set before the platform rule' });
+    expect(await s.needsApproval(T, 'price_override', 40_000)).toBe(false);
+    try {
+      await setGuard({ price_override: { maxThresholdCents: 30_000, requireDifferentApprover: true, maxExpiresAfterHours: 24 } });
+      expect(await s.needsApproval(T, 'price_override', 40_000)).toBe(true);                      // 40 000 > the platform's 30 000
+      const p = (await s.policies(owner)).find((x) => x.kind === 'price_override')!;
+      expect(p).toMatchObject({ thresholdCents: 30_000, requireDifferentApprover: true, expiresAfterHours: 24 });
+      expect(p.clampedByPlatform).toEqual(['requireDifferentApprover', 'thresholdCents', 'expiresAfterHours']);
+      const { request } = await s.request(manager, { kind: 'price_override', subjectType: 'ticket_line', subjectId: `line-${++subj}`, amountCents: 40_000, reason: 'Price match' });
+      expect(Date.parse(request.expiresAt!) - clock).toBe(24 * 3_600_000);
+      await expect(s.decide(manager, request.id, { decision: 'approve', expectedVersion: 1 })).rejects.toMatchObject({ code: 'requester_cannot_approve' });   // separation forced on
+      // the stored row is untouched until the owner saves again — and a save keeps it within the guardrail
+      expect(Number((await sql<any>`select threshold_cents from tenant_approval_policies where tenant_id = ${T} and kind = 'price_override'`.execute(db)).rows[0].threshold_cents)).toBe(50_000);
+    } finally { await clearGuard(); }
+  });
+});

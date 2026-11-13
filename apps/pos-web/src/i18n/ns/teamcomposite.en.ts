@@ -46,4 +46,12 @@ export const TEAMCOMPOSITE_EN = {
   'cs.r.reliability': 'Tech Queue offers: service done ÷ (done + declined + expired). Customer cancellations and no-shows are excluded. Needs at least 10.',
   'cs.r.onTime': 'Appointments with a planned start, the guest\'s arrival and the actual start: started within the 10-minute grace. A late guest or a missing time is excluded. Needs at least 10.',
   'cs.r.correction': 'Substantiated, technician-attributable rework ÷ completed services. A refund or an unreviewed complaint alone never counts. No evidence source is recorded yet.',
+  'cs10.title': 'Model versions',
+  'cs10.version': '{v}: {n} saved',
+  'cs10.none': 'No snapshot saved yet',
+  'cs10.component': 'Part',
+  'cs10.change': 'Change',
+  'cs10.score': 'Score',
+  'cs10.single': 'Only one model version has been saved for this technician, so there is nothing to compare yet.',
+  'cs10.noRerank': 'Read from the saved snapshots only — a new model version never re-scores or re-ranks history.',
 };

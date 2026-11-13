@@ -19,7 +19,7 @@ export interface CheckTermsView { version: number; discountType: string; discoun
   maxPerCustomer: number | null; requiresCode: boolean; serviceIds: string[]; stackable: boolean; termsText: string | null }
 export type CouponAssistGoal = 'slow_weekdays' | 'promote_service' | 'returning_visits' | 'reconnect_inactive';
 export const posCouponsApi = {
-  check: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean }) => api.post<CouponCheck>(`/pos/coupons/${encodeURIComponent(dealId)}/check`, body),
+  check: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean; customerId?: string | null; branchId?: string | null }) => api.post<CouponCheck>(`/pos/coupons/${encodeURIComponent(dealId)}/check`, body),
   campaigns: (dealId: string) => api.get<any>(`/pos/coupons/${encodeURIComponent(dealId)}/campaigns`),
   health: () => api.get<any>(`/pos/coupons/health`),
   runHealth: () => api.post<any>(`/pos/coupons/health/run`, {}),

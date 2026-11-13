@@ -20,6 +20,8 @@ import { errorTextOf } from '../i18n/error-text';
 import { useRealtime } from '../realtime/useRealtime';
 import { deviceToday } from '../lib/deviceToday';
 import { EodReconcile } from './eodReconcile';
+import { posAIMarketingApi } from '../api/posAIMarketingApi';
+import { useCan } from '../components/usePermissions';
 
 /** Extras (Follow-Up Queue row 11): the contact cooldown window shown in the task details */
 const COOLDOWN_TIMELINE_DAYS = 14;
@@ -334,6 +336,20 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
   const [rejectNote, setRejectNote] = useState('');
   const [needOverride, setNeedOverride] = useState(false);
   const [reason, setReason] = useState('');
+  // round 10 (END-OF-DAY FOLLOW-UPS 15): optional AI wording — the AI Marketing draft service (editable output, validated, never sends)
+  // with only the service and the purpose (no customer name or phone); a manager chooses to use it and still sends / approves it
+  const can = useCan();
+  const canAi = can('pos.marketing.view');
+  const [ai, setAi] = useState<{ busy: boolean; text: string | null; err: string | null }>({ busy: false, text: null, err: null });
+  const [custom, setCustom] = useState<string | null>(null);
+  const suggest = async () => {
+    if (!d) return;
+    setAi({ busy: true, text: null, err: null });
+    try {
+      const r = await posAIMarketingApi.generateDraft({ channel: 'push', tone: 'friendly', campaignType: 'thank you after a salon visit, with aftercare', serviceName: d.serviceName, salonName: tx('eod10.ai.salonPlaceholder') }) as { text?: string };
+      setAi({ busy: false, text: r?.text?.trim() || null, err: r?.text ? null : tx('eod10.ai.empty') });
+    } catch (e) { setAi({ busy: false, text: null, err: errorTextOf(e, tx('eod10.ai.failed')) }); }
+  };
   const load = useCallback(async () => {
     try {
       const det = await eod.task(id); setD(det);
@@ -356,13 +372,14 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
   const unsent = d && ['pending', 'pending_manager_approval', 'rejected'].includes(d.status);
   const retryable = d?.status === 'customer_not_available' && d.customerHasApp;
   const blocked = cc ? cc.categories.some((c) => c === 'blocked' || c === 'already_sent' || c === 'missing_contact' || c === 'opted_out') : false;
-  const body = d ? (d.sentMessage ?? d.draft) : '';
+  const body = d ? (d.sentMessage ?? custom ?? d.draft) : '';
+  const msgOpt = custom && !d?.sentMessage ? { message: custom } : {};
   const footer = d ? (
     <div className="eod-dfoot">
       <button type="button" className="btn ghost" onClick={() => openCustomer(d.customerId, d.customerName)} data-testid="fuq-d-customer">{tx('fuq.a.openCustomer')}</button>
       <button type="button" className="btn ghost" onClick={() => book(d.customerId)} data-testid="fuq-d-book">{tx('fuq.a.book')}</button>
-      {d.status === 'pending_manager_approval' ? <button type="button" className="btn" disabled={busy || blocked || (needOverride && !ov)} onClick={() => act(() => eod.approve(d.id, { override: ov }))} data-testid="fuq-d-approve">{needOverride ? tx('fuq.a.sendAnyway') : tx('fuq.a.approve')}</button>
-        : d.status === 'pending' ? <button type="button" className="btn" disabled={busy || blocked || (needOverride && !ov)} onClick={() => act(() => eod.send(d.id, { override: ov }))} data-testid="fuq-d-send">{needOverride ? tx('fuq.a.sendAnyway') : tx('fuq.a.send')}</button>
+      {d.status === 'pending_manager_approval' ? <button type="button" className="btn" disabled={busy || blocked || (needOverride && !ov)} onClick={() => act(() => eod.approve(d.id, { override: ov, ...msgOpt }))} data-testid="fuq-d-approve">{needOverride ? tx('fuq.a.sendAnyway') : tx('fuq.a.approve')}</button>
+        : d.status === 'pending' ? <button type="button" className="btn" disabled={busy || blocked || (needOverride && !ov)} onClick={() => act(() => eod.send(d.id, { override: ov, ...msgOpt }))} data-testid="fuq-d-send">{needOverride ? tx('fuq.a.sendAnyway') : tx('fuq.a.send')}</button>
         : retryable ? <button type="button" className="btn" disabled={busy || (needOverride && !ov)} onClick={() => act(() => eod.send(d.id, { override: ov }))} data-testid="fuq-d-retry">{tx('fuq.a.retry')}</button> : null}
       <button type="button" className="btn ghost" onClick={onClose} data-testid="fuq-d-close">{tx('fuq.a.close')}</button>
     </div>
@@ -408,6 +425,15 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
           <h4>{d.sentMessage ? tx('fuq.d.sentMessage') : tx('fuq.d.message')}</h4>
           <div className="eod-msg" data-testid="fuq-d-preview">{body}</div>
           <div className="s">{tx('fuq.d.chars', { n: String(body.length) })}</div>
+          {unsent && canAi ? (
+            <div className="fuq-ai" data-testid="fuq-d-ai">
+              <button type="button" className="btn ghost" disabled={ai.busy || busy} onClick={() => void suggest()} data-testid="fuq-d-ai-suggest">{ai.busy ? tx('pos.loading') : tx('eod10.ai.suggest')}</button>
+              {custom ? <button type="button" className="btn ghost" onClick={() => setCustom(null)} data-testid="fuq-d-ai-undo">{tx('eod10.ai.undo')}</button> : null}
+              {ai.err ? <div className="s" role="status" data-testid="fuq-d-ai-err">{ai.err}</div> : null}
+              {ai.text ? <div className="eod-msg" data-testid="fuq-d-ai-text">{ai.text}</div> : null}
+              {ai.text ? <button type="button" className="btn ghost" onClick={() => { setCustom(ai.text); setAi({ busy: false, text: null, err: null }); }} data-testid="fuq-d-ai-use">{tx('eod10.ai.use')}</button> : null}
+              <div className="s">{tx('eod10.ai.note')}</div>
+            </div>) : null}
           {needOverride ? <label className="eod-field">{tx('fuq.a.overrideReason')}<input className="fk-input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-testid="fuq-d-override" /></label> : null}
           {unsent ? (
             <div className="fuq-skip">
@@ -426,7 +452,9 @@ function QueueDetail({ id, tz, onClose, onChanged, openCustomer, book }: { id: s
           {!hist || hist.items.filter((h) => h.id !== d.id).length === 0 ? <div className="s">{tx('fuq.d.noHistory')}</div> : (
             <ul className="fuq-hist" data-testid="fuq-d-history">{hist.items.filter((h) => h.id !== d.id).map((h) => (
               <li key={h.id}><span className={`eod-chip st-${h.status}`}>{stText(h.status)}</span> {h.dueDate} · {h.serviceName} · {h.technicianName}
-                {h.bookedAfterAt ? <span className="s"> · {tx('fuq.d.bookedAfter')} {when(h.bookedAfterAt, tz)}</span> : null}</li>))}</ul>
+                {h.bookedAfterAt ? <span className="s"> · {tx('fuq.d.bookedAfter')} {when(h.bookedAfterAt, tz)}</span> : null}
+                {h.repliedAt ? <span className="s" data-testid="fuq-h-replied"> · {tx('eod10.h.replied', { t: when(h.repliedAt, tz) })}</span> : null}
+                {h.returnedAt ? <span className="s" data-testid="fuq-h-returned"> · {tx('eod10.h.returned', { t: when(h.returnedAt, tz) })}</span> : null}</li>))}</ul>
           )}
         </div>
       )}

@@ -459,4 +459,8 @@ export const FINANCE_EN = {
   "finance.dup.r.sameDay": "Same vendor, date and total.",
   "finance.dup.r.oneDay": "Same vendor and total, one day apart.",
   "finance.dup.r.photo": "Same total and date, and the receipt photo looks the same.",
+  "dr10.due": "Review by",
+  "dr10.overdue": "Overdue",
+  "dr10.dueOn": "Review by {at}",
+  "dr10.dueOverdue": "Overdue — review was due {at}",
 };

@@ -145,6 +145,12 @@ export interface RetentionRow {
   segment: 'never_visited' | 'active' | 'approaching' | 'at_risk'; returningInPeriod: boolean; recoveredInPeriod: boolean;
   lastVisitAt: string | null; firstVisitAt: string | null; daysAway: number | null; visits: number; lifetimeSpendCents: number; createdAt: string | null;
   lastOutreachAt: string | null; lastOutreachStatus: string | null; nextAppointmentDate: string | null; priority: PriorityInfo | null;
+  /** round 10 (Win-Back 11): how many OTHER active profiles of this salon carry the same phone — shown so staff see it; the profiles
+   *  stay distinct and the bulk preview still sends one text per destination (duplicate_destination) */
+  sharedPhoneProfiles?: number;
+  /** round 10 (Win-Back 13): the technician who did this customer's last visit, when still active here — offered to the booking flow,
+   *  which re-checks skills and availability (nothing is booked from this list) */
+  lastTechnician?: { id: string; name: string } | null;
 }
 
 const money = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -527,8 +533,30 @@ export class RetentionRepository {
     }
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const eligibleOnPage = rows.filter((x: any) => x.sms_status === 'eligible' && x.segment === 'at_risk').length;
-    return { segment: seg, sort: ord.label, period: this.periodOut(k), scope: this.scopeOut(k), filters: applied, items: rows.map((x: any) => this.row(x)), page: p, pageSize, totalItems: total, totalPages,
+    const extra = await this.pageExtras(ctx, rows.map((x: any) => String(x.id)));
+    return { segment: seg, sort: ord.label, period: this.periodOut(k), scope: this.scopeOut(k), filters: applied,
+      items: rows.map((x: any) => ({ ...this.row(x), sharedPhoneProfiles: extra.shared.get(String(x.id)) ?? 0, lastTechnician: extra.tech.get(String(x.id)) ?? null })), page: p, pageSize, totalItems: total, totalPages,
       eligibleOnPage, eligibleMatching: N(rows[0]?.eligible_n) };
+  }
+
+  /** round 10 (Win-Back 11 · 13): for the rows on this page only — other profiles sharing the phone, and the last visit's technician
+   *  when that technician is still active (the visit = the latest paid / closed ticket; its first line with a technician). */
+  async pageExtras(ctx: RetentionContext, ids: string[]): Promise<{ shared: Map<string, number>; tech: Map<string, { id: string; name: string }> }> {
+    const shared = new Map<string, number>(); const tech = new Map<string, { id: string; name: string }>();
+    const valid = ids.filter(isUuid);
+    if (!valid.length) return { shared, tech };
+    const sp = (await sql<{ id: string; n: number }>`select c.id, count(o.id)::int as n from customers c join customers o on o.tenant_id = c.tenant_id and o.id <> c.id and o.archived_at is null
+        and coalesce(o.normalized_phone, '') <> '' and o.normalized_phone = c.normalized_phone
+      where c.tenant_id = ${ctx.tenantId} and c.id = any(${valid}::uuid[]) and coalesce(c.normalized_phone, '') <> '' group by c.id`.execute(this.db)).rows;
+    for (const r of sp) shared.set(String(r.id), N(r.n));
+    const lt = (await sql<{ customer_id: string; technician_id: string; name: string | null }>`select distinct on (tk.customer_id) tk.customer_id, te.id as technician_id,
+        coalesce(nullif(te.full_name, ''), trim(te.first_name || ' ' || coalesce(te.last_name, ''))) as name
+      from tickets tk join ticket_service_lines sl on sl.tenant_id = tk.tenant_id and sl.ticket_id = tk.id and sl.technician_id is not null
+      join technicians te on te.tenant_id = tk.tenant_id and te.id = sl.technician_id and te.archived_at is null and coalesce(te.is_active, true)
+      where tk.tenant_id = ${ctx.tenantId} and tk.customer_id = any(${valid}::uuid[]) and tk.removed_at is null and tk.status = any(${[...VISIT_TICKET_STATUSES]}::text[])
+      order by tk.customer_id, coalesce(tk.paid_at, tk.created_at) desc, tk.id desc, sl.created_at asc`.execute(this.db)).rows;
+    for (const r of lt) tech.set(String(r.customer_id), { id: String(r.technician_id), name: String(r.name || '') });
+    return { shared, tech };
   }
 
   /** Resolve "Select all matching" on the server, against the filters as they are now (capped, never silent). */

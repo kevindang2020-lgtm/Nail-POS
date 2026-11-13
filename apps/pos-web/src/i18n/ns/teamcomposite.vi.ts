@@ -46,4 +46,12 @@ export const TEAMCOMPOSITE_VI = {
   'cs.r.reliability': 'Lượt giao trong Hàng chờ thợ: hoàn tất ÷ (hoàn tất + từ chối + hết hạn). Khách hủy và không đến được loại trừ. Cần ít nhất 10.',
   'cs.r.onTime': 'Lịch hẹn có giờ dự kiến, giờ khách đến và giờ bắt đầu thực tế: bắt đầu trong 10 phút ân hạn. Khách đến trễ hoặc thiếu giờ được loại trừ. Cần ít nhất 10.',
   'cs.r.correction': 'Việc làm lại đã xác minh, do thợ gây ra ÷ dịch vụ hoàn tất. Hoàn tiền hay khiếu nại chưa xem xét không bao giờ được tính. Chưa có nguồn dữ liệu nào được ghi.',
+  'cs10.title': 'Phiên bản mô hình', // DRAFT — Kevin reviews
+  'cs10.version': '{v}: {n} bản đã lưu', // DRAFT — Kevin reviews
+  'cs10.none': 'Chưa lưu bản chụp nào', // DRAFT — Kevin reviews
+  'cs10.component': 'Thành phần', // DRAFT — Kevin reviews
+  'cs10.change': 'Thay đổi', // DRAFT — Kevin reviews
+  'cs10.score': 'Điểm', // DRAFT — Kevin reviews
+  'cs10.single': 'Thợ này mới có một phiên bản mô hình được lưu, nên chưa có gì để so sánh.', // DRAFT — Kevin reviews
+  'cs10.noRerank': 'Chỉ đọc từ các bản chụp đã lưu — phiên bản mô hình mới không bao giờ chấm lại hay xếp hạng lại lịch sử.', // DRAFT — Kevin reviews
 };

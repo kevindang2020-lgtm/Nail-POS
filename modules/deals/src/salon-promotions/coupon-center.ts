@@ -59,8 +59,15 @@ export class CouponCenter {
   private notFound() { return withCode(new HttpException({ code: 'PROMOTION_NOT_FOUND', message: 'Promotion not found' }, HttpStatus.NOT_FOUND), 'PROMOTION_NOT_FOUND'); }
 
   /** §12: Checkout's own verdict for this coupon (read-only). A coupon outside this branch's scope is "not found". */
-  async check(ctx: DealContext, dealId: string, b: { ticketId?: string | null; ticketNumber?: string | null; customerId?: string | null; serviceIds?: string[] | null; spendCents?: unknown; codeEntered?: boolean | null }) {
+  async check(ctx: DealContext, dealId: string, b: { ticketId?: string | null; ticketNumber?: string | null; customerId?: string | null; serviceIds?: string[] | null; spendCents?: unknown; codeEntered?: boolean | null; branchId?: string | null }) {
     if (!(await this.coupon(ctx, dealId))) throw this.notFound();
+    // round 10 (Coupons 07): "as at this location" — a branch of THIS salon only; the hypothetical facts are judged there (a
+    // real ticket keeps its own location). Read-only like every check: no limit, code or hold is consumed.
+    if (b.branchId && !b.ticketId && !b.ticketNumber) {
+      if (!UUID.test(String(b.branchId)) || !(await sql<any>`select 1 from branches where tenant_id = ${ctx.tenantId} and id = ${String(b.branchId)}::uuid`.execute(this.db)).rows[0])
+        throw withCode(new HttpException({ code: 'BRANCH_NOT_FOUND', message: 'That location is not part of this salon.' }, HttpStatus.NOT_FOUND), 'BRANCH_NOT_FOUND');
+      ctx = { ...ctx, branchId: String(b.branchId) };
+    }
     if (!b.ticketId && b.ticketNumber && String(b.ticketNumber).trim()) {   // the number the desk sees (#1042), this salon's only, newest first
       const num = String(b.ticketNumber).trim().replace(/^#/, '');
       const t = (await sql<any>`select id from tickets where tenant_id = ${ctx.tenantId} and ticket_number::text = ${num} and removed_at is null ${ctx.branchId && /^[0-9a-f-]{36}$/i.test(String(ctx.branchId)) ? sql`and branch_id = ${ctx.branchId}::uuid` : sql``} order by created_at desc, id desc limit 1`.execute(this.db)).rows[0];
@@ -115,6 +122,20 @@ export class CouponCenter {
           (d.max_redemptions is not null and (select count(*) from deal_redemptions r where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed')) > d.max_redemptions)
           or (d.max_per_customer is not null and exists (select 1 from deal_redemptions r where r.tenant_id = d.tenant_id and r.deal_id = d.id and r.status in ('redeemed', 'partially_reversed') and r.customer_id is not null
                 group by r.customer_id having count(*) > d.max_per_customer)))
+        order by d.created_at, d.id limit 50`.execute(this.db)).rows);
+    // round 10 (Deals 05 · Coupons 04 — Duplicate Redemption): the live-use unique index (uq_deal_redemption_ticket_live) covers
+    // 'applied' / 'redeemed' only, so a ticket whose earlier use was PARTIALLY reversed can take the same offer again — two
+    // completed uses of one offer on one ticket. Listed for a person to investigate; no redemption or ledger row is changed.
+    await run('ticket_repeat_use', 'No ticket used the same offer twice.', (n) => `${n} coupon(s) were completed twice on the same ticket (an earlier use was partly reversed and the offer was applied again). Review the redemptions; nothing was changed.`,
+      async () => (await sql<any>`select distinct d.id, d.created_at from deals d join deal_redemptions r on r.tenant_id = d.tenant_id and r.deal_id = d.id
+        where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and r.ticket_id is not null and r.status in ('redeemed', 'partially_reversed')
+        group by d.id, d.created_at, r.ticket_id having count(*) > 1 order by d.created_at, d.id limit 50`.execute(this.db)).rows);
+    // round 10 (Deals 09 — Rule Versioning): every completed use must keep the exact terms it was charged under — its own terms
+    // snapshot or the deal_versions row for its version. A use with neither cannot be explained later; listed, never rewritten.
+    await run('version_not_frozen', 'Every completed use keeps the exact terms it was charged under.', (n) => `${n} coupon(s) have completed uses whose terms at payment time are not on record (no terms snapshot and no saved version). Nothing was changed.`,
+      async () => (await sql<any>`select distinct d.id, d.created_at from deals d join deal_redemptions r on r.tenant_id = d.tenant_id and r.deal_id = d.id
+        where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and r.status in ('redeemed', 'partially_reversed') and r.terms_snapshot is null
+          and not exists (select 1 from deal_versions dv where dv.tenant_id = r.tenant_id and dv.deal_id = r.deal_id and dv.version = r.deal_version)
         order by d.created_at, d.id limit 50`.execute(this.db)).rows);
     // Promotions backlog · 11 "Fraud/Abuse Signals" (repeat-account part): one phone number behind two or more customer
     // records that each completed the SAME offer — a way around a per-customer limit. A signal for a person to review; no

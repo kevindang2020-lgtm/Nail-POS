@@ -87,10 +87,13 @@ export class CommissionReviewRepository {
     return (REFUND_POLICIES as readonly string[]).includes(String(r?.p)) ? (String(r.p) as RefundPolicy) : null;
   }
   /** set the documented policy (configuration only — no ledger row is touched); financial manager only, audited */
-  async setRefundPolicy(ctx: TeamCtx, policy: unknown, requestId: string) {
+  /** round 10 (Finish the Five 06): `expectedPolicy` (what the screen loaded; null = not set yet) makes the change conflict-safe —
+   *  when someone else changed the policy since, nothing is written and the screen is told to reload. Omitted → the old behaviour. */
+  async setRefundPolicy(ctx: TeamCtx, policy: unknown, requestId: string, expectedPolicy?: string | null) {
     if (!canAny(ctx, ...FINANCE_MANAGER)) throw err(403, 'FORBIDDEN', 'Only a payroll manager can set the refund-reversal policy.');
     if (!(REFUND_POLICIES as readonly string[]).includes(String(policy))) throw err(422, 'INVALID_POLICY', 'Choose PRO_RATA or NO_REVERSAL.');
     const T = ctx.tenantId; const before = await this.refundPolicy(ctx);
+    if (expectedPolicy !== undefined && (before ?? null) !== (expectedPolicy ?? null)) throw err(409, 'VERSION_CONFLICT', 'Someone else changed the refund-reversal policy. Reload to see the latest.', { currentPolicy: before ?? null });
     await this.db.transaction().execute(async (trx) => {
       const ex = (await sql<any>`select ts.id from tenant_settings ts where ts.tenant_id = ${T} and ts.category = 'compensation' and ts.branch_id is null order by ts.updated_at desc nulls last limit 1 for update`.execute(trx)).rows[0];
       if (ex) await sql`update tenant_settings ts set settings_json = coalesce(ts.settings_json, '{}'::jsonb) || jsonb_build_object('refundReversalPolicy', ${String(policy)}::text), updated_at = now(), updated_by_user_id = ${ctx.userId ?? null}
@@ -322,12 +325,37 @@ export class CommissionReviewRepository {
     const ev = (await sql<any>`select e.id, e.event_type, e.old_status, e.new_status, e.reason, e.safe_metadata_json, e.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor
       from commission_discrepancy_review_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.review_id = ${id}
       order by e.created_at desc, e.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
-    return { ...this.item(r), severityReason: r.severity_reason ?? null, evidence: r.evidence_json ?? {}, serviceLineId: r.service_line_id ? String(r.service_line_id) : null, refundId: r.refund_id ? String(r.refund_id) : null,
+    const sources = await this.sourceRecords(T, r);
+    return { ...this.item(r), sources, severityReason: r.severity_reason ?? null, evidence: r.evidence_json ?? {}, serviceLineId: r.service_line_id ? String(r.service_line_id) : null, refundId: r.refund_id ? String(r.refund_id) : null,
       assignedAt: iso(r.assigned_at), investigatingAt: iso(r.investigating_at), resolutionCode: r.resolution_code ?? null, resolutionNote: r.resolution_note ?? null, resolvedAt: iso(r.resolved_at), resolvedBy: r.resolver ?? null,
       dismissReason: r.dismiss_reason ?? null, dismissedAt: iso(r.dismissed_at), dismissedBy: r.dismisser ?? null, lastSeenAt: iso(r.last_seen_at), selfPay: await this.isOwnPay(ctx, r.technician_id),
       canAct: canAny(ctx, ...REVIEW), canClose: canAny(ctx, ...REVIEW) && (canAny(ctx, ...FINANCE_MANAGER) || !(await this.isOwnPay(ctx, r.technician_id))),
       history: { items: ev.map((e: any) => ({ id: String(e.id), type: String(e.event_type), from: e.old_status ?? null, to: e.new_status ?? null, reason: e.reason ?? null, metadata: e.safe_metadata_json ?? {}, at: iso(e.created_at), actor: e.actor ?? null })),
         page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages } };
+  }
+  /** round 10 (Finish the Five 04 — Evidence Trace): the exact records a finding points at, read from THIS salon only: the service line,
+   *  its commission rate snapshot (ticket_compensation_snapshots), the refunds named in the evidence and the recorded commission
+   *  reversals (compensation_adjustments). Ids + the figures needed to recognise them; read-only. */
+  private async sourceRecords(T: string, r: any) {
+    const ev = (r.evidence_json ?? {}) as { refundIds?: unknown; recordedEntryIds?: unknown };
+    const ids = (v: unknown) => (Array.isArray(v) ? v.map(String).filter((x) => UUID.test(x)).slice(0, 50) : []);
+    const lineId = r.service_line_id && UUID.test(String(r.service_line_id)) ? String(r.service_line_id) : null;
+    const line = lineId ? (await sql<any>`select tl.id, tl.service_name_snapshot, tl.line_total_cents, tl.removed_at from ticket_service_lines tl where tl.tenant_id = ${T} and tl.id = ${lineId}`.execute(this.db)).rows[0] : null;
+    const snap = lineId ? (await sql<any>`select s.id, s.commission_type, s.commission_value, coalesce(s.rule_source, s.commission_source) as rule_source, s.policy_version, s.snapshot_at, s.tech_service_earnings_cents
+      from ticket_compensation_snapshots s where s.tenant_id = ${T} and s.service_line_id = ${lineId} order by s.snapshot_at desc, s.id desc limit 1`.execute(this.db)).rows[0] : null;
+    const refundIds = [...new Set([...ids(ev.refundIds), ...(r.refund_id && UUID.test(String(r.refund_id)) ? [String(r.refund_id)] : [])])];
+    const refunds = refundIds.length ? (await sql<any>`select pr.id, pr.amount_cents, pr.status, pr.created_at from payment_refunds pr where pr.tenant_id = ${T} and pr.id = any(${refundIds}::uuid[]) order by pr.created_at, pr.id`.execute(this.db)).rows : [];
+    const entryIds = ids(ev.recordedEntryIds);
+    const entries = entryIds.length ? (await sql<any>`select a.id, a.category, a.amount_cents, a.status, a.created_at from compensation_adjustments a where a.tenant_id = ${T} and a.id = any(${entryIds}::uuid[]) order by a.created_at, a.id`.execute(this.db)).rows : [];
+    return {
+      ticket: r.transaction_id ? { id: String(r.transaction_id), number: r.ticket_number ?? null } : null,
+      serviceLine: line ? { id: String(line.id), service: line.service_name_snapshot ?? null, totalCents: N(line.line_total_cents), removed: !!line.removed_at } : null,
+      rateSnapshot: snap ? { id: String(snap.id), type: snap.commission_type ?? null, value: snap.commission_value == null ? null : Number(snap.commission_value), source: snap.rule_source ?? null,
+        policyVersion: snap.policy_version == null ? null : Number(snap.policy_version), at: iso(snap.snapshot_at), earningsCents: N(snap.tech_service_earnings_cents) } : null,
+      refunds: refunds.map((x: any) => ({ id: String(x.id), amountCents: N(x.amount_cents), status: String(x.status), at: iso(x.created_at) })),
+      ledgerEntries: entries.map((x: any) => ({ id: String(x.id), category: String(x.category), amountCents: N(x.amount_cents), status: String(x.status), at: iso(x.created_at) })),
+      missing: [...(lineId && !line ? ['service_line'] : []), ...(refundIds.length > refunds.length ? ['refund'] : []), ...(entryIds.length > entries.length ? ['ledger_entry'] : [])],
+    };
   }
   private async isOwnPay(ctx: TeamCtx, technicianId: unknown): Promise<boolean> {
     if (!technicianId || !ctx.userId) return false;

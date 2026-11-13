@@ -26,12 +26,13 @@
 // "estimated"). KPIs (spec §08): Expected Deposits Σ expected (> 0); Matched Σ min(allocated, expected); Settlements =
 // count; Missing Deposits = overdue count; Net Difference = matched − expected over the settlements that are DUE (arrival
 // passed) — not-yet-due payouts are listed as an exclusion, never counted as missing money.
+import { caseDue, EXCEPTION_REVIEW_DAYS, type ExceptionSeverity, type ExceptionStatus } from '../deposit-reconciliation/deposit-reconciliation.exceptions';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { logException } from '@aipowersalon/observability';
 import { assertTransition } from '@aipowersalon/database';
 import {
-  FinanceError, isUuid, N, iso, ymd, clampPage, pageReq, resolvePeriod, salonTimeZone, tsInPeriod, dateInPeriod, searchText, digitsOf, likeOf, prefixOf,
-  moneyToCents, positiveCents, oneOf, isValidYmd, csvDocument, usd, audit, daysBetween, type AuditRecorder, type FinanceCtx, type Period, type Paged, type PageReq,
+  FinanceError, isUuid, N, iso, ymd, clampPage, resolvePeriod, salonTimeZone, tsInPeriod, dateInPeriod, searchText, digitsOf, likeOf, prefixOf,
+  moneyToCents, positiveCents, oneOf, isValidYmd, csvDocument, usd, audit, daysBetween, type AuditRecorder, type FinanceCtx, type Period, type PageReq,
 } from './finance-scope';
 import { BANK_ACCOUNT } from '../payments-lifecycles';
 
@@ -585,18 +586,21 @@ export class ReconWorkspaceRepository {
       where ${sql.join(parts, sql` and `)}`;
     const k = (await sql<any>`select count(*)::int as n, count(*) filter (where e.status = 'open' or e.status = 'reopened')::int as open_n, count(*) filter (where e.status = 'in_review')::int as review_n,
         count(*) filter (where e.status = 'escalated')::int as esc_n, count(*) filter (where e.status = 'resolved')::int as resolved_n,
-        coalesce(sum(abs(e.amount_cents)) filter (where e.status <> 'resolved'), 0)::bigint as at_risk ${from}`.execute(this.db)).rows[0] || {};
+        coalesce(sum(abs(e.amount_cents)) filter (where e.status <> 'resolved'), 0)::bigint as at_risk,
+        count(*) filter (where e.status <> 'resolved' and e.created_at + (case ${sql.join(Object.entries(EXCEPTION_REVIEW_DAYS).map(([sev, d]) => sql`when e.severity = ${sev} then ${d}::int`), sql` `)} else 5 end) * interval '1 day' < now())::int as overdue_n ${from}`.execute(this.db)).rows[0] || {};
     const total = N(k.n); const pg = clampPage(pr, total);
     const rows = (await sql<any>`select e.id, e.kind, e.severity, e.title, e.detail, e.amount_cents, e.status, e.source_ref, e.assigned_to_user_id, e.resolution_note, e.resolved_at, e.created_at, s.id as s_id, s.settlement_id as settlement_ref, s.processor_type, d.id as d_id, d.reference as deposit_reference, b.nickname, b.account_last4, coalesce(u.full_name, u.email) as reviewer,
         ((now() at time zone ${f.period.tz})::date - (e.created_at at time zone ${f.period.tz})::date)::int as age_days
       ${from} order by e.created_at desc, e.id desc limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
     return {
-      kpis: { total, open: N(k.open_n), inReview: N(k.review_n), escalated: N(k.esc_n), resolved: N(k.resolved_n), amountAtRiskCents: N(k.at_risk) },
+      kpis: { total, open: N(k.open_n), inReview: N(k.review_n), escalated: N(k.esc_n), resolved: N(k.resolved_n), amountAtRiskCents: N(k.at_risk), overdue: N(k.overdue_n) },
       items: rows.map((e: any) => ({
         id: String(e.id), kind: String(e.kind), class: classOfKind(String(e.kind)), severity: String(e.severity), title: String(e.title), detail: e.detail ?? null, amountCents: N(e.amount_cents),
         status: String(e.status), sourceRef: e.source_ref ?? null, settlementId: e.s_id ? String(e.s_id) : null, depositId: e.d_id ? String(e.d_id) : null,
         settlementRef: e.settlement_ref ?? null, processor: e.processor_type ?? null, depositReference: e.deposit_reference ?? null, account: e.nickname ? masked(e.nickname, e.account_last4) : null,
         reviewer: e.reviewer ?? null, assignedToUserId: e.assigned_to_user_id ?? null, resolutionNote: e.resolution_note ?? null, resolvedAt: iso(e.resolved_at), createdAt: iso(e.created_at), ageDays: N(e.age_days),
+        // round 10 (AI Deposit Reconciliation 01): the per-case review due date from its severity (the one EXCEPTION_REVIEW_DAYS rule)
+        ...caseDue({ severity: String(e.severity) as ExceptionSeverity, createdAt: iso(e.created_at) ?? '', status: String(e.status) as ExceptionStatus }),
       })),
       total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
     };
@@ -614,7 +618,8 @@ export class ReconWorkspaceRepository {
       order by created_at desc limit 20`.execute(this.db)).rows;
     return {
       exception: { id: String(e.id), kind: String(e.kind), class: classOfKind(String(e.kind)), severity: String(e.severity), title: String(e.title), detail: e.detail ?? null, amountCents: N(e.amount_cents),
-        status: String(e.status), sourceRef: e.source_ref ?? null, reviewer: e.reviewer ?? null, resolutionNote: e.resolution_note ?? null, resolvedAt: iso(e.resolved_at), createdAt: iso(e.created_at) },
+        status: String(e.status), sourceRef: e.source_ref ?? null, reviewer: e.reviewer ?? null, resolutionNote: e.resolution_note ?? null, resolvedAt: iso(e.resolved_at), createdAt: iso(e.created_at),
+        ...caseDue({ severity: String(e.severity) as ExceptionSeverity, createdAt: iso(e.created_at) ?? '', status: String(e.status) as ExceptionStatus }) },
       notes: await this.notesOf(ctx, 'exception', id),
       history: audits.map((a: any) => ({ action: String(a.action), at: iso(a.created_at), role: a.actor_role ?? null })),
     };

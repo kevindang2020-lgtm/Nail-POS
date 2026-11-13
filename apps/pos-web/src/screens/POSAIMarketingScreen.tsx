@@ -95,6 +95,18 @@ export function POSAIMarketingScreen() {
           {cost && cost.explanation !== 'none' ? <p className="sub" data-testid="amk-cost-expl">{mt('amk.costExpl.' + cost.explanation, { b: mkMoney(cost.budgetsCents), n: mkNum(cost.campaignsWithBudget) })}</p> : null}
           <p className="sub">{mt('amk.reach.noteNoContact', { s: mkNum(reach?.sms.noContact), o: mkNum(reach?.sms.optedOut) })}</p>
           <p className="sub">{mt('amk.associated')}</p>
+          {/* round 10 (AI Marketing Assistant 08): budget / estimate vs the provider's reported cost and segments, per campaign */}
+          {s?.budgetVariance?.items?.length ? <details data-testid="amk-variance" open={s.budgetVariance.overruns > 0}>
+            <summary className="sub" style={{ cursor: 'pointer' }}>{mt('amk10.var.title', { n: mkNum(s.budgetVariance.overruns) })}</summary>
+            <table className="tbl"><thead><tr><th>{mt('amk10.var.campaign')}</th><th className="num">{mt('amk10.var.budget')}</th><th className="num">{mt('amk10.var.actual')}</th><th className="num">{mt('amk10.var.segments')}</th><th>{mt('amk10.var.flags')}</th></tr></thead>
+              <tbody>{s.budgetVariance.items.map((v: any) => <tr key={v.campaignId} data-testid="amk-var-row">
+                <td>{v.name || '—'}<span className="sub" style={{ display: 'block' }}>{mt('amk10.var.sent', { n: mkNum(v.sent) })}</span></td>
+                <td className="num">{v.budgetCents == null ? '—' : mkMoney(v.budgetCents)}</td>
+                <td className="num">{v.actualCostCents == null ? mt('amk.notReported') : mkMoney(v.actualCostCents)}</td>
+                <td className="num">{v.estimatedSegments == null ? '—' : mkNum(v.estimatedSegments)} → {v.actualSegments == null ? mt('amk.notReported') : mkNum(v.actualSegments)}</td>
+                <td data-testid="amk-var-flags">{v.flags.length ? v.flags.map((f: string) => mt('amk10.flag.' + f)).join(' · ') : mt('amk10.flag.ok')}</td></tr>)}</tbody></table>
+            <p className="sub">{mt('amk10.var.note')}</p>
+          </details> : null}
         </section>
 
         <section className="panel" style={{ padding: 12, minWidth: 0 }} data-testid="amk-recs">

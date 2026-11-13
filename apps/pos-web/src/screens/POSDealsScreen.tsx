@@ -27,7 +27,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { DiscountDetailsDialog, RedemptionsTable, TONE, life, pageOf, discountLabel, usageLabel, whenTime } from './POSDiscountsScreen';
-import { CheckDialog, AssistantDialog, DuplicateDialog, SizePicker, healthTone } from './POSCouponsScreen';
+import { CheckDialog, AssistantDialog, DuplicateDialog, SizePicker, healthTone, HealthGuide } from './POSCouponsScreen';
 import { DealWizard } from './deals/DealWizard';
 import { DealCouponsPanel } from './deals/DealCouponsPanel';
 import { DealsDashboard } from './deals/DealsDashboard';
@@ -246,7 +246,8 @@ export function POSDealsScreen() {
         {health.error ? <StateBlock error={health.error} onRetry={health.reload} /> : !health.data ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
           <ul className="fk-list" data-testid="health-checks">{health.data.checks.map((c: any) => <li key={c.key} className="fk-li" data-testid={'health-' + c.key}>
             <span className={'fk-chip ' + healthTone(c.status)}>{tx('cp.health.' + c.status)}</span>
-            <span className="fk-li-t">{tx('do.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span></li>)}</ul>
+            <span className="fk-li-t">{tx('do.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span>
+            <HealthGuide c={c} onDeal={(id) => setDetail({ id, tab: 'redemptions' })} onRedemptions={() => setTab('redemptions')} /></li>)}</ul>
           <div className="fk-hint">{tx('cp.healthNote', { t: whenTime(health.data.checkedAt) })}</div>
           <HealthRunHistory run={() => posDealsOffersApi.runHealth()} list={(q) => posDealsOffersApi.healthRuns(q)} checkLabel={(k) => tx('do.check.' + k)} onRan={() => health.reload()} /></>}
       </FitPanel> : null}

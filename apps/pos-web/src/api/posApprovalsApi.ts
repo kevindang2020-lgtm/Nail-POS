@@ -6,7 +6,7 @@
 import { api } from './client';
 import type {
   ApprovalCreateRequest, ApprovalCreateResult, ApprovalDecisionRequest, ApprovalListQuery, ApprovalPage, ApprovalPolicyChange,
-  ApprovalPolicyDetail, ApprovalRequestView,
+  ApprovalPolicyDetail, ApprovalRequestView, ApprovalEscalateRequest,
 } from '@aipowersalon/api-contracts/tenant';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -30,6 +30,8 @@ export const posApprovalsApi = {
   create: (b: ApprovalCreateRequest) => api.post<ApprovalCreateResult>('/pos/approvals', body(b)),
   decide: (id: string, d: ApprovalDecisionRequest) => api.post<ApprovalRequestView>(`${BASE}/${enc(id)}/decide`, body(d)),
   cancel: (id: string, reason: string) => api.post<ApprovalRequestView>(`${BASE}/${enc(id)}/cancel`, { reason }),
+  /** round 10 (Approvals 01 point 2): mark a pending request urgent — it stays pending; the approvers are alerted */
+  escalate: (id: string, b: ApprovalEscalateRequest) => api.post<ApprovalRequestView>(`${BASE}/${enc(id)}/escalate`, body(b)),
   policies: () => api.get<ApprovalPolicyDetail[]>(`${BASE}/policies`).then((r) => (Array.isArray(r) ? r : [])),
   updatePolicy: (u: ApprovalPolicyChange) => api.put<ApprovalPolicyDetail>(`${BASE}/policies`, body(u)),
 };
@@ -49,5 +51,6 @@ export function approvalErrorText(e: any, fallback: string): string {
   if (Object.prototype.hasOwnProperty.call(WHY_NOT, code)) return WHY_NOT[code];
   if (code === 'version_conflict') return t('pos.someone_changed_this_first_it_has_2ukk');
   if (code === 'policy_disabled') return t('pos.this_salon_does_not_use_approvals_14c3');
+  if (code === 'policy_below_platform') return t('errors.APPROVAL_POLICY_PLATFORM_FLOOR');
   return String(e?.message || fallback);
 }

@@ -8,6 +8,14 @@ export interface ApprovalPolicyDetail extends ApprovalPolicyView {
   label: string;
   cashThresholdCents: number | null;     // refund only: cash refunds need an approver past this (cumulative per payment)
   approverLimitCents: number | null;     // a decider WITHOUT approvals.manage_policies may approve up to this; null = no cap
+  /** round 10 (Approvals 01 point 3): the rules the salon cannot weaken for this kind (code baseline + Super Admin
+   *  platform_settings 'approvals.tenant_guardrails'), and the fields the platform tightened over the salon's saved value */
+  guardrail?: ApprovalGuardrailView | null;
+  clampedByPlatform?: string[];
+}
+export interface ApprovalGuardrailView {
+  alwaysEnabled?: boolean; requireDifferentApprover?: boolean;
+  maxThresholdCents?: number; maxCashThresholdCents?: number; maxApproverLimitCents?: number; maxExpiresAfterHours?: number;
 }
 export interface ApprovalPolicyChange extends ApprovalPolicyUpdate {
   cashThresholdCents?: number | null;

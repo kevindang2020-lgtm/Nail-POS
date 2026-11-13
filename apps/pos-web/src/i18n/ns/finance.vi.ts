@@ -456,4 +456,8 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.dup.r.sameDay": "Cùng nhà cung cấp, ngày và tổng tiền.", // DRAFT — Kevin reviews
   "finance.dup.r.oneDay": "Cùng nhà cung cấp và tổng tiền, cách nhau một ngày.", // DRAFT — Kevin reviews
   "finance.dup.r.photo": "Cùng tổng tiền và ngày, ảnh hóa đơn trông giống nhau.", // DRAFT — Kevin reviews
+  "dr10.due": "Hạn xem xét", // DRAFT — Kevin reviews
+  "dr10.overdue": "Quá hạn", // DRAFT — Kevin reviews
+  "dr10.dueOn": "Xem xét trước {at}", // DRAFT — Kevin reviews
+  "dr10.dueOverdue": "Quá hạn — hạn xem xét là {at}", // DRAFT — Kevin reviews
 };

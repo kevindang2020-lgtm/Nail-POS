@@ -77,6 +77,48 @@ export function dayInsights(d: DayCapacityInput) {
   return { staffing: understaffed ? staffing : null, availability };
 }
 
+// ── round 10 (AI Scheduling Optimizer 05 · 11): coverage by hour and by service category ─────────────────────────────
+/** One location-day broken down with the SAME rule the day-level check uses (detectUnderstaffing): per clock hour, the booked
+ *  minutes falling in that hour vs the scheduled technician minutes in it (lunch removed); per service category, the booked
+ *  minutes of that category's services vs the scheduled minutes of technicians approved for at least one of them
+ *  (technician_services). Confirmed bookings only — no forecast is spread over hours, so confidence stays lower and an
+ *  hour with nothing booked and nobody scheduled is left out (never an invented busy hour). Pure. */
+export interface CoverageShift { technicianId: string; startMin: number; endMin: number; lunchStartMin: number | null; lunchEndMin: number | null }
+export interface CoverageBooking { startMin: number; endMin: number; services: { serviceId: string; minutes: number }[] }
+export interface HourCoverage { hour: number; demandMinutes: number; capacityMinutes: number; state: string; missingMinutes: number }
+export interface CategoryCoverage { category: string; demandMinutes: number; capacityMinutes: number; qualifiedTechnicians: number; state: string; missingMinutes: number }
+const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+const shiftMinutesIn = (sh: CoverageShift, h0: number, h1: number) => overlap(sh.startMin, sh.endMin, h0, h1) - (sh.lunchStartMin != null && sh.lunchEndMin != null ? overlap(sh.lunchStartMin, sh.lunchEndMin, Math.max(h0, sh.startMin), Math.min(h1, sh.endMin)) : 0);
+export function hourlyCoverage(shifts: CoverageShift[], bookings: CoverageBooking[]): HourCoverage[] {
+  const pts = [...shifts.flatMap((x) => [x.startMin, x.endMin]), ...bookings.flatMap((b) => [b.startMin, b.endMin])].filter((x) => Number.isFinite(x));
+  if (!pts.length) return [];
+  const out: HourCoverage[] = [];
+  for (let h = Math.floor(Math.min(...pts) / 60); h < Math.ceil(Math.max(...pts) / 60) && h < 24; h++) {
+    const h0 = h * 60, h1 = h0 + 60;
+    const demand = Math.round(bookings.reduce((a, b) => a + overlap(b.startMin, b.endMin, h0, h1), 0));
+    const capacity = Math.round(shifts.reduce((a, x) => a + Math.max(0, shiftMinutesIn(x, h0, h1)), 0));
+    if (demand === 0 && capacity === 0) continue;
+    const r = detectUnderstaffing({ confirmedDemandMin: demand, capacityMin: capacity, forecastAvailable: false, sampleSize: 1 });
+    out.push({ hour: h, demandMinutes: demand, capacityMinutes: capacity, state: r.state, missingMinutes: r.missingMinutes });
+  }
+  return out;
+}
+export function categoryCoverage(shifts: CoverageShift[], bookings: CoverageBooking[], categoryOf: Record<string, string>, qualified: Record<string, string[]>): CategoryCoverage[] {
+  const demand = new Map<string, number>(); const services = new Map<string, Set<string>>();
+  for (const b of bookings) for (const sv of b.services) {
+    const c = categoryOf[sv.serviceId] ?? 'uncategorized';
+    demand.set(c, (demand.get(c) ?? 0) + Math.max(0, sv.minutes));
+    if (!services.has(c)) services.set(c, new Set()); services.get(c)!.add(sv.serviceId);
+  }
+  const minutesOf = (techId: string) => shifts.filter((x) => x.technicianId === techId).reduce((a, x) => a + Math.max(0, x.endMin - x.startMin - (x.lunchStartMin != null && x.lunchEndMin != null ? overlap(x.lunchStartMin, x.lunchEndMin, x.startMin, x.endMin) : 0)), 0);
+  return [...demand.entries()].map(([category, dem]) => {
+    const techs = new Set([...(services.get(category) ?? [])].flatMap((sv) => qualified[sv] ?? []).filter((t) => shifts.some((x) => x.technicianId === t)));
+    const capacity = Math.round([...techs].reduce((a, t) => a + minutesOf(t), 0));
+    const r = detectUnderstaffing({ confirmedDemandMin: Math.round(dem), capacityMin: capacity, forecastAvailable: false, sampleSize: 1 });
+    return { category, demandMinutes: Math.round(dem), capacityMinutes: capacity, qualifiedTechnicians: techs.size, state: r.state, missingMinutes: r.missingMinutes };
+  }).sort((a, b) => b.missingMinutes - a.missingMinutes || a.category.localeCompare(b.category));
+}
+
 // ── store ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 export interface DurationSample { branchId: string | null; serviceId: string; technicianId: string | null; minutes: number }
 export interface InsightStore {
@@ -93,6 +135,8 @@ export interface InsightStore {
   upsertDuration(tenantId: string, r: { branchId: string | null; serviceId: string; technicianId: string | null; action: string; currentMin: number; suggestedMin: number; reason: string; confidence: number; sampleSize: number }): Promise<string | null>;
   branches(tenantId: string): Promise<{ branchId: string; tz: string }[]>;
   dayInputs(tenantId: string, branchId: string, date: string): Promise<DayCapacityInput>;
+  /** round 10: the shifts, bookings, categories and approvals for one location-day (hour / category coverage) */
+  coverageInputs?(tenantId: string, branchId: string, date: string): Promise<{ shifts: CoverageShift[]; bookings: CoverageBooking[]; categoryOf: Record<string, string>; qualified: Record<string, string[]> }>;
   upsertStaffing(tenantId: string, r: { branchId: string; date: string; state: string; missingMinutes: number; missingSkills: string[]; action: string | null; confidence: number }): Promise<string | null>;
   upsertAvailability(tenantId: string, r: { branchId: string; date: string; direction: 'open' | 'close'; technicianId: string | null; reason: string; confidence: number }): Promise<string | null>;
 }
@@ -220,6 +264,38 @@ export class KyselyInsightStore implements InsightStore {
       unscheduledTechnicianIds: techs.map((t) => String(t.id)).filter((id) => !scheduled.has(id)),
       bookedServices: booked.map((b) => String(b.name)), coveredServices: booked.filter((b) => covered.has(String(b.id))).map((b) => String(b.name)) };
   }
+  async coverageInputs(tenantId: string, branchId: string, date: string) {
+    const dow = new Date(date + 'T00:00:00Z').getUTCDay();
+    const mins = (col: 'start_time' | 'end_time' | 'lunch_start_time' | 'lunch_end_time') => col === 'start_time' ? sql`(extract(hour from s.start_time::time) * 60 + extract(minute from s.start_time::time))`
+      : col === 'end_time' ? sql`(extract(hour from s.end_time::time) * 60 + extract(minute from s.end_time::time))`
+      : col === 'lunch_start_time' ? sql`(extract(hour from s.lunch_start_time::time) * 60 + extract(minute from s.lunch_start_time::time))`
+      : sql`(extract(hour from s.lunch_end_time::time) * 60 + extract(minute from s.lunch_end_time::time))`;
+    const sched = rowsOf(await sql`select s.technician_id, ${mins('start_time')} as st, ${mins('end_time')} as en, ${mins('lunch_start_time')} as ls, ${mins('lunch_end_time')} as le
+      from technician_schedules s join technicians te on te.id = s.technician_id and te.tenant_id = s.tenant_id and te.is_active = true and te.archived_at is null
+      where s.tenant_id = ${tenantId} and s.branch_id = ${branchId} and s.day_of_week = ${dow} and s.is_working = true and s.start_time is not null and s.end_time is not null`.execute(this.db));
+    const appts = rowsOf(await sql`select a.id, (extract(hour from a.start_time::time) * 60 + extract(minute from a.start_time::time)) as st, (extract(hour from a.end_time::time) * 60 + extract(minute from a.end_time::time)) as en,
+        a.duration_minutes, case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end as services
+      from pos_tech_appointments a where a.tenant_id = ${tenantId} and a.branch_id = ${branchId} and a.appt_date = ${date}::date and a.status not in ('cancelled','no_show')`.execute(this.db));
+    const svcIds = [...new Set(appts.flatMap((a) => (Array.isArray(a.services) ? a.services : []).map((e: any) => String(e?.serviceId ?? '')).filter((x: string) => /^[0-9a-f-]{36}$/i.test(x))))];
+    const svcRows = svcIds.length ? rowsOf(await sql`select sv.id, sv.duration_minutes, coalesce(sc.name, 'uncategorized') as cat from services sv left join service_categories sc on sc.id = sv.category_id and sc.tenant_id = sv.tenant_id
+      where sv.tenant_id = ${tenantId} and sv.id = any(${svcIds}::uuid[])`.execute(this.db)) : [];
+    const qual = svcIds.length ? rowsOf(await sql`select ts.service_id, ts.technician_id from technician_services ts where ts.tenant_id = ${tenantId} and ts.service_id = any(${svcIds}::uuid[])`.execute(this.db)) : [];
+    const categoryOf: Record<string, string> = Object.fromEntries(svcRows.map((r) => [String(r.id), String(r.cat)]));
+    const durOf = new Map(svcRows.map((r) => [String(r.id), Number(r.duration_minutes ?? 0)]));
+    const qualified: Record<string, string[]> = {};
+    for (const q of qual) (qualified[String(q.service_id)] ??= []).push(String(q.technician_id));
+    return {
+      shifts: sched.map((x) => ({ technicianId: String(x.technician_id), startMin: Number(x.st), endMin: Number(x.en), lunchStartMin: x.ls == null ? null : Number(x.ls), lunchEndMin: x.le == null ? null : Number(x.le) })),
+      bookings: appts.map((a) => {
+        const list = (Array.isArray(a.services) ? a.services : []).map((e: any) => String(e?.serviceId ?? '')).filter((x: string) => durOf.has(x));
+        const total = Number(a.duration_minutes ?? 0) || Math.max(0, Number(a.en) - Number(a.st));
+        const cat = list.reduce((acc: number, x: string) => acc + (durOf.get(x) ?? 0), 0);
+        // each booked service's share of the booking's own minutes (by catalog duration; equal shares when none is known)
+        return { startMin: Number(a.st), endMin: Number(a.en), services: list.map((x: string) => ({ serviceId: x, minutes: cat > 0 ? Math.round((total * (durOf.get(x) ?? 0)) / cat) : Math.round(total / Math.max(1, list.length)) })) };
+      }),
+      categoryOf, qualified,
+    };
+  }
   async upsertStaffing(tenantId: string, r: { branchId: string; date: string; state: string; missingMinutes: number; missingSkills: string[]; action: string | null; confidence: number }) {
     return this.db.transaction().execute(async (trx) => {
       const open = rowsOf(await sql`select id, state, missing_minutes, missing_skills from staffing_coverage_recommendations where tenant_id = ${tenantId} and branch_id = ${r.branchId}
@@ -259,6 +335,17 @@ export class SchedInsightService {
     if (q.status && !statuses.includes(q.status as SchedInsightStatus)) throw new SchedOpsError('VALIDATION', 'Unknown status.');
     const limit = Math.max(1, Math.min(200, Number(q.limit) || 100));
     const items = await this.store.list(ctx.tenantId, ctx.branchId ?? null, kind, (q.status as SchedInsightStatus) || null, limit);
+    // round 10 (AI Scheduling Optimizer 05 · 11): open staffing insights carry their hour-by-hour and per-category coverage,
+    // computed on read from the same bookings and schedules (at most 10 per page; read-only)
+    if (this.store.coverageInputs) {
+      let n = 0;
+      for (const it of items) {
+        if (it.kind !== 'staffing' || it.status !== 'review_required' || !it.branchId || !it.date || n >= 10) continue;
+        n++;
+        const c = await this.store.coverageInputs(ctx.tenantId, it.branchId, it.date);
+        (it as SchedStaffingInsight & { coverage?: unknown }).coverage = { byHour: hourlyCoverage(c.shifts, c.bookings), byCategory: categoryCoverage(c.shifts, c.bookings, c.categoryOf, c.qualified), basis: 'confirmed_bookings_only' };
+      }
+    }
     return { items, total: items.length };
   }
 

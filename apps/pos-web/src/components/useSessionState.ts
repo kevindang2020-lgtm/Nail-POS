@@ -25,7 +25,7 @@ export function useSessionState<T>(key: string, fallback: T): [T, Dispatch<SetSt
 // changes, or on sign-out, every 'aps.' tab key is dropped — except a held payment idempotency key, which must survive so a
 // retried purchase can never be charged twice.
 const SCOPE_KEY = 'aps.ui.scope';
-const KEEP = new Set([SCOPE_KEY, 'aps.rn.buyKey']);
+const KEEP = new Set([SCOPE_KEY, 'aps.rn.buyKey', 'aps.rv.inflight']);   // + a refund / void cut off by a reload (POSRefundsVoidsScreen)
 export function clearSessionUiState(): void {
   try {
     const drop: string[] = [];

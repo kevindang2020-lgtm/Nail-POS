@@ -116,4 +116,21 @@ describe('Team Performance', () => {
       expect((await repo.services(ctx, ANNA, { preset: 'today', basis: 'completed' })).totalItems).toBe(0);
     } finally { await q(`update tickets set helper_technician_id = null where id = $1`, [tk]); await q(`update ticket_service_lines set completed_at = null where ticket_id = $1`, [tk]); }
   });
+  it('round 10 (TEAM PERFORMANCE 3 14): service accuracy and the configured operational metrics are shown apart — never in the score', async () => {
+    const before = await repo.technician(ctx, VISHAL, { preset: 'month' });
+    expect(before.accuracy).toMatchObject({ source: 'service_done_quality_check', checked: 0, approved: 0, issueFound: 0, ratePct: null });
+    const tks = (await q(`select distinct t.id from tickets t join ticket_service_lines l on l.ticket_id = t.id where l.technician_id = $1 and t.tenant_id = $2 order by t.id limit 6`, [VISHAL, T])).rows.map((r: any) => r.id);
+    const st = ['approved', 'approved', 'approved', 'issue_found', 'pending', 'needs_review'];
+    try {
+      for (let i = 0; i < tks.length; i++) await q(`update tickets set primary_technician_id = $1, service_done_quality_status = $2 where id = $3`, [VISHAL, st[i], tks[i]]);
+      const v = await repo.technician(ctx, VISHAL, { preset: 'month' });
+      expect(v.accuracy).toMatchObject({ checked: 4, approved: 3, issueFound: 1, unchecked: 2, ratePct: 75, lowSample: false });   // 4 checked ≥ the minimum sample (3)
+      expect(v.score).toEqual(before.score); expect(v.rank).toEqual(before.rank); expect(v.services).toBe(before.services);   // nothing else moves
+      expect(v.operational).toMatchObject({ model: expect.any(String), reliability: expect.objectContaining({ completed: expect.any(Number) }), onTime: expect.objectContaining({ onTime: expect.any(Number) }) });
+      const c = await repo.composite(ctx, VISHAL, { preset: 'month' }) as any;   // the same evidence the composite reads
+      expect(c.model.version).toBe(v.operational.model);
+      // another technician's checked tickets never count as hers
+      expect((await repo.technician(ctx, KEVIN, { preset: 'month' })).accuracy.checked).toBe(0);
+    } finally { await q(`update tickets set primary_technician_id = null, service_done_quality_status = 'pending' where id = any($1::uuid[])`, [tks]); }
+  });
 });

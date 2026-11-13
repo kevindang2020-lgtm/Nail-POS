@@ -40,7 +40,7 @@ beforeAll(async () => {
 describe('server-side audited CSV exports', () => {
   it('Commission: requested + succeeded, the same columns and file name, only this salon, no personal data logged', async () => {
     const out = await comm.exportCsv(mgr, { preset: 'month', q: '+1 856-555-1234', lang: 'en' }, 'req-comm-1');
-    const [head, ...rows] = out.csv.replace(/^﻿/, '').split('\r\n');
+    const [head, ...rows] = out.csv.replace(/^\uFEFF/, '').split('\r\n');
     expect(head).toBe('Technician,Services,Service Revenue,Discount,Commissionable base,Commission,Adjustments,Rate,Tips,Payout,Paid');
     expect(rows).toEqual(['Mia Tran,2,150.00,0.00,150.00,60.00,0.00,40%,10.00,70.00,0.00']);
     expect(out.filename).toMatch(/^commission-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.csv$/);
@@ -56,7 +56,7 @@ describe('server-side audited CSV exports', () => {
   });
   it('Team Performance: Vietnamese headers when the screen is in Vietnamese; audited the same way', async () => {
     const out = await perf.exportCsv(mgr, { preset: 'month', lang: 'vi' }, 'req-tp-1');
-    expect(out.csv.replace(/^﻿/, '').split('\r\n')[0]).toBe('Thợ,Chi nhánh,Dịch vụ đã hoàn tất,Đánh giá xác thực,Đánh giá,Mức,Dịch vụ gần nhất');
+    expect(out.csv.replace(/^\uFEFF/, '').split('\r\n')[0]).toBe('Thợ,Chi nhánh,Dịch vụ đã hoàn tất,Đánh giá xác thực,Đánh giá,Mức,Dịch vụ gần nhất');
     expect(out.filename).toMatch(/^team-performance-/);
     expect((await audits('req-tp-1')).map((x: any) => x.action)).toEqual(['report.export.requested', 'report.export.succeeded']);
   });
@@ -90,5 +90,23 @@ describe('server-side audited CSV exports', () => {
     const own = await comm.exportHistory({ ...noExport, userId: id('e8') }, {});
     expect(own.scope).toBe('own'); expect(own.totalItems).toBe(0);
     expect((await comm.exportHistory({ tenantId: T2, branchId: BX, userId: id('e7'), role: 'MANAGER', permissions: ['audit.view'] }, {})).totalItems).toBe(0);
+  });
+});
+
+describe('round 10 — Finish the Five 07: audit coverage (last verified export, last request whose outcome was never recorded)', () => {
+  it('names the last recorded success with its digest and a requested export with no recorded outcome after 5 minutes; another salon never', async () => {
+    let h: any = await comm.exportHistory(mgr, {});
+    expect(h.coverage.lastVerifiedExport).toMatchObject({ reportType: expect.any(String), sha256: expect.stringMatching(/^[0-9a-f]{64}$/), rowCount: expect.any(Number) });
+    expect(h.coverage.lastMissingOutcome).toBeNull();               // every request so far has its outcome (or was denied up front)
+    // a request that stopped: 'requested' recorded 10 minutes ago, no succeeded / failed row for its request id
+    await q(`insert into audit_events (tenant_id, branch_id, actor_user_id, module, action, resource_type, resource_id, request_id, status, severity, summary, metadata, occurred_at)
+      values ($1,$2,$3,'reports','report.export.requested','report_export','COMMISSION','req-lost-1','success','info','COMMISSION export requested','{}'::jsonb, now() - interval '10 minutes')`, [T, B, U]);
+    // and one still running (2 minutes old) — not counted yet
+    await q(`insert into audit_events (tenant_id, branch_id, actor_user_id, module, action, resource_type, resource_id, request_id, status, severity, summary, metadata, occurred_at)
+      values ($1,$2,$3,'reports','report.export.requested','report_export','COMMISSION','req-running-1','success','info','COMMISSION export requested','{}'::jsonb, now() - interval '2 minutes')`, [T, B, U]);
+    h = await comm.exportHistory(mgr, {});
+    expect(h.coverage.lastMissingOutcome).toMatchObject({ reportType: 'COMMISSION', requestId: 'req-lost-1' });
+    expect(h.coverage.missingOutcomes).toBe(1);
+    expect((await comm.exportHistory({ tenantId: T2, branchId: BX, userId: id('e7'), role: 'MANAGER', permissions: ['audit.view'] }, {})).coverage).toEqual({ lastVerifiedExport: null, lastMissingOutcome: null, missingOutcomes: 0 });
   });
 });

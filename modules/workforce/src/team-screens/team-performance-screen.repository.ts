@@ -135,11 +135,27 @@ export class TeamPerformanceScreenRepository {
         and t.paid_at is not null and t.removed_at is null and coalesce(t.payment_status, '') <> 'voided' and ${inPeriod(sql`t.paid_at`, per)}
         and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)`.execute(this.db)).rows[0]?.n);
     const t = (await sql<any>`select te.id, te.full_name, te.avatar_url, te.status, te.role_label, b.name as branch from technicians te left join branches b on b.id = te.branch_id and b.tenant_id = te.tenant_id where te.tenant_id = ${T} and te.id = ${id}`.execute(this.db)).rows[0];
+    // round 10 (TEAM PERFORMANCE 3 14): service accuracy and the explicitly configured operational metrics, each on its own —
+    // none of them adds to the verified-review score, the rank or pay.
+    //   accuracy    her paid tickets in the period (as the primary technician) whose Service Done quality check was recorded:
+    //               approved vs issue found; a ticket never checked (pending / needs review) is counted apart, never as accurate
+    //   operational the composite model's configured components (reliability, on-time start) from the SAME evidence the
+    //               composite uses — read here, not re-derived
+    const acc = (await sql<any>`select count(*) filter (where t.service_done_quality_status = 'approved')::int as approved,
+        count(*) filter (where t.service_done_quality_status = 'issue_found')::int as issues,
+        count(*) filter (where t.service_done_quality_status not in ('approved', 'issue_found'))::int as unchecked
+      from tickets t where t.tenant_id = ${T} and t.primary_technician_id = ${id} and t.paid_at is not null and t.removed_at is null
+        and coalesce(t.payment_status, '') <> 'voided' and ${inPeriod(sql`t.paid_at`, per)} and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)`.execute(this.db)).rows[0];
+    const checked = N(acc?.approved) + N(acc?.issues);
+    const accuracy = { source: 'service_done_quality_check' as const, checked, approved: N(acc?.approved), issueFound: N(acc?.issues), unchecked: N(acc?.unchecked),
+      ratePct: checked ? Math.round((N(acc?.approved) / checked) * 1000) / 10 : null, lowSample: checked > 0 && checked < MIN_SAMPLE };
+    const ev = (await this.evidence(ctx, [id], per)).get(id);
+    const operational = { model: COMPOSITE_MODEL_V1.version, reliability: ev?.reliability ?? null, onTime: ev?.onTime ?? null };
     return { period: per, minSample: MIN_SAMPLE, technicianId: id, name: t?.full_name ?? null, avatarUrl: t?.avatar_url ?? null, role: t?.role_label ?? null, branch: t?.branch ?? null, active: t?.status === 'active',
       qualifiedServices: svcNames.map((s: any) => String(s.name)),
       score: { rating: avg, reviews: n, tier: tierOf(avg), lowSample: n > 0 && n < MIN_SAMPLE, source: 'verified_reviews', scale: 5, allTimeRating: N(allTime?.n) ? round1(Number(allTime.avg)) : null, allTimeReviews: N(allTime?.n) },
       rank: n ? { position: N(me?.pos), of: N(me?.rated) } : null, services: N(me?.services), helpedTickets: helped, lastServiceAt: iso(me?.last_service), lastReviewAt: iso(me?.last_review),
-      previous: prev, comparable: !!prev && n >= MIN_SAMPLE && prev.reviews >= MIN_SAMPLE };
+      previous: prev, comparable: !!prev && n >= MIN_SAMPLE && prev.reviews >= MIN_SAMPLE, accuracy, operational };
   }
 
   /** her completed services in the period, newest first (ticket, service, length, who else worked the ticket) */
@@ -220,9 +236,36 @@ export class TeamPerformanceScreenRepository {
     const res = computeComposite(e);
     const snaps = (await sql<any>`select s.id, s.model_version, s.score, s.components_json, s.missing_json, to_char(s.period_start, 'YYYY-MM-DD') as f, to_char(s.period_end, 'YYYY-MM-DD') as t, s.computed_at, s.input_checksum
       from performance_score_snapshots s where s.tenant_id = ${ctx.tenantId} and s.technician_id = ${id} order by s.computed_at desc, s.id desc limit 5`.execute(this.db)).rows;
-    return { technicianId: id, period: per, computedAt: new Date().toISOString(), model: COMPOSITE_MODEL_V1, rating: { scale: '0-5', average: e.reviews.average == null ? null : round1(e.reviews.average), reviews: e.reviews.count },
+    const versionComparison = await this.versionComparison(ctx, id);
+    return { versionComparison, technicianId: id, period: per, computedAt: new Date().toISOString(), model: COMPOSITE_MODEL_V1, rating: { scale: '0-5', average: e.reviews.average == null ? null : round1(e.reviews.average), reviews: e.reviews.count },
       ...res, inputChecksum: this.checksum(id, per, e), consequences: 'none — coaching and insight only; never pay, commission, scheduling or employment',
       snapshots: snaps.map((s: any) => ({ id: String(s.id), modelVersion: String(s.model_version), score: s.score == null ? null : Number(s.score), from: s.f, to: s.t, computedAt: iso(s.computed_at), missing: s.missing_json ?? [], inputChecksum: s.input_checksum })) };
+  }
+
+  /** round 10 (Finish the Five 12 — Version Comparison): the technician's saved snapshots grouped by model version, and — when two
+   *  versions were saved for the SAME period — the newest of each side by side with the component-by-component difference. Read
+   *  from the immutable snapshots only: nothing is recomputed and no historical ranking changes. One version → nothing to compare. */
+  private async versionComparison(ctx: TeamCtx, id: string) {
+    const rows = (await sql<any>`select s.id, s.model_version, s.score, s.components_json, to_char(s.period_start, 'YYYY-MM-DD') as f, to_char(s.period_end, 'YYYY-MM-DD') as t, s.computed_at
+      from performance_score_snapshots s where s.tenant_id = ${ctx.tenantId} and s.technician_id = ${id} order by s.computed_at desc, s.id desc limit 200`.execute(this.db)).rows;
+    const versions = new Map<string, { version: string; snapshots: number; latestScore: number | null; latestAt: string | null }>();
+    for (const r of rows) { const v = String(r.model_version); const x = versions.get(v); if (x) x.snapshots += 1; else versions.set(v, { version: v, snapshots: 1, latestScore: r.score == null ? null : Number(r.score), latestAt: iso(r.computed_at) }); }
+    // the newest period that has snapshots under two or more versions
+    let pair: { a: any; b: any } | null = null;
+    for (const r of rows) {
+      const other = rows.find((o: any) => o.f === r.f && o.t === r.t && String(o.model_version) !== String(r.model_version));
+      if (other) { const [older, newer] = [r, other].sort((x: any, y: any) => new Date(x.computed_at).getTime() - new Date(y.computed_at).getTime()); pair = { a: older, b: newer }; break; }
+    }
+    const comps = (j: unknown): Record<string, number | null> => Object.fromEntries((Array.isArray(j) ? j : []).map((c: any) => [String(c?.key), c?.value == null ? null : Number(c.value)]));
+    const diff = pair ? (() => {
+      const A = comps(pair.a.components_json), B = comps(pair.b.components_json);
+      const keys = [...new Set([...Object.keys(A), ...Object.keys(B)])].sort();
+      const sa = pair.a.score == null ? null : Number(pair.a.score), sb = pair.b.score == null ? null : Number(pair.b.score);
+      return { period: { from: pair.a.f, to: pair.a.t }, from: { version: String(pair.a.model_version), score: sa, at: iso(pair.a.computed_at) }, to: { version: String(pair.b.model_version), score: sb, at: iso(pair.b.computed_at) },
+        scoreDelta: sa == null || sb == null ? null : Math.round((sb - sa) * 10) / 10,
+        components: keys.map((k) => ({ key: k, from: A[k] ?? null, to: B[k] ?? null, delta: A[k] == null || B[k] == null ? null : Math.round(((B[k] as number) - (A[k] as number)) * 10) / 10 })) };
+    })() : null;
+    return { versions: [...versions.values()], comparable: !!diff, diff, reranked: false as const };
   }
 
   /** comparison mode: the verified-rating ranking (what Top Performers uses) beside the composite — nothing re-ranked */

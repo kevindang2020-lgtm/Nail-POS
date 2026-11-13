@@ -12,6 +12,7 @@ import { AiBusinessRevenueService } from './ai-business-revenue.service';
 import { AiBusinessBriefService } from './ai-business-brief.service';
 import { AiBusinessAppointmentsService } from './ai-business-appointments.service';
 import { AiBusinessBranchesService } from './ai-business-branches.service';
+import { KyselyBranchFreshness } from './ai-business-branch-freshness';
 import { AiBusinessCustomersService } from './ai-business-customers.service';
 import { AiBusinessTechniciansService } from './ai-business-technicians.service';
 import { AiBusinessAssistantService, type BusinessToolset } from './ai-business-assistant.service';
@@ -36,7 +37,7 @@ import { BusinessCenter } from './business-center';
 import { BusinessCenterController, BUSINESS_CENTER } from './business-center.controller';
 import { BusinessAlertsScheduleJob } from './business-alerts-schedule.job';
 import { BranchInsights, BRANCH_INSIGHTS } from './branch-insights';
-import { ConversationHistory, searchRecords, profitAndExpenses, periodOf, checkBusinessData, ASSISTANT_EXTRAS, type AssistantExtrasRoutes } from './ai-business-assistant-extras';
+import { ConversationHistory, searchRecords, profitAndExpenses, periodOf, checkBusinessData, answerTrust, ASSISTANT_EXTRAS, type AssistantExtrasRoutes } from './ai-business-assistant-extras';
 import { KyselyAiAccessRepo, evaluateAiAccess } from '@aipowersalon/ai';
 import { BusinessAlertIncidents, BUSINESS_ALERT_INCIDENTS, type AlertMessenger } from './business-alert-incidents';
 
@@ -50,7 +51,7 @@ import { BusinessAlertIncidents, BUSINESS_ALERT_INCIDENTS, type AlertMessenger }
     { provide: AiBusinessAppointmentsService, useFactory: (reports: ReportsService) => new AiBusinessAppointmentsService(reports), inject: [ReportsService] },
     // Branch-scope resolver reuses OwnerService (owner_branch_access authorization) — no duplicate branch auth.
     { provide: 'BranchScopeResolver', useFactory: (owner: OwnerService) => new OwnerServiceBranchScopeResolver(owner), inject: [OwnerService] },
-    { provide: AiBusinessBranchesService, useFactory: (reports: ReportsService, scope: OwnerServiceBranchScopeResolver) => new AiBusinessBranchesService(reports, scope), inject: [ReportsService, 'BranchScopeResolver'] },
+    { provide: AiBusinessBranchesService, useFactory: (reports: ReportsService, scope: OwnerServiceBranchScopeResolver, db: AppDatabase) => new AiBusinessBranchesService(reports, scope, db ? new KyselyBranchFreshness(db) : null), inject: [ReportsService, 'BranchScopeResolver', DATABASE] },
     { provide: AiBusinessCustomersService, useFactory: (reports: ReportsService) => new AiBusinessCustomersService(reports), inject: [ReportsService] },
     { provide: AiBusinessTechniciansService, useFactory: (reports: ReportsService) => new AiBusinessTechniciansService(reports), inject: [ReportsService] },
     // Saved questions — the first WRITE surface. Kysely-backed on the PRIMARY db when present, else in-memory.
@@ -109,6 +110,7 @@ import { BusinessAlertIncidents, BUSINESS_ALERT_INCIDENTS, type AlertMessenger }
         return new AiBusinessAssistantService(toolset, assistant, db ? {
           history: new ConversationHistory(db), searchRecords: (ctx, q) => searchRecords(db, ctx, q),
           profitAndExpenses: (ctx, p, net) => profitAndExpenses(db, ctx, p, net), periodOf: (ctx, p) => periodOf(db, ctx, p),
+          trust: (ctx, intent, p, structured) => answerTrust(db, ctx, intent, p, structured),
         } : {});
       },
       inject: [AiBusinessBriefService, AiBusinessRevenueService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiAssistantService, DATABASE],

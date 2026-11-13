@@ -421,4 +421,16 @@ export const AIMARKETING_VI: Record<string, string> = {
   "amk.bcmp.cost": "Chi phí tin nhắn", // DRAFT — Kevin reviews
   "amk.bcmp.salonWide": "Chiến dịch toàn tiệm", // DRAFT — Kevin reviews
   "amk.bcmp.note": "Chỉ là số tổng, cho các chi nhánh bạn được xem, trong kỳ đã chọn ở trên. Khách hàng và danh sách người nhận của từng chi nhánh vẫn tách riêng; ở đây không gộp hay chuyển gì.", // DRAFT — Kevin reviews
+  "amk10.var.title": "Ngân sách so với thực tế — {n} chiến dịch vượt", // DRAFT — Kevin reviews
+  "amk10.var.campaign": "Chiến dịch", // DRAFT — Kevin reviews
+  "amk10.var.budget": "Ngân sách", // DRAFT — Kevin reviews
+  "amk10.var.actual": "Chi phí thực tế", // DRAFT — Kevin reviews
+  "amk10.var.segments": "Số đoạn tin (ước tính → thực tế)", // DRAFT — Kevin reviews
+  "amk10.var.flags": "Kiểm tra", // DRAFT — Kevin reviews
+  "amk10.var.sent": "đã gửi {n}", // DRAFT — Kevin reviews
+  "amk10.flag.over_budget": "Vượt ngân sách", // DRAFT — Kevin reviews
+  "amk10.flag.segments_over_estimate": "Nhiều đoạn tin hơn ước tính", // DRAFT — Kevin reviews
+  "amk10.flag.cost_unreported": "Chưa có chi phí cho mọi tin nhắn", // DRAFT — Kevin reviews
+  "amk10.flag.ok": "Trong ngân sách", // DRAFT — Kevin reviews
+  "amk10.var.note": "Ngân sách là giới hạn đã nhập cho chiến dịch; chi phí và số đoạn tin thực tế là do nhà cung cấp báo cho từng tin đã gửi. Không thay đổi gì ở đây.", // DRAFT — Kevin reviews
 };

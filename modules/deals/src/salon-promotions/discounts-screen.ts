@@ -235,6 +235,7 @@ export class DiscountsScreenRepository {
     const sums = (await sql<any>`select coalesce(sum(r.amount_discounted_cents - coalesce(r.reversed_cents, 0)) filter (where ${CONFIRMED}), 0)::bigint as saved, count(distinct r.customer_id) filter (where ${CONFIRMED})::int as customers ${from} where ${w}`.execute(this.db)).rows[0];
     const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select r.id, r.status, ${at} as at, r.applied_at, r.redeemed_at, r.reversed_at, r.reversal_reason, r.amount_discounted_cents, r.reversed_cents, r.deal_id, d.title, cc.code_hint,
+        r.deal_version, d.version as current_version, (r.terms_snapshot is not null or exists (select 1 from deal_versions dv where dv.tenant_id = r.tenant_id and dv.deal_id = r.deal_id and dv.version = r.deal_version)) as frozen,
         r.estimate_snapshot, r.line_allocations,
         (select c3.code_hint from deal_coupon_codes c3 where c3.tenant_id = r.tenant_id and c3.deal_id = r.deal_id order by c3.created_at, c3.id limit 1) as deal_hint,
         r.customer_id, cu.full_name, cu.phone_display, cu.normalized_phone, r.ticket_id, tk.ticket_number, tk.subtotal_cents, tk.total_cents, tk.status as ticket_status,
@@ -257,7 +258,9 @@ export class DiscountsScreenRepository {
         customerId: r.customer_id ? String(r.customer_id) : null, customerName: r.full_name ?? null, maskedPhone: maskPhone(r.phone_display ?? r.normalized_phone),
         ticketId: r.ticket_id ? String(r.ticket_id) : null, ticketNumber: r.ticket_number == null ? null : String(r.ticket_number), ticketStatus: r.ticket_status ?? null,
         eligibleSubtotalCents: r.subtotal_cents == null ? null : N(r.subtotal_cents), discountCents: N(r.amount_discounted_cents), reversedCents: N(r.reversed_cents), finalCents: r.total_cents == null ? null : N(r.total_cents),
-        technician: r.technician || null, appliedBy: r.applied_by ?? null, branch: r.branch_name ?? null })),
+        technician: r.technician || null, appliedBy: r.applied_by ?? null, branch: r.branch_name ?? null,
+        // round 10 (Deals 09): the rule version this use was charged under, today's version, and whether those exact terms are kept
+        ruleVersion: { used: r.deal_version == null ? null : N(r.deal_version), current: r.current_version == null ? null : N(r.current_version), changedSince: r.deal_version != null && r.current_version != null && N(r.deal_version) !== N(r.current_version), frozen: !!r.frozen } })),
       page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
 
@@ -304,7 +307,13 @@ export class DiscountsScreenRepository {
         count(*) filter (where r.status in ('reversed', 'partially_reversed'))::int as reversed, count(distinct r.customer_id) filter (where ${CONFIRMED})::int as customers,
         coalesce(sum(r.amount_discounted_cents - coalesce(r.reversed_cents, 0)) filter (where ${CONFIRMED}), 0)::bigint as saved, max(r.redeemed_at) as last_at
       from deal_redemptions r where r.tenant_id = ${T} and r.deal_id = ${dealId}`.execute(this.db)).rows[0];
-    const versions = (await sql<any>`select v.id, v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from deal_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = v.tenant_id
+    // round 10 (Coupons 08): who approved each version (deal_approvals for that version) beside who made it
+    const versions = (await sql<any>`select v.id, v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor,
+        ap.decided_at as approved_at, coalesce(nullif(au.full_name, ''), au.email) as approver
+      from deal_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = v.tenant_id
+      left join lateral (select a.approver_user_id, a.created_at as decided_at from deal_approvals a where a.tenant_id = v.tenant_id and a.deal_id = v.deal_id and a.deal_version = v.version and a.decision = 'approved'
+        order by a.created_at desc limit 1) ap on true
+      left join users au on au.id = ap.approver_user_id and au.tenant_id = v.tenant_id
       where v.tenant_id = ${T} and v.deal_id = ${dealId} order by v.version desc, v.created_at desc limit 20`.execute(this.db)).rows;
     const roi = await this.roiExplained(ctx, dealId);
     const related = await this.relatedOffers(ctx, dealId);
@@ -320,7 +329,13 @@ export class DiscountsScreenRepository {
         budgetCents: r.budget_cents == null ? null : N(r.budget_cents), codes: N(r.codes), activeCodes: N(r.active_codes), walletCodes: N(r.wallet_codes) },
       services: services.map((s: any) => ({ id: String(s.id), name: String(s.name) })),
       usage: { confirmed: N(usage?.confirmed), pendingAtCheckout: N(usage?.pending), released: N(usage?.released), reversed: N(usage?.reversed), uniqueCustomers: N(usage?.customers), savingsCents: N(usage?.saved), lastRedeemedAt: iso(usage?.last_at) },
-      history: versions.map((v: any) => ({ id: String(v.id), version: N(v.version), at: iso(v.created_at), actor: v.actor ?? null, terms: summarizeTerms(v.terms) })),
+      history: versions.map((v: any, i: number) => {
+        const terms = summarizeTerms(v.terms); const prev = versions[i + 1] ? summarizeTerms(versions[i + 1].terms) : null;
+        // round 10 (Coupons 08): the side-by-side change against the version before it (null for the first version)
+        const changes = prev ? [...new Set([...Object.keys(prev), ...Object.keys(terms)])].filter((k) => JSON.stringify(prev[k] ?? null) !== JSON.stringify(terms[k] ?? null)).sort()
+          .map((k) => ({ field: k, before: prev[k] ?? null, after: terms[k] ?? null })) : null;
+        return { id: String(v.id), version: N(v.version), at: iso(v.created_at), actor: v.actor ?? null, terms, approvedBy: v.approver ?? null, approvedAt: iso(v.approved_at), changes };
+      }),
       roi: roi.roi, byBranch: roi.byBranch, related,
     };
   }

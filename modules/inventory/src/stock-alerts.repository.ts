@@ -198,7 +198,7 @@ export class StockAlertsRepository {
 
   /** Acknowledge a live alert by product: the open workflow row, or — for a product that was already low before alert
    *  tracking (no row; the old page showed nothing) — a new row for the current episode, acknowledged at once. */
-  async acknowledge(ctx: InvCtx, productId: string, note: string | null) {
+  async acknowledge(ctx: InvCtx, productId: string, _note: string | null) {
     const b = this.branch(ctx);
     if (!UUID.test(productId)) throw withCode(new InventoryError(404, 'That alert could not be found.'), 'ALERT_NOT_FOUND');
     return this.db.transaction().execute(async (trx) => {
@@ -222,14 +222,20 @@ export class StockAlertsRepository {
       WHERE a.tenant_id = ${ctx.tenantId} AND a.branch_id = ${b} AND (${sev}::text IS NULL OR a.status = ${sev}) AND ${this.inPeriod(sql`a.created_at`, period)} AND ${this.productSearch(ctx, q.search)}`;
     const total = N((await sql<{ n: number }>`SELECT count(*)::int AS n ${base}`.execute(this.db)).rows[0]?.n);
     const pages = Math.max(1, Math.ceil(total / pg.pageSize)); const page = Math.min(pg.page, pages);
+    // round 10 (Stock Alerts 13): what was later restocked — the first stock received / added for that product at this location after the alert
     const rows = (await sql<any>`SELECT a.id, a.product_id, a.status, a.on_hand, a.created_at, a.acknowledged_at, a.resolved_at, p.name, p.sku,
-        coalesce(nullif(u.full_name, ''), nullif(trim(coalesce(u.first_name, '') || ' ' || coalesce(u.last_name, '')), ''), u.email) AS acknowledged_by_name
+        coalesce(nullif(u.full_name, ''), nullif(trim(coalesce(u.first_name, '') || ' ' || coalesce(u.last_name, '')), ''), u.email) AS acknowledged_by_name,
+        (SELECT rm.created_at FROM inventory_stock_movements rm WHERE rm.tenant_id = a.tenant_id AND rm.branch_id = a.branch_id AND rm.product_id = a.product_id
+           AND rm.movement_type IN ('purchase_received', 'manual_add') AND rm.quantity_change > 0 AND rm.created_at >= a.created_at ORDER BY rm.created_at, rm.id LIMIT 1) AS restocked_at,
+        (SELECT coalesce(sum(rm.quantity_change), 0)::int FROM inventory_stock_movements rm WHERE rm.tenant_id = a.tenant_id AND rm.branch_id = a.branch_id AND rm.product_id = a.product_id
+           AND rm.movement_type IN ('purchase_received', 'manual_add') AND rm.quantity_change > 0 AND rm.created_at >= a.created_at) AS restocked_qty
       ${base}
       ORDER BY a.created_at DESC, a.id DESC LIMIT ${pg.pageSize} OFFSET ${(page - 1) * pg.pageSize}`.execute(this.db)).rows;
     return { total, page, pageSize: pg.pageSize, pages, period, rows: rows.map((r: any) => ({
       id: String(r.id), productId: String(r.product_id), name: r.name, sku: r.sku ?? null, severity: r.status, onHandAtAlert: N(r.on_hand),
       createdAt: iso(r.created_at), acknowledgedAt: iso(r.acknowledged_at), acknowledgedBy: r.acknowledged_by_name ?? null, resolvedAt: iso(r.resolved_at),
       state: r.resolved_at ? 'resolved' : r.acknowledged_at ? 'acknowledged' : 'open',
+      restockedAt: iso(r.restocked_at), restockedQuantity: r.restocked_at ? N(r.restocked_qty) : null,
     })) };
   }
 
@@ -370,7 +376,16 @@ export class StockAlertsRepository {
       AND (u.technician_id = ANY(${ids.filter(Boolean)}::uuid[]) OR (${ids.includes(null)} AND u.technician_id IS NULL))
       GROUP BY u.technician_id, coalesce(p.unit_type, 'unit') ORDER BY 1, 2`.execute(this.db)).rows : [];
     const unitsOf = (tid: string | null) => byUnit.filter((x: any) => (x.technician_id ?? null) === tid).map((x: any) => ({ unit: String(x.unit), used: formatQuantity(N(x.hundredths)), hundredths: N(x.hundredths) }));
+    // round 10 (Stock Alerts 11): service volume context — the services each technician completed at this location in the same period
+    // (ticket lines with a completion time; the period is always on the completion time). A count, never a judgement.
+    const techIds = ids.filter(Boolean) as string[];
+    const svcRows = techIds.length ? (await sql<{ technician_id: string; services: number }>`SELECT sl.technician_id, count(*)::int AS services FROM ticket_service_lines sl
+      WHERE sl.tenant_id = ${ctx.tenantId} AND sl.branch_id = ${b} AND sl.technician_id = ANY(${techIds}::uuid[]) AND sl.completed_at IS NOT NULL AND ${this.inPeriod(sql`sl.completed_at`, period)}
+      GROUP BY sl.technician_id`.execute(this.db)).rows : [];
+    const servicesOf = (tid: string | null) => (tid ? N(svcRows.find((x) => String(x.technician_id) === tid)?.services) : null);
     return { total, page, pageSize: pg.pageSize, pages, period, rows: rows.map((r: any) => ({
+      servicesCompleted: servicesOf(r.technician_id ?? null),
+      usesPer10Services: (() => { const sv = servicesOf(r.technician_id ?? null); return sv ? Math.round((N(r.uses) * 100) / sv) / 10 : null; })(),
       technicianId: r.technician_id ?? null, name: r.technician_id ? r.name || 'Technician' : 'Unknown / Historical', uses: N(r.uses), products: N(r.products),
       ...(() => { const u = unitsOf(r.technician_id ?? null); return u.length > 1 ? { used: null, usedHundredths: null, usedByUnit: u } : { used: formatQuantity(N(r.hundredths)), usedHundredths: N(r.hundredths), usedByUnit: u }; })(),
       lastUsedAt: iso(r.last_at), lastProduct: r.last_product ?? null,
@@ -398,22 +413,52 @@ export class StockAlertsRepository {
   // ── Exports (every matching row, not a page) ────────────────────────────────────────────────────────────────────────
   async exportCsv(ctx: InvCtx, tab: string, q: Record<string, string>, period: Period): Promise<string> {
     const all: Paging = { page: 1, pageSize: 100000 };
+    // round 10 (Stock Alerts 14): every row carries its scope — the location, the period's salon days and which date it was filtered on
+    const b = this.branch(ctx);
+    const loc = (await sql<{ name: string | null }>`SELECT br.name FROM branches br WHERE br.tenant_id = ${ctx.tenantId} AND br.id = ${b}`.execute(this.db)).rows[0]?.name ?? '—';
+    const basis = tab === 'active' ? 'live stock' : tab === 'history' ? 'alert created' : q.dateBasis === 'recorded' ? 'recorded at' : 'occurred at';
+    const scopeHead = ['Location', 'Period from', 'Period to', 'Date field'];
+    const scope = [loc, period.from ?? 'all', period.to ?? 'all', basis];
+    const out = (head: string[], rows: unknown[][]) => csv([...head, ...scopeHead], rows.map((r) => [...r, ...scope]));
     if (tab === 'usage') {
       const r = await this.productUsage(ctx, q, period, all);
-      return csv(['Product', 'SKU', 'Used', 'Unit', 'Uses', 'Technicians', 'Unattributed uses', 'On hand', 'Last used by', 'Last used at'],
+      return out(['Product', 'SKU', 'Used', 'Unit', 'Uses', 'Technicians', 'Unattributed uses', 'On hand', 'Last used by', 'Last used at'],
         r.rows.map((x) => [x.name, x.sku, x.used, x.unit, x.uses, x.technicians, x.unattributedUses, x.onHand, x.lastUsedLabel, x.lastUsedAt]));
     }
     if (tab === 'technicians') {
       const r = await this.technicians(ctx, q, period, all);
-      return csv(['Technician', 'Uses', 'Products', 'Used', 'Last product', 'Last used at'], r.rows.map((x) => [x.name, x.uses, x.products, x.used, x.lastProduct, x.lastUsedAt]));
+      return out(['Technician', 'Technician ID', 'Uses', 'Products', 'Used', 'Used by unit', 'Services completed', 'Uses per 10 services', 'Last product', 'Last used at'], r.rows.map((x) => [x.name, x.technicianId, x.uses, x.products, x.used,
+        x.usedByUnit.map((u) => `${u.used} ${u.unit}`).join('; '), x.servicesCompleted, x.usesPer10Services, x.lastProduct, x.lastUsedAt]));
     }
+    if (tab === 'events') return this.eventsCsv(ctx, q, period, out);
     if (tab === 'history') {
       const r = await this.history(ctx, q, period, all);
-      return csv(['Product', 'SKU', 'Severity', 'On hand at alert', 'Created', 'Acknowledged', 'Acknowledged by', 'Resolved', 'State'],
-        r.rows.map((x) => [x.name, x.sku, x.severity, x.onHandAtAlert, x.createdAt, x.acknowledgedAt, x.acknowledgedBy, x.resolvedAt, x.state]));
+      return out(['Alert ID', 'Product', 'SKU', 'Severity', 'On hand at alert', 'Created', 'Acknowledged', 'Acknowledged by', 'Resolved', 'State', 'Restocked at', 'Restocked quantity'],
+        r.rows.map((x) => [x.id, x.name, x.sku, x.severity, x.onHandAtAlert, x.createdAt, x.acknowledgedAt, x.acknowledgedBy, x.resolvedAt, x.state, x.restockedAt, x.restockedQuantity]));
     }
     const r = await this.activeAlerts(ctx, q, all);
-    return csv(['Product', 'SKU', 'Brand', 'Category', 'Severity', 'On hand', 'Reorder level', 'Critical level', 'Suggested reorder', 'On order', 'Vendor', 'Last used by', 'Last used at', 'Alert since', 'Acknowledged by'],
+    return out(['Product', 'SKU', 'Brand', 'Category', 'Severity', 'On hand', 'Reorder level', 'Critical level', 'Suggested reorder', 'On order', 'Vendor', 'Last used by', 'Last used at', 'Alert since', 'Acknowledged by'],
       r.rows.map((x) => [x.name, x.sku, x.brand, x.category, x.severity, x.onHand, x.reorderLevel, x.criticalLevel, x.suggestedReorder, x.onOrder, x.vendor, x.lastUsedLabel, x.lastUsedAt, x.since, x.acknowledgedBy]));
+  }
+
+  /** round 10 (Stock Alerts 14): every product use in the period (technician uses AND Service Done recipe uses), one row each, with its
+   *  event / movement id, the technician id, the effective amount and unit, both dates, who recorded it, the source and status. */
+  private async eventsCsv(ctx: InvCtx, q: Record<string, string>, period: Period, out: (head: string[], rows: unknown[][]) => string): Promise<string> {
+    const b = this.branch(ctx);
+    const col = q.dateBasis === 'recorded' ? sql`u.recorded_at` : sql`u.occurred_at`;
+    const tech = q.technicianId && UUID.test(q.technicianId) ? q.technicianId : null;
+    const rows = (await sql<{ id: string; event_id: string | null; product: string; sku: string | null; unit: string | null; technician_id: string | null; technician: string | null; hundredths: number;
+      occurred_at: string; recorded_at: string; source: string; status: string | null; recorded_by: string | null; ticket_id: string | null }>`SELECT u.id, u.event_id, p.name AS product, p.sku, coalesce(p.unit_type, 'unit') AS unit,
+        u.technician_id, coalesce(nullif(t.full_name, ''), trim(t.first_name || ' ' || coalesce(t.last_name, ''))) AS technician, u.hundredths, u.occurred_at, u.recorded_at, u.source,
+        e.status, coalesce(nullif(ru.full_name, ''), ru.email) AS recorded_by, e.service_ticket_id AS ticket_id
+      FROM ${this.uses(ctx, b)} u JOIN inventory_products p ON p.id = u.product_id AND p.tenant_id = ${ctx.tenantId}
+      LEFT JOIN technicians t ON t.id = u.technician_id AND t.tenant_id = ${ctx.tenantId}
+      LEFT JOIN product_usage_events e ON e.id = u.event_id AND e.tenant_id = ${ctx.tenantId}
+      LEFT JOIN users ru ON ru.id = e.created_by_user_id
+      WHERE ${this.inPeriod(col, period)} AND (${tech}::uuid IS NULL OR u.technician_id = ${tech}) AND ${this.productSearch(ctx, q.search)}
+      ORDER BY ${col} DESC, u.id DESC LIMIT 100000`.execute(this.db)).rows;
+    return out(['Use ID', 'Kind', 'Product', 'SKU', 'Technician', 'Technician ID', 'Amount', 'Unit', 'Occurred at', 'Recorded at', 'Recorded by', 'Source', 'Status', 'Ticket ID'],
+      rows.map((r) => [r.id, r.event_id ? 'product use' : 'service recipe', r.product, r.sku, r.technician_id ? r.technician || 'Technician' : 'Unknown / Historical', r.technician_id,
+        formatQuantity(N(r.hundredths)), r.unit, iso(r.occurred_at), iso(r.recorded_at), r.recorded_by ?? (r.event_id ? '—' : 'Service Done'), r.source, r.status ?? 'confirmed', r.ticket_id]));
   }
 }

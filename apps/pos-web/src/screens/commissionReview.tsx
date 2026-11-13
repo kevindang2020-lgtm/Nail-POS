@@ -43,8 +43,12 @@ export function DiscrepancyReviewPanel({ pq, onOpenTech }: { pq: Record<string, 
   };
   const savePolicy = async () => {
     if (!pol) return; setPolMsg(null);
-    try { await posCommissionReviewApi.setRefundPolicy(pol); setPolMsg({ ok: true, text: tx('cr.policySaved') }); setPol(''); setTick((n) => n + 1); }
-    catch (e) { setPolMsg({ ok: false, text: (e as { status?: number })?.status === 403 ? tx('cr.policyForbidden') : errText(e) }); }
+    try { await posCommissionReviewApi.setRefundPolicy(pol, d?.policy ?? null); setPolMsg({ ok: true, text: tx('cr.policySaved') }); setPol(''); setTick((n) => n + 1); }
+    catch (e) {
+      const st = (e as { status?: number })?.status;
+      if (st === 409) { setPolMsg({ ok: false, text: tx('cr10.policyConflict') }); setTick((n) => n + 1); return; }   // reload the current policy; nothing was saved
+      setPolMsg({ ok: false, text: st === 403 ? tx('cr.policyForbidden') : errText(e) });
+    }
   };
   return (
     <FitPanel testId="discrepancies" title={<>{tx('cr.title')}{d ? <span className="fk-muted"> · {tx('cg.matching', { n: nf(d.totalItems) })}</span> : null}</>}
@@ -141,6 +145,7 @@ function ReviewSlideOver({ id, onClose, onChanged, onOpenTech }: { id: string; o
           {ev.policy !== undefined ? <><dt>{tx('cr.ev.policy')}</dt><dd>{ev.policy ? tx('cr.policy.' + ev.policy) : tx('cr.policyMissing')}{ev.paidAlready ? <span className="fk-chip bad">{tx('cr.paidAlready')}</span> : null}</dd></> : null}
           {ev.refundIds?.length ? <><dt>{tx('cr.ev.refunds')}</dt><dd>{ev.refundIds.length} · {money(ev.refundedCents ?? 0)} / {money(ev.capturedCents ?? 0)}</dd></> : null}
         </dl>
+        {x.sources ? <SourceRecords src={x.sources} /> : null}
         {ev.explanation ? <p className="fk-hint" data-testid="review-explanation"><b>{tx('cr.calc')}</b> {ev.explanation}</p> : null}
         {ev.check === 'refund_reversal' ? <p className="fk-hint">{tx('cr.timing')}</p> : null}
         <div className="cr-links">
@@ -188,6 +193,10 @@ export function ExportHistory({ load, tick }: { load: (q: Record<string, unknown
   const d: any = h.data;
   return (
     <FitPanel testId="export-history" title={<>{tx('cm.exportHistory')}{d ? <span className="fk-muted"> · {tx(d.scope === 'own' ? 'cm.ex.own' : 'cm.ex.salon')}</span> : null}</>} footer={<Pager info={pageOf(d)} onPage={setPage} label={tx('cm.exportHistory')} />}>
+      {d?.coverage ? <div className="cr-coverage" data-testid="export-coverage">
+        <div data-testid="coverage-verified">{d.coverage.lastVerifiedExport ? tx('cr10.cov.verified', { at: whenTime(d.coverage.lastVerifiedExport.at), r: tx('cm.ex.type.' + d.coverage.lastVerifiedExport.reportType), n: d.coverage.lastVerifiedExport.rowCount == null ? '—' : nf(d.coverage.lastVerifiedExport.rowCount), by: d.coverage.lastVerifiedExport.actor ?? '—' }) : tx('cr10.cov.noVerified')}</div>
+        <div data-testid="coverage-missing" className={d.coverage.lastMissingOutcome ? 'fk-note warn' : ''}>{d.coverage.lastMissingOutcome ? tx('cr10.cov.missing', { at: whenTime(d.coverage.lastMissingOutcome.at), r: tx('cm.ex.type.' + d.coverage.lastMissingOutcome.reportType), n: nf(d.coverage.missingOutcomes) }) : tx('cr10.cov.noMissing')}</div>
+      </div> : null}
       {h.error ? <StateBlock error={h.error} onRetry={h.reload} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : !d.items.length ? <Empty title={tx('cm.ex.none')} />
         : <table className="fk-table fn-table cg-table" data-testid="export-history-table"><thead><tr><th>{tx('tm.col.when')}</th><th>{tx('cm.ex.report')}</th><th>{tx('cm.ex.event')}</th><th>{tx('cm.ex.by')}</th><th className="num">{tx('cm.ex.rows')}</th></tr></thead>
           <tbody>{d.items.map((e: any) => <tr key={e.id} data-testid="export-history-row"><td>{whenTime(e.at)}</td><td>{tx('cm.ex.type.' + e.reportType)}</td>
@@ -195,5 +204,34 @@ export function ExportHistory({ load, tick }: { load: (q: Record<string, unknown
             <td>{e.actor ?? '—'}</td><td className="num">{e.rowCount == null ? '—' : nf(e.rowCount)}</td></tr>)}</tbody></table>}
       <p className="fk-hint">{tx('cm.ex.rule')}</p>
     </FitPanel>
+  );
+}
+
+/** round 10 (Finish the Five 04 — Evidence Trace): the exact records the finding points at, resolved on the server for this salon —
+ *  the service line, its rate snapshot, the refunds (opening Refunds & Voids searched by the ticket) and the recorded reversals
+ *  (Payroll). Read-only links; nothing here changes money. */
+type ReviewSources = {
+  ticket: { id: string; number: string | null } | null;
+  serviceLine: { id: string; service: string | null; totalCents: number; removed: boolean } | null;
+  rateSnapshot: { id: string; type: string | null; value: number | null; source: string | null; policyVersion: number | null; at: string | null; earningsCents: number } | null;
+  refunds: { id: string; amountCents: number; status: string; at: string | null }[];
+  ledgerEntries: { id: string; category: string; amountCents: number; status: string; at: string | null }[];
+  missing: string[];
+};
+function SourceRecords({ src }: { src: ReviewSources }) {
+  const short = (id: string) => id.slice(0, 8);
+  return (
+    <div className="cr-sources" data-testid="review-sources">
+      <h4>{tx('cr10.src.title')}</h4>
+      <ul className="fk-list dense">
+        {src.serviceLine ? <li data-testid="src-line">{tx('cr10.src.line', { s: src.serviceLine.service ?? '—', v: money(src.serviceLine.totalCents), id: short(src.serviceLine.id) })}{src.serviceLine.removed ? ` · ${tx('cr10.src.removed')}` : ''}</li> : null}
+        {src.rateSnapshot ? <li data-testid="src-rate">{tx('cr10.src.rate', { r: src.rateSnapshot.value == null ? '—' : src.rateSnapshot.type === 'percent' ? `${src.rateSnapshot.value}%` : money(src.rateSnapshot.value), src: src.rateSnapshot.source ?? '—', v: String(src.rateSnapshot.policyVersion ?? '—'), e: money(src.rateSnapshot.earningsCents), at: whenTime(src.rateSnapshot.at), id: short(src.rateSnapshot.id) })}</li> : null}
+        {src.refunds.map((r) => <li key={r.id} data-testid="src-refund">{tx('cr10.src.refund', { v: money(r.amountCents), st: tx('cr10.st.' + r.status), at: whenTime(r.at), id: short(r.id) })}{' '}
+          <Link to={`/tenant/payments/refunds-voids?search=${encodeURIComponent(src.ticket?.number ?? r.id)}`} data-testid="src-refund-open">{tx('cr10.src.openRefunds')}</Link></li>)}
+        {src.ledgerEntries.map((a) => <li key={a.id} data-testid="src-ledger">{tx('cr10.src.ledger', { v: money(a.amountCents), st: tx('cr10.st.' + a.status), at: whenTime(a.at), id: short(a.id) })}{' '}
+          <Link to="/tenant/team/payroll" data-testid="src-ledger-open">{tx('cr.payrollLink')}</Link></li>)}
+      </ul>
+      {src.missing.length ? <div className="fk-note warn" data-testid="src-missing"><span>{tx('cr10.src.missing')}</span></div> : null}
+    </div>
   );
 }

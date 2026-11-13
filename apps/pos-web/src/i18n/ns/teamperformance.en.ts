@@ -64,4 +64,12 @@ export const TEAMPERFORMANCE_EN = {
   'tp.basis.completed': 'Service completed',
   'tp.byTech': 'Service by {n}',
   'tp.helper': 'Helper: {n}',
+  'tp.accuracy': 'Service accuracy',
+  'tp.accuracyV': '{r}% passed the Service Done quality check · {a} of {c} checked · {i} with an issue',
+  'tp.accuracyNone': 'No Service Done quality check recorded in this period',
+  'tp.accuracyUnchecked': '{n} not checked (not counted)',
+  'tp.opReliability': 'Service completion',
+  'tp.opReliabilityV': '{d} completed · {f} not completed',
+  'tp.opOnTime': 'On-time starts',
+  'tp.opOnTimeV': '{o} on time · {l} late',
 };

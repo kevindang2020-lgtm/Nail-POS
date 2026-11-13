@@ -99,3 +99,32 @@ describe('Win-Back phone contact verification', () => {
     expect(after).toEqual(before);                                // reading verification changes no profile
   });
 });
+
+describe('round 10 — Win-Back 11 (shared phone shown) · 13 (last visit technician offered to booking)', () => {
+  it('a row names how many OTHER active profiles share its phone; the profiles stay apart; another salon never counts', async () => {
+    const D1 = id('c61'), D2 = id('c62'), DX = id('c63');
+    await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, marketing_sms_opt_in) values ($1,$4,$5,'Dee','One','Dee One','+16095550777',true), ($2,$4,$5,'Dee','Two','Dee Two','+16095550777',true), ($3,$6,$7,'Dee','X','Dee X','+16095550777',true)`, [D1, D2, DX, T, B, T2, B2]);
+    const r = await repo.customers(ctx, { segment: 'all', q: 'Dee', pageSize: 50 });
+    const by = Object.fromEntries(r.items.map((i: any) => [i.customerId, i]));
+    expect(by[D1].sharedPhoneProfiles).toBe(1); expect(by[D2].sharedPhoneProfiles).toBe(1);
+    expect(r.items.filter((i: any) => i.customerId === D1 || i.customerId === D2)).toHaveLength(2);
+    const nell = (await repo.customers(ctx, { segment: 'all', q: 'Nell', pageSize: 50 })).items[0] as any;
+    expect(nell.sharedPhoneProfiles).toBe(0);                              // no phone: never "shared"
+    await q(`update customers set archived_at = now() where id = $1`, [D2]);
+    expect(((await repo.customers(ctx, { segment: 'all', q: 'Dee One', pageSize: 50 })).items[0] as any).sharedPhoneProfiles).toBe(0);
+  });
+  it('lastTechnician = the technician on the latest visit, only while still active; none for a never-visited customer', async () => {
+    const TE1 = id('e71'), TE2 = id('e72');
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, is_active) values ($1,$3,$4,'Old','Tech','Old Tech',true), ($2,$3,$4,'New','Tech','New Tech',true)`, [TE1, TE2, T, B]);
+    const tickets = (await q(`select id, created_at from tickets where tenant_id = $1 and customer_id = $2 order by created_at`, [T, A1])).rows;
+    const older = id('d901');
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, ticket_number, created_at, paid_at) values ($1,$2,$3,$4,'closed',4000,'79901', now() - interval '300 days', now() - interval '300 days')`, [older, T, B, A1]);
+    const line = (tk: string, te: string) => q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents) values ($1,$2,$3,gen_random_uuid(),$4,'Gel',4000,45,4000)`, [T, B, tk, te]);
+    await line(older, TE1); await line(tickets[tickets.length - 1].id, TE2);
+    const get = async () => ((await repo.customers(ctx, { segment: 'all', q: 'Anna', pageSize: 50 })).items.find((i: any) => i.customerId === A1) as any).lastTechnician;
+    expect(await get()).toEqual({ id: TE2, name: 'New Tech' });
+    await q(`update technicians set archived_at = now() where id = $1`, [TE2]);
+    expect(await get()).toEqual({ id: TE1, name: 'Old Tech' });           // the latest visit whose technician still works here
+    expect(((await repo.customers(ctx, { segment: 'all', q: 'Cat', pageSize: 50 })).items[0] as any).lastTechnician).toBeNull();
+  });
+});

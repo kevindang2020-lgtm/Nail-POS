@@ -363,7 +363,25 @@ export class MoneyProtectionCenter {
       left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.entity_type = 'alert' and e.entity_id = ${id} order by e.created_at desc, e.id desc limit 100`.execute(this.db)).rows;
     const d = RULE.get(String(r.rule_id));
     const self = isUuid(ctx.userId) && userIds.includes(String(ctx.userId));
+    // round 10 (Money Protection Rules 05 — Explain Why Triggered): the rule's condition, the values the alert recorded against
+    // it (current / baseline / difference), the thresholds as configured NOW (alerts do not store the threshold at detection —
+    // said so), the records it rests on (counts verified in their own tables) and which thresholds act as exclusions / gates
+    const ev = (typeof r.evidence === 'object' && r.evidence) || {};
+    const setting = d ? (await sql<Row>`select thresholds, severity_override, updated_at from money_protection_rule_settings where tenant_id = ${T} and rule_id = ${d.id}`.execute(this.db)).rows[0] : undefined;
+    const thresholdsNow = d ? { ...d.defaultThresholds, ...((setting?.thresholds as Record<string, unknown>) ?? {}) } : {};
+    const GATE = /^(min|max)[A-Z]|tolerance|window/;   // thresholds that keep small / in-tolerance / out-of-window cases OUT of an alert
+    const whyTriggered = d ? {
+      condition: d.description, ruleId: d.id, layer: d.layer, mode: d.evaluationMode,
+      matched: (ev.currentValues && typeof ev.currentValues === 'object') ? ev.currentValues : {},
+      baseline: (ev.baselineValues && typeof ev.baselineValues === 'object') ? ev.baselineValues : null,
+      differences: (ev.differences && typeof ev.differences === 'object') ? ev.differences : null,
+      thresholds: Object.entries(thresholdsNow).map(([key, value]) => ({ key, value, custom: !!(setting?.thresholds && key in (setting.thresholds as Record<string, unknown>)), gate: GATE.test(key) })),
+      thresholdsAsOf: setting?.updated_at ? iso(setting.updated_at) : null, thresholdsNote: 'as_configured_now' as const,
+      references: { tickets: tickets.length, payments: payments.length, staff: staff.length },
+      triggeredRules: Array.isArray(ev.triggeredRules) ? ev.triggeredRules.map(String) : [d.id],
+    } : null;
     return {
+      whyTriggered,
       alert: this.alertOut(r),
       rule: d ? { id: d.id, name: d.name, category: d.category, layer: d.layer, description: d.description, humanReview: d.humanReview } : null,
       evidence: r.evidence ?? {},
@@ -663,8 +681,22 @@ export class MoneyProtectionCenter {
     const FROM = sql`money_protection_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id`;
     const total = N((await sql<Row>`select count(*)::int as n from ${FROM} where ${W}`.execute(this.db)).rows[0]?.n);
     const rows = (await sql<Row>`select e.id, e.entity_id, e.reason, e.detail, e.created_at, coalesce(u.full_name, u.email) as actor from ${FROM} where ${W} order by e.created_at desc, e.id desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+    // round 10 (Money Protection Rules 10 — Configuration Diff Viewer): each change takes effect when it was saved (effectiveAt);
+    // it can be rolled back only while it is still the rule's CURRENT setting (no later change, rule still in the catalog) —
+    // the rollback is the ordinary reasoned rules/save with the 'before' values and the current version (expectedUpdatedAt)
+    const ruleIds = [...new Set(rows.map((r) => String(r.entity_id)))];
+    const latest = ruleIds.length ? (await sql<Row>`select distinct on (e.entity_id) e.entity_id, e.id from money_protection_events e where e.tenant_id = ${T} and e.entity_type = 'rule' and e.entity_id = any(${ruleIds}::text[])
+      order by e.entity_id, e.created_at desc, e.id desc`.execute(this.db)).rows : [];
+    const current = ruleIds.length ? (await sql<Row>`select rule_id, updated_at from money_protection_rule_settings where tenant_id = ${T} and rule_id = any(${ruleIds}::text[])`.execute(this.db)).rows : [];
+    const rollbackOf = (r: Row) => {
+      const id = String(r.entity_id); const det = r.detail ?? {};
+      if (!RULE.get(id)) return { eligible: false, why: 'rule_retired' as const, restores: null, expectedUpdatedAt: null };
+      if (String(latest.find((x) => String(x.entity_id) === id)?.id) !== String(r.id)) return { eligible: false, why: 'superseded' as const, restores: null, expectedUpdatedAt: null };
+      if (!det.before) return { eligible: false, why: 'no_before' as const, restores: null, expectedUpdatedAt: null };
+      return { eligible: true, why: 'current' as const, restores: det.before, expectedUpdatedAt: iso(current.find((x) => String(x.rule_id) === id)?.updated_at) };
+    };
     return { items: rows.map((r) => ({ id: String(r.id), ruleId: r.entity_id, rule: RULE.get(String(r.entity_id))?.name ?? r.entity_id, reason: r.reason ?? null, actor: r.actor ?? null, at: iso(r.created_at),
-        before: (r.detail ?? {}).before ?? null, after: (r.detail ?? {}).after ?? null, weaker: !!(r.detail ?? {}).weaker })),
+        before: (r.detail ?? {}).before ?? null, after: (r.detail ?? {}).after ?? null, weaker: !!(r.detail ?? {}).weaker, effectiveAt: iso(r.created_at), rollback: rollbackOf(r) })),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)), period: { today: per.today, timeZone: per.tz } };
   }
 

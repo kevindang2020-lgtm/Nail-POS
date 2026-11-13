@@ -146,4 +146,36 @@ describe('POSCommissionReportScreen — period from the URL (batch 9, Nov 10 202
     render(<MemoryRouter initialEntries={['/tenant/reports/commission?preset=custom&from=2026-10-01&to=2026-10-15']}><POSCommissionReportScreen /></MemoryRouter>);
     await waitFor(() => expect(cm.summary).toHaveBeenCalledWith(expect.objectContaining({ preset: 'custom', from: '2026-10-01', to: '2026-10-15' })));
   });
+  it('round 10 (Finish the Five 04): the slide-over lists the exact source records — service line, rate snapshot, refunds (opening Refunds & Voids searched by ticket) and recorded reversals', async () => {
+    DETAIL = { ...DETAIL, sources: { ticket: { id: 'tk1', number: '1042' }, serviceLine: { id: 'abcdef1234', service: 'Gel Manicure', totalCents: 10000, removed: false },
+      rateSnapshot: { id: '12345678aa', type: 'percent', value: 30, source: 'Salon Default', policyVersion: 1, at: '2026-10-20T15:00:00Z', earningsCents: 3000 },
+      refunds: [{ id: 'rf000001xx', amountCents: 5000, status: 'refunded', at: '2026-10-25T15:00:00Z' }], ledgerEntries: [{ id: 'ad000001yy', category: 'refund_reversal', amountCents: -2000, status: 'posted', at: '2026-10-26T15:00:00Z' }], missing: [] } };
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTestId('disc-row'))[0]);
+    const box = await screen.findByTestId('review-sources');
+    expect(within(box).getByTestId('src-line').textContent).toBe('Service line: Gel Manicure · $100.00 · record abcdef12');
+    expect(within(box).getByTestId('src-rate').textContent).toMatch(/^Rate snapshot: 30% from Salon Default \(policy version 1\) · earnings \$30\.00 · .* · record 12345678$/);
+    expect(within(box).getByTestId('src-refund').textContent).toMatch(/^Refund \$50\.00 · refunded · .* · record rf000001 Open in Refunds & Voids$/);
+    expect(within(box).getByTestId('src-refund-open').getAttribute('href')).toBe('/tenant/payments/refunds-voids?search=1042');
+    expect(within(box).getByTestId('src-ledger').textContent).toMatch(/Recorded commission reversal -?\$?-?20\.00|−\$20\.00/);
+    expect(screen.queryByTestId('src-missing')).toBeNull();
+  });
+  it('round 10 (Finish the Five 06): the policy change sends what was loaded; a 409 says someone else changed it and reloads', async () => {
+    cr.setRefundPolicy.mockRejectedValueOnce({ status: 409, code: 'VERSION_CONFLICT' });
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
+    fireEvent.change(await screen.findByTestId('policy-select'), { target: { value: 'PRO_RATA' } });
+    const calls = cr.list.mock.calls.length;
+    fireEvent.click(screen.getByTestId('policy-save'));
+    await waitFor(() => expect(cr.setRefundPolicy).toHaveBeenCalledWith('PRO_RATA', null));
+    expect(await screen.findByText(/Someone else changed the refund-reversal policy while you were looking/)).toBeInTheDocument();
+    await waitFor(() => expect(cr.list.mock.calls.length).toBeGreaterThan(calls));
+    expect(screen.queryByText('Policy saved.')).toBeNull();
+  });
+  it('round 10 (Finish the Five 07): export history shows the last verified export and the last request whose result was never recorded', async () => {
+    cm.exportHistory.mockResolvedValue({ scope: 'salon', coverage: { lastVerifiedExport: { reportType: 'COMMISSION', at: '2026-10-30T14:00:00Z', requestId: 'r1', actor: 'Pat Owner', rowCount: 2, sha256: 'ab'.repeat(32) },
+      lastMissingOutcome: { reportType: 'COMMISSION', at: '2026-10-30T13:00:00Z', requestId: 'r0' }, missingOutcomes: 1 }, ...page([{ id: 'e1', event: 'succeeded', reportType: 'COMMISSION', result: 'success', at: '2026-10-30T14:00:00Z', requestId: 'r1', actor: 'Pat Owner', rowCount: 2 }]) });
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
+    expect((await screen.findByTestId('coverage-verified')).textContent).toMatch(/^Last verified export: .*, 2 rows, by Pat Owner · /);
+    expect(screen.getByTestId('coverage-missing').textContent).toMatch(/^Last export whose result was never recorded: .* \(1 in all\)/);
+  });
 });

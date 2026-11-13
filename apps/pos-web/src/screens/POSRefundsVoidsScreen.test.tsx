@@ -130,4 +130,59 @@ describe('POSRefundsVoidsScreen', () => {
     expect(api.list.mock.calls.length).toBe(l + 1); expect(api.summary.mock.calls.length).toBe(s0 + 1);
     expect(screen.getByTestId('reversal-row')).toBeInTheDocument();   // the rows stayed on screen while it reloaded
   });
+  it('round 10: opened from a commission finding with ?search=<ticket>, the list is searched for that ticket', async () => {
+    window.history.replaceState(null, '', '/tenant/payments/refunds-voids?search=1042');
+    mount();
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ search: '1042' })));
+    expect((screen.getByTestId('search') as HTMLInputElement).value).toBe('1042');
+    window.history.replaceState(null, '', '/');
+  });
+  it('round 10 (REFUNDS VOIDS 13): a reload mid-request reopens the pending state, and asking again reuses the SAME request key', async () => {
+    sessionStorage.clear();
+    api.find.mockResolvedValue({ query: '6001', period: PERIOD, items: [tender] });
+    const refundOnce = async () => {
+      fireEvent.click(screen.getByTestId('find-payment')); fireEvent.change(screen.getByTestId('find-query'), { target: { value: '#6001' } });
+      fireEvent.click(await screen.findByTestId('find-refund'));
+      fireEvent.change(screen.getByTestId('refund-amount'), { target: { value: '10' } }); fireEvent.change(screen.getByTestId('refund-reason'), { target: { value: 'Chipped' } });
+      fireEvent.click(screen.getByTestId('review-refund')); fireEvent.click(screen.getByTestId('confirm-refund'));
+    };
+    co.refund.mockReturnValueOnce(new Promise(() => {}));                    // the answer never arrives: the page reloads
+    const first = mount(); await screen.findByTestId('reversal-row'); expect(screen.queryByTestId('rv-inflight')).toBeNull();
+    await refundOnce();
+    await waitFor(() => expect(co.refund).toHaveBeenCalledTimes(1));
+    const key = co.refund.mock.calls[0][2] as string;
+    expect(JSON.parse(sessionStorage.getItem('aps.rv.inflight')!)).toMatchObject({ kind: 'refund', tenderId: 'p1', key, amountCents: 1000, ticketNumber: '6001' });
+    first.unmount();
+    mount(); await screen.findByTestId('reversal-row');                     // after the reload
+    const b = screen.getByTestId('rv-inflight');
+    expect(b).toHaveTextContent('A Refund of $10.00 for #6001 was being sent'); expect(b).toHaveTextContent('will not be sent again');
+    fireEvent.click(screen.getByTestId('rv-inflight-show'));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ search: '6001' })));
+    co.refund.mockResolvedValueOnce({ status: 'refunded', refundId: 'x' });
+    await refundOnce();                                                       // same tender, same amount: the held key
+    await waitFor(() => expect(co.refund).toHaveBeenCalledTimes(2));
+    expect(co.refund.mock.calls[1][2]).toBe(key);
+    await waitFor(() => expect(screen.queryByTestId('rv-inflight')).toBeNull());
+    expect(sessionStorage.getItem('aps.rv.inflight')).toBeNull();
+  });
+  it('round 10 (REFUNDS VOIDS 13): a lost connection keeps the marker; a server refusal clears it; Clear dismisses it', async () => {
+    sessionStorage.clear();
+    api.find.mockResolvedValue({ query: '6001', period: PERIOD, items: [tender] });
+    co.refund.mockRejectedValueOnce(Object.assign(new Error('offline'), { status: 0, code: 'NETWORK_ERROR' }));
+    mount(); await screen.findByTestId('reversal-row');
+    fireEvent.click(screen.getByTestId('find-payment')); fireEvent.change(screen.getByTestId('find-query'), { target: { value: '#6001' } });
+    fireEvent.click(await screen.findByTestId('find-refund')); fireEvent.change(screen.getByTestId('refund-reason'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByTestId('review-refund')); fireEvent.click(screen.getByTestId('confirm-refund'));
+    expect(await screen.findByTestId('refund-error')).toBeInTheDocument();
+    expect(sessionStorage.getItem('aps.rv.inflight')).not.toBeNull();
+    co.refund.mockRejectedValueOnce(Object.assign(new Error('nope'), { status: 409, code: 'REFUND_EXCEEDS_REFUNDABLE' }));
+    fireEvent.click(screen.getByTestId('confirm-refund'));
+    await waitFor(() => expect(co.refund).toHaveBeenCalledTimes(2));
+    expect(co.refund.mock.calls[1][2]).toBe(co.refund.mock.calls[0][2]);
+    await waitFor(() => expect(sessionStorage.getItem('aps.rv.inflight')).toBeNull());
+    sessionStorage.setItem('aps.rv.inflight', JSON.stringify({ kind: 'void', tenderId: 'p1', intent: 'void:p1', sig: '{}', key: 'k1', amountCents: 10000, ticketNumber: null, at: '2026-10-29T13:00:00Z' }));
+    const r = mount(); r.unmount(); mount();
+    fireEvent.click(await screen.findByTestId('rv-inflight-clear'));
+    expect(screen.queryByTestId('rv-inflight')).toBeNull(); expect(sessionStorage.getItem('aps.rv.inflight')).toBeNull();
+  });
 });

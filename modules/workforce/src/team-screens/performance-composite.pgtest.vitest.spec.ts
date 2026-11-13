@@ -15,7 +15,6 @@ const mgr = { tenantId: T, branchId: B, userId: U, role: 'MANAGER', permissions:
 const viewer = { ...mgr, permissions: ['pos.technicians.view'] };
 let pg: any; let repo: TeamPerformanceScreenRepository;
 const q = (s: string, p: unknown[] = []) => pg.query(s, p);
-let n = 0;
 const review = (tech: string, rating: number, o: { hidden?: boolean; spam?: boolean } = {}) =>
   q(`insert into reviews (tenant_id, branch_id, technician_id, customer_id, rating, is_hidden_by_manager, is_spam, created_at) values ($1,$2,$3,$4,$5,$6,$7, now() - interval '1 day')`, [T, B, tech, CU, rating, !!o.hidden, !!o.spam]);
 const ticket = (tech: string, status: string, appt?: string, startedMinutesAfterPlanned?: number) =>
@@ -23,7 +22,7 @@ const ticket = (tech: string, status: string, appt?: string, startedMinutesAfter
      values ($1,$2,'Guest',$3,$4,$5, now() - interval '1 day', ${startedMinutesAfterPlanned == null ? 'null' : `(select ((a.appt_date + a.start_time::time) at time zone 'America/New_York') + make_interval(mins => ${startedMinutesAfterPlanned}) from pos_tech_appointments a where a.id = $5)`})`,
     [T, B, tech, status, appt ?? null]);
 const appointment = async (tech: string, arrivedMinutesAfterPlanned: number | null) => {
-  n++; const r = await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, source)
+  const r = await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, source)
     values ($1,$2,$3,'Guest','[]'::jsonb, current_date - 1, '10:00', '11:00', 60, 'completed', 'online') returning id`, [T, B, tech]);
   const aid = String(r.rows[0].id);
   if (arrivedMinutesAfterPlanned != null) await q(`update pos_tech_appointments set arrived_at = ((appt_date + start_time::time) at time zone 'America/New_York') + make_interval(mins => $2) where id = $1`, [aid, arrivedMinutesAfterPlanned]);
@@ -82,5 +81,27 @@ describe('versioned composite score (F5)', () => {
     expect((await repo.composite(mgr, MIA, { preset: 'month' })).snapshots[0]).toMatchObject({ id: s.id, modelVersion: 'composite-v1', inputChecksum: s.inputChecksum });
     await expect(q(`update performance_score_snapshots set model_version = 'composite-v2' where id = $1`, [s.id])).rejects.toThrow(/append-only/);
     await expect(repo.composite({ ...mgr, tenantId: T2, branchId: BX }, MIA, {})).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('round 10 — Finish the Five 12: version comparison from the saved snapshots (nothing recomputed, nothing re-ranked)', () => {
+  it('one version → nothing to compare; two versions saved for the same period → side by side with the component differences', async () => {
+    const one = (await repo.composite(mgr, LEO, { preset: 'month' })).versionComparison;
+    expect(one).toEqual({ versions: [], comparable: false, diff: null, reranked: false });
+    await repo.saveScoreSnapshot(mgr, { technicianId: LEO, preset: 'month' });
+    const v1only: any = (await repo.composite(mgr, LEO, { preset: 'month' })).versionComparison;
+    expect(v1only.versions.map((v: any) => v.version)).toEqual(['composite-v1']); expect(v1only.comparable).toBe(false);
+    // a later model version saved for the same period (written as a new immutable row, as a future model would)
+    const base = (await q(`select period_start, period_end from performance_score_snapshots where technician_id = $1 order by computed_at desc limit 1`, [LEO])).rows[0];
+    await q(`insert into performance_score_snapshots (tenant_id, branch_id, technician_id, period_start, period_end, model_version, components_json, missing_json, score, input_checksum, computed_at)
+      values ($1,$2,$3,$4,$5,'composite-v2','[{"key":"reviews","value":70},{"key":"reliability","value":90}]'::jsonb,'[]'::jsonb, 80.5,'chk-v2', now() + interval '1 minute')`, [T, B, LEO, base.period_start, base.period_end]);
+    const c: any = (await repo.composite(mgr, LEO, { preset: 'month' })).versionComparison;
+    expect(c.comparable).toBe(true); expect(c.reranked).toBe(false);
+    expect(c.versions.map((v: any) => v.version)).toEqual(['composite-v2', 'composite-v1']);
+    expect(c.diff).toMatchObject({ from: { version: 'composite-v1' }, to: { version: 'composite-v2', score: 80.5 } });
+    expect(c.diff.components.find((x: any) => x.key === 'reliability')).toMatchObject({ to: 90 });
+    // the rating ranking (Top Performers) is untouched by any snapshot
+    const r = await repo.compositeComparison(mgr, { preset: 'month' });
+    expect(r.items.map((i: any) => [i.name, i.ratingRank])).toEqual([['Mia Tran', 1], ['Leo Park', 2]]);
   });
 });

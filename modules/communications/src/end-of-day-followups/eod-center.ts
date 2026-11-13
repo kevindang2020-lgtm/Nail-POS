@@ -304,6 +304,28 @@ export class EodCenter {
     return { overall, rows };
   }
 
+  /** round 10 (END-OF-DAY FOLLOW-UPS 03) — Generation correctness for one salon day, from the SAME candidate read the job uses
+   *  (loadEodCandidates): eligible completed service lines vs the live tasks for that day, what is excluded and why, lines still
+   *  without a task, tasks no eligible line explains any more, customers with more than one task that day, and what the run
+   *  recorded. Read-only. */
+  async generationCheck(T: string, B: string, businessDate: string, cands: EodCandidate[]) {
+    const lineIds = cands.map((c) => c.ticketServiceLineId);
+    const t = (await sql<{ tasks: number; unexplained: number; customers_several: number }>`select count(*)::int as tasks,
+        count(*) filter (where not (f.ticket_service_line_id = any(${lineIds}::uuid[])))::int as unexplained,
+        (select count(*)::int from (select f2.customer_id from service_follow_up_tasks f2 where f2.tenant_id = ${T}::uuid and f2.branch_id = ${B}::uuid and f2.deleted_at is null
+            and f2.business_date = ${businessDate}::date group by f2.customer_id having count(*) > 1) x) as customers_several
+      from service_follow_up_tasks f where f.tenant_id = ${T}::uuid and f.branch_id = ${B}::uuid and f.deleted_at is null and f.business_date = ${businessDate}::date`.execute(this.db)).rows[0];
+    const run = (await sql<{ run_status: string; candidates_count: number; created_count: number; excluded_count: number }>`select run_status, candidates_count, created_count, excluded_count
+      from daily_follow_up_generation_runs where tenant_id = ${T}::uuid and branch_id = ${B}::uuid and business_date = ${businessDate}::date order by updated_at desc limit 1`.execute(this.db)).rows[0];
+    const sum = summarizeCandidates(cands);
+    const withTask = cands.filter((c) => !!c.existingTaskId).length;
+    const excludedNow = Object.fromEntries(Object.entries(sum.reasons).filter(([k, v]) => k !== 'already_generated' && v > 0));
+    return { businessDate, eligible: cands.length, withTask, withoutTask: sum.wouldCreate, excludedNow, tasksForDay: Number(t?.tasks ?? 0),
+      tasksNoLongerEligible: Number(t?.unexplained ?? 0), customersWithSeveralTasks: Number(t?.customers_several ?? 0),
+      run: run ? { status: run.run_status, eligible: Number(run.candidates_count), created: Number(run.created_count), excluded: Number(run.excluded_count) } : null,
+      duplicatesPossible: false as const, changesAnything: false as const };
+  }
+
   /** extras FOLLOW-UP QUEUE 09 — see FollowUpReconciliation. `today` is the branch-local salon day. */
   async reconciliation(T: string, B: string, today: string): Promise<FollowUpReconciliation> {
     const r = (await sql<{ open: number; source_cancelled: number; customer_archived: number; already_booked: number; technician_inactive: number; inbox_replied: number }>`select count(*)::int as open,
@@ -392,6 +414,15 @@ export class EodCenter {
     if (!r) return null;
     const events = (await sql<any>`select action_type, role, created_at, metadata_json from audit_logs where tenant_id = ${T}::uuid and entity_id = ${id}
         and (entity_type = 'service_follow_up_task' or entity_type is null) order by created_at asc, id asc limit 100`.execute(this.db)).rows.map((e: any) => ({ action: e.action_type, role: e.role ?? null, at: iso(e.created_at) }));
+    // round 10 (END-OF-DAY FOLLOW-UPS 09): revision status from the recorded approval events; replies mapped to this task / customer / visit
+    const ev = (await sql<{ action_type: string; n: number; last_at: string | null }>`select action_type, count(*)::int as n, max(created_at) as last_at from audit_logs where tenant_id = ${T}::uuid and entity_id = ${id}
+        and action_type in ('tech_followup_submitted_for_approval', 'tech_followup_rejected', 'tech_followup_approved', 'customer_follow_up_replied') group by action_type`.execute(this.db)).rows;
+    const evOf = (k: string) => ev.find((x) => x.action_type === k);
+    const subs = Number(evOf('tech_followup_submitted_for_approval')?.n ?? 0), rejs = Number(evOf('tech_followup_rejected')?.n ?? 0);
+    const approvalState = r.approved_by_user_id ? 'approved' : r.status === 'rejected' ? 'returned_for_revision' : r.status === 'pending_manager_approval' ? (rejs > 0 ? 'resubmitted' : 'awaiting') : subs === 0 ? 'not_required' : 'closed';
+    const approval = { state: approvalState, revision: Math.max(subs, 0), submissions: subs, rejections: rejs, lastRejectedAt: iso(evOf('tech_followup_rejected')?.last_at ?? null), lastSubmittedAt: iso(evOf('tech_followup_submitted_for_approval')?.last_at ?? null) };
+    const rp = evOf('customer_follow_up_replied');
+    const replies = { count: Number(rp?.n ?? 0), lastAt: iso(rp?.last_at ?? null), mappedTo: { taskId: String(r.id), customerId: String(r.customer_id), ticketId: r.ticket_id ?? null }, channel: 'customer_app' as const };
     const notif = r.customer_app_notification_id ? (await sql<any>`select created_at, read_at from customer_notifications where id = ${r.customer_app_notification_id}::uuid and tenant_id = ${T}::uuid`.execute(this.db)).rows[0] ?? null : null;
     const booked = r.sent_at ? (await sql<any>`select id, appt_date::text as d, created_at from pos_tech_appointments where tenant_id = ${T}::uuid and customer_id = ${r.customer_id}::uuid
         and created_at > ${r.sent_at} and created_at <= ${r.sent_at}::timestamptz + interval '30 days' and status not in ('cancelled', 'no_show') order by created_at asc limit 1`.execute(this.db)).rows[0] ?? null : null;
@@ -405,7 +436,7 @@ export class EodCenter {
       delivery: notif ? { channel: 'customer_app', deliveredToInboxAt: iso(notif.created_at), readAt: iso(notif.read_at) } : null,
       customerViewedAt: iso(r.customer_viewed_at),
       bookedAfter: booked ? { appointmentId: booked.id, date: booked.d, bookedAt: iso(booked.created_at), label: 'Booked after follow-up (not proof the follow-up caused it)' } : null,
-      timeline: events,
+      timeline: events, approval, replies,
     };
   }
 }

@@ -168,4 +168,11 @@ export const DISCOUNTS_EN = {
   'dsc.pvp.price': 'A line went from {p0} to {p1} (discount {d0} → {d1})',
   'dsc.pvp.other': 'Other offers on the ticket, a cap or the budget changed the discount by {v}',
   'dsc.pvp.note': 'First priced = the discount when the offer went on the ticket. Refunds after payment are shown separately.',
+  'dsc10.version': 'Charged under rules version {v}',
+  'dsc10.changedSince': 'rules changed since (now version {c}) — this use keeps its own terms',
+  'dsc10.notFrozen': 'terms at payment time not on record',
+  'dsc10.col.approvedBy': 'Approved by',
+  'dsc10.col.changed': 'Changed from the version before',
+  'dsc10.firstVersion': 'First version',
+  'dsc10.noChange': 'No term changed',
 };

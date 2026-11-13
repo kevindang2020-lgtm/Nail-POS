@@ -19,6 +19,9 @@ export interface EodPreview {
   totals: { candidates: number; wouldCreate: number; excluded: number; noApp: number; reasons: Record<string, number> };
   technicians: { technicianId: string; technicianName: string; wouldCreate: number; excluded: number; noApp: number }[];
   rows: { technicianId: string; technicianName: string; customerName: string; serviceName: string; ticketNumber: string | null; completedAt: string | null; excluded: string | null; noApp: boolean; nextBookingDate: string | null }[];
+  /** round 10 (EOD 03): generation correctness for the day (absent from an older server) */
+  correctness?: { businessDate: string; eligible: number; withTask: number; withoutTask: number; excludedNow: Record<string, number>; tasksForDay: number; tasksNoLongerEligible: number;
+    customersWithSeveralTasks: number; run: { status: string; eligible: number; created: number; excluded: number } | null; duplicatesPossible: false };
 }
 export interface EodTaskRow {
   id: string; businessDate: string; status: string; customerId: string; customerName: string; customerPhoneLast4: string | null; customerHasApp: boolean;
@@ -35,6 +38,9 @@ export interface EodTaskDetail {
   delivery: { channel: string; deliveredToInboxAt: string | null; readAt: string | null } | null; customerViewedAt: string | null;
   bookedAfter: { appointmentId: string; date: string; bookedAt: string | null; label: string } | null;
   timeline: { action: string; role: string | null; at: string | null }[];
+  /** round 10 (EOD 09): revision status + inbound replies mapped to this task (absent from an older server) */
+  approval?: { state: 'awaiting' | 'returned_for_revision' | 'resubmitted' | 'approved' | 'not_required' | 'closed'; revision: number; submissions: number; rejections: number; lastRejectedAt: string | null; lastSubmittedAt: string | null };
+  replies?: { count: number; lastAt: string | null; mappedTo: { taskId: string; customerId: string; ticketId: string | null }; channel: 'customer_app' };
 }
 export interface EodTaskQuery { q?: string; status?: string; approval?: string; technicianId?: string; basis?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number }
 

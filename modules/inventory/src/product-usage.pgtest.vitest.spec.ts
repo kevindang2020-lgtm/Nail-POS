@@ -178,7 +178,7 @@ describe('Stock Alerts read model', () => {
     expect([...rec].sort().reverse()).toEqual(rec);
     expect(led.events.some((e) => e.corrected && e.effective === '0')).toBe(true);
     const csvText = await repo.exportCsv(manager, 'usage', {}, await repo.period(manager, {}));
-    expect(csvText.split('\r\n')[0]).toBe('Product,SKU,Used,Unit,Uses,Technicians,Unattributed uses,On hand,Last used by,Last used at');
+    expect(csvText.split('\r\n')[0]).toBe('Product,SKU,Used,Unit,Uses,Technicians,Unattributed uses,On hand,Last used by,Last used at,Location,Period from,Period to,Date field');
   });
   it('nothing crosses tenants', async () => {
     const other: any = { tenantId: T2, branchId: B2, userId: UM, role: 'MANAGER', permissions: ['inventory.view', 'inventory.stock.adjust'] };
@@ -214,5 +214,46 @@ describe('Low-Stock Cause Explanation (Extras · Stock Alerts 12)', () => {
   it('a product with no movements says so; another salon cannot read it', async () => {
     expect((await repo.lowStockCause(manager, PLOW[0])).causes).toEqual(['no_movements']);
     expect(await code(repo.lowStockCause({ ...manager, tenantId: T2, branchId: B2 }, PLOW[0]))).not.toBe('OK');
+  });
+});
+
+describe('round 10 — Stock Alerts 11 · 13 · 14', () => {
+  it('technicians tab: service volume context (services completed in the same period, uses per 10 services; N/A with none)', async () => {
+    const cu = 'a7160000-0000-4000-8000-0000000009a1', tk = 'a7160000-0000-4000-8000-0000000009a2';
+    await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name) values ($1,$2,$3,'Vol','Ume','Vol Ume')`, [cu, T, B]);
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, total_cents) values ($1,$2,$3,$4,'paid',0,0)`, [tk, T, B, cu]);
+    for (let i = 0; i < 4; i++) await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, completed_at)
+      values ($1,$2,$3,gen_random_uuid(),$4,'Gel',1000,30,1000, now())`, [T, B, tk, TA]);
+    await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, completed_at)
+      values ($1,$2,$3,gen_random_uuid(),$4,'Gel',1000,30,1000, null)`, [T, B, tk, TA]);   // not completed: not counted
+    const r = await repo.technicians(manager, {}, await repo.period(manager, { preset: 'all' }), paging());
+    const anna = r.rows.find((x: any) => x.technicianId === TA)!;
+    expect(anna.servicesCompleted).toBe(4);
+    expect(anna.usesPer10Services).toBe(Math.round((anna.uses * 100) / 4) / 10);
+    const bao = r.rows.find((x: any) => x.technicianId === TB);
+    if (bao) { expect(bao.servicesCompleted).toBe(0); expect(bao.usesPer10Services).toBeNull(); }
+  });
+  it('alert history: who acknowledged, still open or resolved, and what was later restocked (first receipt after the alert + total)', async () => {
+    const pr = PLOW[2];
+    await q(`delete from inventory_alerts where tenant_id = $1 and product_id = $2`, [T, pr]);
+    await q(`insert into inventory_alerts (tenant_id, branch_id, product_id, status, on_hand, created_at, acknowledged_at, acknowledged_by_user_id) values ($1,$2,$3,'low',2, now() - interval '2 days', now() - interval '1 day', $4)`, [T, B, pr, UM]);
+    await q(`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, created_at) values ($1,$2,$3,'purchase_received',6, now() - interval '3 days')`, [T, B, pr]);   // before the alert
+    await q(`insert into inventory_stock_movements (tenant_id, branch_id, product_id, movement_type, quantity_change, created_at) values ($1,$2,$3,'purchase_received',4, now() - interval '12 hours'), ($1,$2,$3,'manual_add',2, now() - interval '1 hour')`, [T, B, pr]);
+    const h = await repo.history(manager, { search: 'LP-03' }, await repo.period(manager, { preset: 'all' }), paging());
+    expect(h.rows[0]).toMatchObject({ acknowledgedBy: 'Mia Manager', state: 'acknowledged', restockedQuantity: 6 });
+    expect(new Date(h.rows[0].restockedAt!).getTime()).toBeLessThan(Date.now() - 11 * 3600_000);
+    const csvText = await repo.exportCsv(manager, 'history', { search: 'LP-03' }, await repo.period(manager, { preset: 'all' }));
+    expect(csvText.split('\r\n')[0]).toBe('Alert ID,Product,SKU,Severity,On hand at alert,Created,Acknowledged,Acknowledged by,Resolved,State,Restocked at,Restocked quantity,Location,Period from,Period to,Date field');
+    expect(csvText.split('\r\n')[1]).toMatch(/,acknowledged,.*,6,Main,all,all,alert created$/);
+  });
+  it('export "events": every use (technician + Service Done recipe) with its id, technician id, amount + unit, both dates, who recorded it, scope', async () => {
+    const csvText = await repo.exportCsv(manager, 'events', { dateBasis: 'recorded' }, await repo.period(manager, { preset: 'all' }));
+    const lines = csvText.trim().split('\r\n');
+    expect(lines[0]).toBe('Use ID,Kind,Product,SKU,Technician,Technician ID,Amount,Unit,Occurred at,Recorded at,Recorded by,Source,Status,Ticket ID,Location,Period from,Period to,Date field');
+    const count = Number((await q(`select count(*)::int n from product_usage_events where tenant_id = $1 and branch_id = $2`, [T, B]))[0].n);
+    expect(lines.filter((l) => l.includes(',product use,')).length).toBe(count);                 // every event, not a page
+    const ev = (await q(`select id from product_usage_events where idempotency_key = 'key-a-1'`))[0].id;
+    expect(lines.find((l) => l.startsWith(ev))).toMatch(new RegExp(`^${ev},product use,Rose Gel,RG-01,Anna Nguyen,${TA},.*,bottle,.*,Main,all,all,recorded at$`));
+    expect(lines.some((l) => l.includes(T2))).toBe(false);
   });
 });

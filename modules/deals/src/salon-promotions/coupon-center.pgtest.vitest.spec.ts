@@ -4,7 +4,6 @@
 // and the payment / refund paths call), the discounts read model (KPIs, list, redemptions) and the coupon center
 // (check, campaigns, health, assistant). "vishal" is the owner's 20% coupon from the screenshot.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyDealsRepository } from '../deals/deals.kysely.repository';
 import { DealsService } from '../deals/deals.service';
@@ -234,7 +233,7 @@ describe('§11 related campaigns, §19 health, §16 assistant (draft only)', () 
   });
   it('health is ready from verified checks; a drifted counter and a payment that never marked its coupon are flagged — nothing is auto-fixed', async () => {
     const h0 = await center.health(ctx);
-    expect(h0.checks.map((c) => [c.key, c.status])).toEqual([['counters', 'ready'], ['paid_not_marked', 'ready'], ['stuck_holds', 'ready'], ['confirmed_unpaid', 'ready'], ['expiry_lag', 'ready'], ['cap_exceeded', 'ready'], ['repeat_accounts', 'ready'], ['stacking_overlap', 'ready']]);
+    expect(h0.checks.map((c) => [c.key, c.status])).toEqual([['counters', 'ready'], ['paid_not_marked', 'ready'], ['stuck_holds', 'ready'], ['confirmed_unpaid', 'ready'], ['expiry_lag', 'ready'], ['cap_exceeded', 'ready'], ['ticket_repeat_use', 'ready'], ['version_not_frozen', 'ready'], ['repeat_accounts', 'ready'], ['stacking_overlap', 'ready']]);
     await q(`update deals set redemption_count = redemption_count + 3 where id = $1`, [vishal.id]);
     const t = await ticket(C1, [[S10, 1000]]); await applyAtCheckout(t, { code: 'VISHALNG20' });
     await q(`update tickets set status = 'paid' where id = $1`, [t]);   // paid, but onPaid never ran
@@ -366,5 +365,55 @@ describe('Coupons — recorded health runs', () => {
     expect(runs.items[0]).toMatchObject({ overall: b.overall, checks: expect.any(Array) });
     expect((await q(`select area from marketing_health_runs where id = $1`, [a.runId]))[0].area).toBe('coupons');
     expect((await q(`select count(*)::int n from deals where tenant_id = $1`, [T]))[0].n).toBe(dealsBefore);   // nothing else changed
+  });
+});
+
+describe('round 10 — Deals 05 · Coupons 04: one offer completed twice on one ticket (the gap the live-use index leaves)', () => {
+  it('a partly reversed use plus a new completed use of the same offer on the same ticket is flagged; separate tickets are not; nothing is changed', async () => {
+    const key = async () => (await center.health(ctx)).checks.find((c) => c.key === 'ticket_repeat_use')!;
+    expect((await key()).status).toBe('ready');
+    const off = await coupon('Repeat check', 'REPEATCHK');
+    const t1 = await ticket(C1, [[S10, 1000]]); const t2 = await ticket(C2, [[S10, 1000]]);
+    const ins = (tk: string, st: string, cust = C1) => q(`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, ticket_id, deal_version, status, amount_discounted_cents) values ($1,$2,$3,$4,$5,1,$6,100)`, [off.id, T, B, cust, tk, st]);
+    await ins(t1, 'partially_reversed'); await ins(t2, 'redeemed', C2);
+    expect((await key()).status).toBe('ready');
+    await ins(t1, 'redeemed');                                    // allowed by uq_deal_redemption_ticket_live (partially_reversed is not "live")
+    const k = await key();
+    expect(k).toMatchObject({ status: 'attention', count: 1, sample: [off.id] });
+    expect((await redemptions(off.id)).length).toBe(3);           // flagged, not rewritten
+    await q(`update deal_redemptions set status = 'reversed' where deal_id = $1`, [off.id]);
+    expect((await key()).status).toBe('ready');
+  });
+});
+
+describe('round 10 — Deals 09: a completed use whose terms at payment time are not on record is flagged', () => {
+  it('no terms snapshot and no saved version for its version → version_not_frozen; a snapshot fixes it; nothing is rewritten', async () => {
+    const key = async () => (await center.health(ctx)).checks.find((c) => c.key === 'version_not_frozen')!;
+    const off = await coupon('Frozen check', 'FROZENCHK');
+    const before = (await key()).count ?? 0;
+    const rid = (await q(`insert into deal_redemptions (deal_id, tenant_id, branch_id, customer_id, deal_version, status, amount_discounted_cents) values ($1,$2,$3,$4,77,'redeemed',100) returning id`, [off.id, T, B, C1]))[0].id;
+    const k = await key();
+    expect(k.status).toBe('attention'); expect(k.count).toBe(before + 1); expect(k.sample).toContain(off.id);
+    await q(`update deal_redemptions set terms_snapshot = '{"discountPercent":10}'::jsonb where id = $1`, [rid]);
+    expect((await key()).count).toBe(before);
+    await q(`update deal_redemptions set status = 'reversed' where id = $1`, [rid]);
+  });
+});
+
+describe('round 10 — Coupons 07: the eligibility preview can be judged "as at" another location of this salon', () => {
+  it('a coupon limited to Main is eligible at Main and not at the second location (wrong_branch); another salon\'s location is refused; nothing is consumed', async () => {
+    const B2 = id('b2');
+    await q(`insert into branches (id, tenant_id, name, timezone, status) values ($1,$2,'Second','America/New_York','active') on conflict do nothing`, [B2, T]);
+    const off = await coupon('Main only', 'MAINONLY', { branchId: B });
+    await q(`update deals set branch_id = $2 where id = $1`, [off.id, B]);
+    const uses = await count(off.id);
+    const here: any = await center.check(ctx, off.id, { spendCents: 5000, codeEntered: true, branchId: B });
+    const there: any = await center.check(ctx, off.id, { spendCents: 5000, codeEntered: true, branchId: B2 });
+    expect(here.verdict).toBe('ELIGIBLE');
+    expect(there.verdict).not.toBe('ELIGIBLE');
+    expect(JSON.stringify(there)).toMatch(/wrong_branch|location/i);
+    await expect(center.check(ctx, off.id, { spendCents: 5000, branchId: BX })).rejects.toMatchObject({ status: 404 });
+    expect(await count(off.id)).toBe(uses);
+    expect((await redemptions(off.id)).length).toBe(0);
   });
 });

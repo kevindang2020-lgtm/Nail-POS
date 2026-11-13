@@ -616,4 +616,8 @@ export const CSEARCH_VI: Record<string, string> = {
   "csx.ret.upcoming": "Lịch hẹn sắp tới", // DRAFT — Kevin reviews
   "csx.ret.source": "Từ Giữ chân khách, tính đến {d}. Ở đây không gửi tin nhắn nào.", // DRAFT — Kevin reviews
   "csx.ret.open": "Mở trong Giữ chân khách", // DRAFT — Kevin reviews
+  "ahx.health.k.service_done_mismatch": "Lịch hẹn so với Xong dịch vụ", // DRAFT — Kevin reviews
+  "ahx.health.d.service_done_mismatch.READY": "Mọi lịch hẹn đã tới Xong dịch vụ đều được đánh dấu hoàn tất, và hóa đơn của mọi lịch hẹn hoàn tất đều đã tới Xong dịch vụ.", // DRAFT — Kevin reviews
+  "ahx.health.d.service_done_mismatch.WARNING": "Một số lịch hẹn không khớp với hóa đơn — hóa đơn đã Xong dịch vụ nhưng lịch hẹn vẫn mở, hoặc lịch hẹn đã hoàn tất nhưng hóa đơn chưa Xong dịch vụ. Hãy mở trong Đặt lịch để xác nhận.", // DRAFT — Kevin reviews
+  "ahx.health.d.service_done_mismatch.FAILED": "Không so sánh được lịch hẹn với Xong dịch vụ.", // DRAFT — Kevin reviews
 };

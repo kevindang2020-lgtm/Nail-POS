@@ -3,7 +3,7 @@
 // advice, custom From–To, Check Business Data.
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { ConversationHistory, searchRecords, profitAndExpenses, periodOf, growthAdvice, checkBusinessData, recordQuery, validRange, AssistantExtrasError } from './ai-business-assistant-extras';
+import { ConversationHistory, searchRecords, profitAndExpenses, periodOf, growthAdvice, checkBusinessData, recordQuery, validRange, AssistantExtrasError, answerTrust, EVENT_LAG_STALE_SECONDS } from './ai-business-assistant-extras';
 import { AiBusinessAssistantService, type BusinessToolset } from './ai-business-assistant.service';
 
 const id = (n: number) => `82800000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -113,5 +113,44 @@ describe('A4 — stored history', () => {
     const failing: any = await checkBusinessData(db, ctx({ branchId: B }), { access: async () => ({ allowed: false, reason: 'not_subscribed' }), sales: async () => { throw new Error('down'); } });
     expect(failing.overall).toBe('FAILED');
     expect(await code(checkBusinessData(db, ctx({ permissions: [] }), probe))).toBe('PERMISSION_DENIED');
+  });
+});
+
+describe('round 10 — Answer Trust Bar + History Provenance (AI Business Assistant 01 · 07 · 11 · 13)', () => {
+  it('AX-07 trust is computed from real rows: last check, open tickets + expenses waiting in the period, event lag; read-only', async () => {
+    await q(`delete from ai_business_health_runs where tenant_id = $1`, [T]);
+    await q(`delete from outbox_events where tenant_id = $1`, [T]);
+    const now = new Date('2026-11-05T15:00:00Z');
+    // no check yet, no events, the expenses seeded on 2026-11-03 (one pending_review)
+    await q(`insert into tickets (tenant_id, branch_id, customer_id, status, subtotal_cents, total_cents, ticket_number, created_at) values ($1,$2,$3,'open',2000,2000,'2001','2026-11-04T12:00:00Z')`, [T, B, C1]);
+    const t0: any = await answerTrust(db, ctx({ range: { from: '2026-11-01', to: '2026-11-06' } }), 'profit_expenses', 'custom', { netSalesCents: 1, expensesCents: 2 }, now);
+    expect(t0).toMatchObject({ lastCheck: null, stale: false, changesAnything: false, period: { from: '2026-11-01', to: '2026-11-06', timeZone: expect.any(String) },
+      pending: { openTickets: 1, expensesWaiting: 1, eventsWaiting: 0, oldestEventLagSeconds: null } });
+    expect(t0.sources).toEqual([{ key: 'sales', included: true, reason: 'included' }, { key: 'expenses', included: true, reason: 'included' }]);
+    // without the expense permission the source is named as not included and the waiting count is not shown (null, not 0)
+    const t1: any = await answerTrust(db, ctx({ permissions: ['pos.ai_business.view'], range: { from: '2026-11-01', to: '2026-11-06' } }), 'profit_expenses', 'custom', { netSalesCents: 1 }, now);
+    expect(t1.sources[1]).toEqual({ key: 'expenses', included: false, reason: 'no_permission' });
+    expect(t1.pending.expensesWaiting).toBeNull();
+    // an undelivered event older than the lag limit + a FAILED check → stale with both reasons
+    await q(`insert into outbox_events (id, event_type, tenant_id, aggregate_type, aggregate_id, correlation_id, payload_json, occurred_at, publish_status) values (gen_random_uuid(),'ticket.paid',$1,'ticket','x','c','{}'::jsonb,$2,'failed')`, [T, new Date(now.getTime() - (EVENT_LAG_STALE_SECONDS + 60) * 1000)]);
+    await q(`insert into ai_business_health_runs (tenant_id, branch_id, area, overall, checks) values ($1, null, 'assistant', 'FAILED', '[{"key":"sales_report","state":"FAILED"},{"key":"ai_package","state":"PASSED"}]'::jsonb)`, [T]);
+    const before = (await q(`select count(*)::int n from ai_business_health_runs where tenant_id = $1`, [T]))[0].n;
+    const t2: any = await answerTrust(db, ctx(), 'revenue_summary', 'today', { netSalesCents: 1 }, now);
+    expect(t2).toMatchObject({ stale: true, staleReasons: ['event_lag', 'check_failed'], lastCheck: { overall: 'FAILED', warnings: ['sales_report'] }, pending: { eventsWaiting: 1, oldestEventLagSeconds: EVENT_LAG_STALE_SECONDS + 60 } });
+    expect((await q(`select count(*)::int n from ai_business_health_runs where tenant_id = $1`, [T]))[0].n).toBe(before);   // wrote nothing
+    // an empty tool result is a missing source, never green
+    const t3: any = await answerTrust(db, ctx(), 'customer_growth', 'today', {}, now);
+    expect(t3.sources).toEqual([{ key: 'customers', included: false, reason: 'no_data' }]);
+    expect(t3.staleReasons).toContain('source_missing');
+  });
+  it('AX-08 ask() attaches the trust block (not for clarifications); history entries carry provenance and are not editable', async () => {
+    const svc = new AiBusinessAssistantService(tools, runner, { history, periodOf: (c, p) => periodOf(db, c, p), trust: (c, i, p, st) => answerTrust(db, c, i, p, st) });
+    const r: any = await svc.ask(ctx(), { intent: 'revenue_summary', preset: 'today' });
+    expect(r.trust).toMatchObject({ changesAnything: false, sources: [{ key: 'sales', included: true }] });
+    const c: any = await svc.ask(ctx(), { question: 'zzz qqq' });
+    expect(c.needsClarification).toBe(true); expect(c.trust).toBeUndefined();
+    const h: any = await history.list(ctx(), {});
+    const row = h.items.find((i: any) => i.id === r.conversationId);
+    expect(row.provenance).toMatchObject({ recordId: r.conversationId, toolUsed: 'get_revenue_summary', sources: ['sales'], visibleTo: 'asker_only', editable: false, headline: { netSalesCents: 1_000_000, ticketsCount: 40 } });
   });
 });

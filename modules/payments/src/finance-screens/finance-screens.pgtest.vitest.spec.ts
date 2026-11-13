@@ -339,6 +339,13 @@ describe('AI Deposit Reconciliation — allocations', () => {
     expect(b.existing).toBe(true); expect(b.id).toBe(a.id);
     const ex = await ws.exceptions(ctx, ws.filters(month(), {}), pageReq({}), { cls: 'missing' });
     expect(ex.items[0].settlementRef).toBe('LATE-1'); expect(ex.items[0].class).toBe('missing');
+    // round 10 (AI Deposit Reconciliation 01): each case carries its review due date (a high case: created + 2 days) and overdue state
+    expect(ex.items[0].dueAt).toBe(new Date(Date.parse(ex.items[0].createdAt!) + 2 * 86_400_000).toISOString());
+    expect(ex.items[0].overdue).toBe(false); expect(ex.kpis.overdue).toBe(0);
+    await q(`update reconciliation_exceptions set created_at = now() - interval '3 days' where id = $1`, [a.id]);
+    const ex2 = await ws.exceptions(ctx, ws.filters(all(), {}), pageReq({}), { cls: 'missing' });
+    expect(ex2.items.find((x: any) => x.id === a.id)).toMatchObject({ overdue: true }); expect(ex2.kpis.overdue).toBeGreaterThanOrEqual(1);
+    expect((await ws.exceptionDetail(ctx, a.id))!.exception).toMatchObject({ overdue: true });
     const row = (await ws.listSettlements(ctx, ws.filters(all(), { search: 'LATE-1' }), pageReq({}))).items[0];
     expect(row.status).toBe('exception');
     // Deposit Recon guide audit (Nov 4 2026): the open case shows on the row, and the payout is STILL missing money —
