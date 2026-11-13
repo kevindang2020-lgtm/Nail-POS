@@ -191,4 +191,10 @@ export const CINTEL_EN: Record<string, string> = {
   "cix.scope.all": "All my branches",
   "cix.scope.current": "This branch",
   "cix.scope.line": "By branch: {b} — {d} distinct customers in total ({o} visit more than one branch and are counted once).",
+  "cix.via.customer": "Matched: the customer’s own details",
+  "cix.via.visit_technician": "Matched: served by this technician (completed visit)",
+  "cix.via.assigned_technician": "Matched: booked with this technician (not proof of service)",
+  "cix.via.preferred_technician": "Matched: this technician is the customer’s preferred technician",
+  "cix.via.service": "Matched: a service from a visit",
+  "cix.via.appointment": "Matched: an appointment",
 };

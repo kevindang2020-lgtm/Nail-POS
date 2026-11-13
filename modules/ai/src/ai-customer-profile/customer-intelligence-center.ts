@@ -91,7 +91,15 @@ export function customerSearchPredicate(T: string, q: string) {
   const digits = q.replace(/\D/g, '');
   const stored = toStoredCustomerPhone(q) ?? null;
   const conds = [];
-  if (isUuid(`${q}`)) conds.push(sql`(c.id = ${q}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${q}::uuid and a.customer_id = c.id))`);
+  if (isUuid(`${q}`)) {
+    conds.push(sql`(c.id = ${q}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${q}::uuid and a.customer_id = c.id))`);
+    // extras Customer Intelligence 07 (round 10): a TECHNICIAN id finds the customers that technician served (completed visit),
+    // was assigned to (an appointment, any status) or that the customer verified as preferred — each labelled by customerMatchVia
+    conds.push(sql`exists (select 1 from tickets t left join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null
+      where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]) and (l.technician_id = ${q}::uuid or t.primary_technician_id = ${q}::uuid))`);
+    conds.push(sql`exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = c.id and a.technician_id = ${q}::uuid)`);
+    conds.push(sql`c.preferred_technician_id = ${q}::uuid`);
+  }
   else {
     if (q.includes('@')) conds.push(sql`c.email ilike ${'%' + likeEsc(q) + '%'}`);
     if (stored) conds.push(sql`c.normalized_phone = ${stored}`);
@@ -104,6 +112,12 @@ export function customerSearchPredicate(T: string, q: string) {
           left join technicians tc on tc.id = l.technician_id and tc.tenant_id = l.tenant_id
         where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
           and (vi_fold(coalesce(l.service_name_snapshot, '')) ilike ${folded} or vi_fold(coalesce(tc.full_name, '')) ilike ${folded}))`);
+      // extras Customer Intelligence 07 (round 10): a technician the customer was ASSIGNED to (an appointment of any status — a
+      // previous booking, not proof of service) and the customer's verified PREFERRED technician
+      conds.push(sql`exists (select 1 from pos_tech_appointments a join technicians ta on ta.id = a.technician_id and ta.tenant_id = a.tenant_id
+        where a.tenant_id = ${T} and a.customer_id = c.id and vi_fold(coalesce(ta.full_name, ta.first_name || ' ' || coalesce(ta.last_name, ''))) ilike ${folded})`);
+      conds.push(sql`exists (select 1 from technicians tf where tf.tenant_id = ${T} and tf.id = c.preferred_technician_id
+        and vi_fold(coalesce(tf.full_name, tf.first_name || ' ' || coalesce(tf.last_name, ''))) ilike ${folded})`);
       // the visit's main technician (a ticket may have no service lines yet, e.g. an imported visit)
       conds.push(sql`exists (select 1 from tickets t join technicians tp on tp.id = t.primary_technician_id and tp.tenant_id = t.tenant_id
         where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
@@ -111,6 +125,28 @@ export function customerSearchPredicate(T: string, q: string) {
     }
   }
   return sql`(${sql.join(conds, sql` or `)})`;
+}
+
+/** extras Customer Intelligence 07 (round 10): WHICH kind of record a search matched, strongest first — the customer's own
+ *  identity, a completed visit with the technician, an appointment the technician was assigned to, the verified preference,
+ *  else a service from a visit. Same inputs as customerSearchPredicate; never widens what is found. */
+export function customerMatchVia(T: string, q: string) {
+  const folded = sql`${'%'} || vi_fold(${likeEsc(q)}::text) || ${'%'}`;
+  const tech = (col: 'tc' | 'ta' | 'tf') => (col === 'tc' ? sql`vi_fold(coalesce(tc.full_name, '')) ilike ${folded}` : col === 'ta'
+    ? sql`vi_fold(coalesce(ta.full_name, ta.first_name || ' ' || coalesce(ta.last_name, ''))) ilike ${folded}` : sql`vi_fold(coalesce(tf.full_name, tf.first_name || ' ' || coalesce(tf.last_name, ''))) ilike ${folded}`);
+  if (isUuid(`${q}`)) return sql<string>`(case when c.id = ${q}::uuid then 'customer'
+      when exists (select 1 from tickets t left join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null
+        and t.status = any(${VISIT}::text[]) and (l.technician_id = ${q}::uuid or t.primary_technician_id = ${q}::uuid)) then 'visit_technician'
+      when exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = c.id and a.technician_id = ${q}::uuid) then 'assigned_technician'
+      when c.preferred_technician_id = ${q}::uuid then 'preferred_technician' else 'appointment' end)`;
+  return sql<string>`(case when vi_fold(coalesce(c.full_name, c.first_name || ' ' || coalesce(c.last_name, ''))) ilike ${folded} or coalesce(c.email, '') ilike ${'%' + likeEsc(q) + '%'}
+        or regexp_replace(coalesce(c.normalized_phone, ''), '\D', '', 'g') like ${'%' + (q.replace(/\D/g, '') || '¤') + '%'} then 'customer'
+      when exists (select 1 from tickets t left join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null
+          left join technicians tc on tc.tenant_id = t.tenant_id and (tc.id = l.technician_id or tc.id = t.primary_technician_id)
+        where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]) and ${tech('tc')}) then 'visit_technician'
+      when exists (select 1 from pos_tech_appointments a join technicians ta on ta.id = a.technician_id and ta.tenant_id = a.tenant_id where a.tenant_id = ${T} and a.customer_id = c.id and ${tech('ta')}) then 'assigned_technician'
+      when exists (select 1 from technicians tf where tf.tenant_id = ${T} and tf.id = c.preferred_technician_id and ${tech('tf')}) then 'preferred_technician'
+      else 'service' end)`;
 }
 
 export interface CiQuery {
@@ -385,7 +421,8 @@ export class CustomerIntelligenceCenter {
           where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[]) order by coalesce(t.paid_at, t.created_at) desc limit 1) as last_technician,
         lp.points_balance, lp.loyalty_tier,
         exists (select 1 from customer_memberships m where m.tenant_id = ${T} and m.customer_id = c.id and m.status = 'active') as member,
-        exists (select 1 from customer_duplicate_groups g where g.tenant_id = ${T} and c.id = any(g.member_ids) and g.status = any(${OPEN_DUP}::text[])) as duplicate
+        exists (select 1 from customer_duplicate_groups g where g.tenant_id = ${T} and c.id = any(g.member_ids) and g.status = any(${OPEN_DUP}::text[])) as duplicate,
+        ${q ? customerMatchVia(T, q) : sql`null`} as matched_via
       from customers c
       left join customer_intelligence_snapshots sn on sn.tenant_id = c.tenant_id and sn.customer_id = c.id
       left join technicians pt on pt.tenant_id = c.tenant_id and pt.id = c.preferred_technician_id
@@ -404,6 +441,7 @@ export class CustomerIntelligenceCenter {
         churnWatch: retention.get(String(r.id))?.segment === 'at_risk', rebooking: !!r.rebooking, rebookingReason: r.rebooking_reason ?? null, evidence: (r.evidence ?? []) as string[], computedAt: iso(r.computed_at),
         lastTechnician: r.last_technician ? String(r.last_technician).trim() || null : null, preferredTechnician: r.preferred_technician ? String(r.preferred_technician).trim() || null : null,
         loyalty: r.points_balance == null ? null : { points: N(r.points_balance), tier: r.loyalty_tier ?? null }, member: !!r.member, duplicate: !!r.duplicate,
+        matchedVia: r.matched_via ?? null,
       })),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, status, flag: flag ?? null, dateField, preset: per.preset, from: per.from, to: per.to, sort },

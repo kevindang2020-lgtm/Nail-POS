@@ -181,7 +181,7 @@ export function POSAICustomerProfileOverviewScreen() {
             <thead><tr><th>{t('cix.col.customer')}</th><th>{t('cix.col.history')}</th><th>{t('cix.col.next')}</th><th>{t('cix.col.technician')}</th><th>{t('cix.col.status')}</th><th>{t('cix.col.benefits')}</th><th /></tr></thead>
             <tbody>{list.items.map((r: any) => (
               <tr key={r.id} data-testid="cix-row" tabIndex={0} onClick={() => setOpenId(r.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpenId(r.id); }}>
-                <td><b>{r.name || '—'}</b><div className="sub">{r.phone ?? t('cix.notProvided')}</div></td>
+                <td><b>{r.name || '—'}</b><div className="sub">{r.phone ?? t('cix.notProvided')}</div>{r.matchedVia ? <div className="sub" data-testid="cix-matched">{t('cix.via.' + r.matchedVia)}</div> : null}</td>
                 <td>{r.completedVisits == null ? '—' : t('cix.visitsLine', { n: fmtNumber(r.completedVisits), last: when(r.lastVisitAt) })}</td>
                 <td className="nowrap">{r.nextAppointmentDate ?? t('cix.none')}</td>
                 <td>{r.lastTechnician ? t('cix.lastTech', { n: r.lastTechnician }) : '—'}{r.preferredTechnician ? <div className="sub">{t('cix.prefTech', { n: r.preferredTechnician })}</div> : null}</td>

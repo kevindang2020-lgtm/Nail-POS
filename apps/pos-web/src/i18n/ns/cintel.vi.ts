@@ -190,4 +190,10 @@ export const CINTEL_VI: Record<string, string> = {
   "cix.scope.all": "Tất cả chi nhánh của tôi", // DRAFT — Kevin reviews
   "cix.scope.current": "Chi nhánh này", // DRAFT — Kevin reviews
   "cix.scope.line": "Theo chi nhánh: {b} — tổng {d} khách hàng khác nhau ({o} khách ghé nhiều chi nhánh và chỉ được tính một lần).", // DRAFT — Kevin reviews
+  "cix.via.customer": "Khớp: thông tin của chính khách hàng", // DRAFT — Kevin reviews
+  "cix.via.visit_technician": "Khớp: đã được thợ này phục vụ (lượt ghé hoàn tất)", // DRAFT — Kevin reviews
+  "cix.via.assigned_technician": "Khớp: đã đặt lịch với thợ này (chưa chắc đã phục vụ)", // DRAFT — Kevin reviews
+  "cix.via.preferred_technician": "Khớp: đây là thợ khách hàng ưa thích", // DRAFT — Kevin reviews
+  "cix.via.service": "Khớp: một dịch vụ trong lượt ghé", // DRAFT — Kevin reviews
+  "cix.via.appointment": "Khớp: một lịch hẹn", // DRAFT — Kevin reviews
 };
