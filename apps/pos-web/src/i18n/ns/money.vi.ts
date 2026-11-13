@@ -250,4 +250,41 @@ export const MONEY_VI = {
   "pm.fc.proc.fiserv": "Fiserv", // DRAFT — Kevin reviews
   "pm.fc.proc.cardpointe": "CardPointe", // DRAFT — Kevin reviews
   "pm.fc.proc.clover": "Clover", // DRAFT — Kevin reviews
+  "pm.acc.button": "Kiểm tra độ chính xác", // DRAFT — Kevin reviews
+  "pm.acc.title": "Kiểm tra độ chính xác tài chính", // DRAFT — Kevin reviews
+  "pm.acc.sub": "{p} · kiểm tra lúc {t}", // DRAFT — Kevin reviews
+  "pm.acc.allMatch": "Mọi số liệu có nguồn thứ hai đều khớp ({m} khớp). {s} số liệu chỉ có một nguồn.", // DRAFT — Kevin reviews
+  "pm.acc.someMismatch": "{x} số liệu không khớp với nguồn thứ hai. {m} khớp; {s} chỉ có một nguồn.", // DRAFT — Kevin reviews
+  "pm.acc.col.figure": "Số liệu", // DRAFT — Kevin reviews
+  "pm.acc.col.shown": "Đang hiển thị", // DRAFT — Kevin reviews
+  "pm.acc.col.checked": "Đọc lần hai", // DRAFT — Kevin reviews
+  "pm.acc.col.diff": "Chênh lệch", // DRAFT — Kevin reviews
+  "pm.acc.col.source": "So với", // DRAFT — Kevin reviews
+  "pm.acc.col.state": "Kết quả", // DRAFT — Kevin reviews
+  "pm.acc.g.kpi": "thẻ · kỳ này hoặc hiện tại", // DRAFT — Kevin reviews
+  "pm.acc.g.total": "tổng từ trước đến nay", // DRAFT — Kevin reviews
+  "pm.acc.k.revenue": "Doanh thu", // DRAFT — Kevin reviews
+  "pm.acc.k.collections": "Tiền đã thu", // DRAFT — Kevin reviews
+  "pm.acc.k.refunds": "Đã hoàn tiền", // DRAFT — Kevin reviews
+  "pm.acc.k.outstanding": "Số dư còn nợ", // DRAFT — Kevin reviews
+  "pm.acc.k.transactions": "Giao dịch", // DRAFT — Kevin reviews
+  "pm.acc.k.averageTicket": "Trung bình mỗi hóa đơn", // DRAFT — Kevin reviews
+  "pm.acc.k.failed": "Giao dịch thất bại", // DRAFT — Kevin reviews
+  "pm.acc.k.pendingPayouts": "Khoản chi trả đang chờ", // DRAFT — Kevin reviews
+  "pm.acc.k.totalRevenue": "Tổng doanh thu", // DRAFT — Kevin reviews
+  "pm.acc.k.totalCollected": "Tổng đã thu", // DRAFT — Kevin reviews
+  "pm.acc.k.totalRefunds": "Tổng hoàn tiền", // DRAFT — Kevin reviews
+  "pm.acc.k.totalOutstanding": "Còn nợ (tổng)", // DRAFT — Kevin reviews
+  "pm.acc.k.totalTips": "Tổng tiền tip", // DRAFT — Kevin reviews
+  "pm.acc.k.totalPayouts": "Tổng chi trả", // DRAFT — Kevin reviews
+  "pm.acc.src.transactions": "Màn hình Giao dịch", // DRAFT — Kevin reviews
+  "pm.acc.src.refunds_voids": "Màn hình Hoàn tiền & Hủy", // DRAFT — Kevin reviews
+  "pm.acc.src.revenue_trend": "Doanh thu theo ngày, cộng lại", // DRAFT — Kevin reviews
+  "pm.acc.src.payouts_list": "Danh sách chi trả, mọi trang", // DRAFT — Kevin reviews
+  "pm.acc.src.components": "Các phần (hóa đơn + phiếu thu)", // DRAFT — Kevin reviews
+  "pm.acc.src.single_source": "Không có nguồn thứ hai", // DRAFT — Kevin reviews
+  "pm.acc.st.match": "Khớp", // DRAFT — Kevin reviews
+  "pm.acc.st.mismatch": "Không khớp", // DRAFT — Kevin reviews
+  "pm.acc.st.single_source": "Chỉ một nguồn", // DRAFT — Kevin reviews
+  "pm.acc.note": "Chỉ xem. Mọi số liệu được đọc lại trên cả kỳ, không phải một trang. Số không khớp hiển thị cả hai con số; không sửa gì ở đây.", // DRAFT — Kevin reviews
 };

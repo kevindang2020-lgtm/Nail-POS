@@ -129,6 +129,49 @@ function CapacityGapPanel({ cap }: { cap: any }) {
   );
 }
 
+/** extras (AI Analytics Forecasting 07): Non-mutating Scenario — a what-if over the capacity gap. The person types two
+ *  assumptions; the SERVER computes the sandbox (same state rule as the real gap) and labels it; nothing is saved, booked or
+ *  scheduled, and the real forecast above is never replaced. */
+function WhatIfPanel({ horizonDays }: { horizonDays: number }) {
+  const [pct, setPct] = useState('0'); const [mins, setMins] = useState('0');
+  const [res, setRes] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const okPct = /^-?\d+$/.test(pct.trim()) && Number(pct) >= -50 && Number(pct) <= 100;
+  const okMin = /^\d+$/.test(mins.trim()) && Number(mins) <= 960;
+  const show = () => {
+    setBusy(true); setErr(null);
+    posAiForecastingApi.appointmentsWhatIf(horizonDays, Number(pct), Number(mins)).then((d) => setRes(d?.scenario ?? false)).catch((e) => setErr(reportError(e))).finally(() => setBusy(false));
+  };
+  const days: any[] = res && Array.isArray(res.days) ? res.days : [];
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="fc-whatif">
+      <div className="p-h">{tx('growth.aiForecast.whatIf.title')}</div>
+      <div className="sub">{tx('growth.aiForecast.whatIf.intro')}</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+        <label className="sub">{tx('growth.aiForecast.whatIf.demand')}<br /><input type="number" inputMode="numeric" min={-50} max={100} step={1} value={pct} onChange={(e) => setPct(e.target.value)} data-testid="fc-whatif-demand" aria-invalid={!okPct} style={{ width: 110 }} /></label>
+        <label className="sub">{tx('growth.aiForecast.whatIf.extra')}<br /><input type="number" inputMode="numeric" min={0} max={960} step={15} value={mins} onChange={(e) => setMins(e.target.value)} data-testid="fc-whatif-extra" aria-invalid={!okMin} style={{ width: 110 }} /></label>
+        <button type="button" className="btn" disabled={busy || !okPct || !okMin} onClick={show} data-testid="fc-whatif-run">{busy ? tx('pos.loading') : tx('growth.aiForecast.whatIf.run')}</button>
+      </div>
+      {!okPct || !okMin ? <div className="sub warn" role="status" data-testid="fc-whatif-invalid">{tx('growth.aiForecast.whatIf.range')}</div> : null}
+      {err ? <div className="err" role="alert" data-testid="fc-whatif-error">{err}</div> : null}
+      {res === false ? <div className="sub" data-testid="fc-whatif-none">{tx('growth.aiForecast.whatIf.none')}</div> : null}
+      {days.length ? <>
+        <div className="fk-note warn" role="note" data-testid="fc-whatif-label" style={{ marginTop: 8 }}>{tx('growth.aiForecast.whatIf.label', { d: String(res.assumptions.demandChangePct), m: fmtNumber(res.assumptions.extraMinutesPerDay), v: String(res.version) })}</div>
+        <div className="sub" data-testid="fc-whatif-summary" style={{ marginTop: 4 }}>{tx('growth.aiForecast.whatIf.summary', { s: fmtNumber(res.counts.short + res.counts.noSchedule), t: fmtNumber(res.counts.tight), c: fmtNumber(res.counts.changed) })}</div>
+        <div className="overflow-x-auto w-full" style={{ marginTop: 8 }}><table className="tbl w-full min-w-max">
+          <thead><tr><th>{tx('pos.date')}</th><th>{tx('growth.aiForecast.cap.expected')}</th><th>{tx('growth.aiForecast.cap.scheduled')}</th><th>{tx('growth.aiForecast.cap.gap')}</th><th>{tx('growth.aiForecast.whatIf.state')}</th><th>{tx('growth.aiForecast.whatIf.was')}</th></tr></thead>
+          <tbody>{days.map((d) => (
+            <tr key={d.date} data-testid="fc-whatif-row">
+              <td>{d.date}</td><td>{hrs(d.expectedMinutes)}</td><td>{hrs(d.scheduledMinutes)}</td>
+              <td>{d.gapMinutes == null ? '—' : (d.gapMinutes < 0 ? '−' : '+') + hrs(Math.abs(d.gapMinutes))}</td>
+              <td><span className="chip" style={{ color: CAP_COLOR[d.state], borderColor: CAP_COLOR[d.state] }}>{tx('growth.aiForecast.cap.state.' + (CAP_COLOR[d.state] ? d.state : 'unknown'))}</span></td>
+              <td className="sub">{tx('growth.aiForecast.cap.state.' + (CAP_COLOR[d.baselineState] ? d.baselineState : 'unknown'))}</td>
+            </tr>))}</tbody>
+        </table></div>
+      </> : null}
+    </section>
+  );
+}
+
 /** extras (AI Analytics Forecasting 06): Source-to-Report — the history the revenue model trained on beside the canonical Sales
  *  report's OWN totals for the same days (from the server; nothing recomputed here), the basis in words and a link to the report. */
 interface FcSourceRecon { from: string; to: string; days: number; trainedTotalCents: number; status: string; differenceCents: number | null; unavailableReason: string | null;
@@ -215,6 +258,7 @@ function ForecastView({ data, kind, accuracy }: { data: any; kind: 'appointments
         </table></div>
       </section>
       {kind === 'appointments' && data.capacity ? <CapacityGapPanel cap={data.capacity} /> : null}
+      {kind === 'appointments' && data.capacity ? <WhatIfPanel horizonDays={Number(data.horizonDays) || 7} /> : null}
       {kind === 'revenue' && data.source ? <SourceToReportPanel src={data.source} /> : null}
       <div className="sub" style={{ marginTop: 10 }}>{data.selectionReason} · {data.disclaimer}</div>
     </>

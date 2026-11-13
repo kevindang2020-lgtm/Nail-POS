@@ -15,7 +15,7 @@ import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { codedText } from '../i18n/coded-text';
 import { mpTextCoded } from '@aipowersalon/api-contracts/tenant';
 import type { CodedText } from '@aipowersalon/api-contracts';
-import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, downloadText } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
@@ -103,6 +103,25 @@ export function mpErr(e: unknown) {
   return errorTextOf(e, t('mpx.loadFailed'));
 }
 type Period = { preset?: string; from?: string; to?: string };
+
+/** MONEY PROTECTION ALERTS 14 · AI MONEY PROTECTION 5 · 15 · Money Protection Rules 15 — the controlled export. The SERVER
+ *  builds the file (the same filters, every page, a provenance block on top, sanitized columns, one audit row); the screen
+ *  only asks for it and saves it. Shown only to people who may export (canExport from the server). */
+function MpExport({ view, query, testId }: { view: 'alerts' | 'rules'; query?: Record<string, string | number | undefined>; testId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const go = () => {
+    setBusy(true); setNote(null);
+    mc.exportCsv({ ...(query ?? {}), view }).then((csv) => { downloadText(`money-protection-${view}.csv`, String(csv)); setNote({ ok: true, text: t('mpx.export.done') }); })
+      .catch((e) => setNote({ ok: false, text: mpErr(e) })).finally(() => setBusy(false));
+  };
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <button type="button" className="btn ghost" data-testid={testId} disabled={busy} onClick={go} title={t('mpx.export.hint')} aria-label={`${t('mpx.export.btn')} — ${t('mpx.export.hint')}`}>{busy ? t('mpx.export.busy') : t('mpx.export.btn')}</button>
+      {note ? <span role="status" className={'sub' + (note.ok ? '' : ' warn')} data-testid={`${testId}-note`}>{note.text}</span> : null}
+    </span>
+  );
+}
 
 /** the header every Money Protection page shares: title, description, tabs, Run detection now, Check */
 function MpShell({ title, sub, tab, children, onChanged }: { title: string; sub: string; tab: string; children: ReactNode; onChanged?: () => void }) {
@@ -273,6 +292,7 @@ export function MpAlerts() {
           <select data-testid="mpx-category" aria-label={t('mpx.categoryLabel')} value={L.f.category} onChange={(e) => L.set({ category: e.target.value, rule: undefined })}>{CATS.map((k) => <option key={k} value={k}>{catName(k)}</option>)}</select>
           <select data-testid="mpx-datefield" aria-label={t('mpx.dateLabel')} value={L.f.dateField} onChange={(e) => L.set({ dateField: e.target.value })}>{A_DATES.map((k) => <option key={k} value={k}>{t('mpx.date.' + k)}</option>)}</select>
           <select data-testid="mpx-sort" aria-label={t('mpx.sortLabel')} value={L.f.sort} onChange={(e) => L.set({ sort: e.target.value })}>{A_SORTS.map((k) => <option key={k} value={k}>{t('mpx.sort.' + k)}</option>)}</select>
+          {L.list?.canExport === true ? <MpExport view="alerts" testId="mpx-export" query={(({ page: _p, pageSize: _s, ...rest }) => ({ ...rest, ...L.period }))(L.f)} /> : null}
         </>}>
         {canBatch && sel.length ? <div className="fk-note" role="status" data-testid="mpx-triage-bar"><span>{t('mpx.triage.selected', { n: fmtNumber(sel.length) })}</span>
           <button type="button" className="btn sm" data-testid="mpx-triage-open" onClick={() => setBatch(true)}>{t('mpx.triage.open')}</button>
@@ -609,7 +629,7 @@ export function MpRules() {
             <KpiCard testId="mpx-rk-errors" label={t('mpx.rk.errors')} value={fmtNumber(off)} tone={off ? 'bad' : 'ok'} sub={t('mpx.rk.errorsSub')} />
           </div>;
         })()}
-        <section className="panel" style={{ padding: 12 }} data-testid="mpx-rules"><div className="p-h">{t('mpx.rules.title')}</div>
+        <section className="panel" style={{ padding: 12 }} data-testid="mpx-rules"><div className="p-h" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span style={{ flex: 1 }}>{t('mpx.rules.title')}</span>{r.canExport === true ? <MpExport view="rules" testId="mpx-rules-export" /> : null}</div>
           <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th>{t('mpx.rules.col.category')}</th><th>{t('mpx.rules.col.layer')}</th><th>{t('mpx.rules.col.severity')}</th><th>{t('mpx.rules.col.mode')}</th><th>{t('mpx.rules.col.thresholds')}</th><th>{t('mpx.rules.col.review')}</th><th>{t('mpx.rules.col.state')}</th><th>{t('mpx.rules.col.alerts')}</th><th /></tr></thead>
             <tbody>{r.rules.map((x: any) => (
               <tr key={x.id} data-testid="mpx-rule-row">

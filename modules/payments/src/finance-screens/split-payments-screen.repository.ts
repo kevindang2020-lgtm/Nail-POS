@@ -230,8 +230,10 @@ export class SplitPaymentsScreenRepository {
       where a.tenant_id = ${T} and a.entity_id = ${ticketId} and (a.action_type like '%pay%' or a.action_type like '%refund%' or a.action_type like '%void%' or a.action_type like '%split%') order by a.created_at desc limit 20`.execute(this.db)).rows;
     const state = (st: string) => (CONFIRMED as readonly string[]).includes(st) ? 'confirmed' : (REFUNDS as readonly string[]).includes(st) ? 'reversal' : FAILED.includes(st) ? 'failed' : 'pending';
     const duplicateEvents = await this.duplicateEvents(ctx, ticketId);
+    // a paid ticket owes nothing by its own record: what its confirmed tenders still leave of its total is the check
+    const crossModule = await this.crossModule(ctx, ticketId, N(r.tip_cents), r.ticket_status === 'paid' ? Math.max(0, N(r.total_cents) - N(r.paid_cents)) : N(r.due_cents));
     return {
-      duplicateEvents,
+      duplicateEvents, crossModule,
       ticket,
       tenders: tenders.filter((p: any) => !(REFUNDS as readonly string[]).includes(String(p.status))).map((p: any) => ({ id: String(p.id), method: methodKey(p.method), rawMethod: String(p.method ?? ''), channel: p.payment_surface ?? null, deviceId: p.device_id ?? null, amountCents: N(p.amount_cents), tipCents: N(p.tip_cents), surchargeCents: N(p.surcharge_cents),
         state: state(String(p.status)), rawStatus: String(p.status), processorRef: p.processor_transaction_id ?? p.processor_reference_id ?? null, card: p.card_brand || p.card_last4 ? `${p.card_brand ?? ''} ••${p.card_last4 ?? '••'}`.trim() : null,
@@ -275,6 +277,41 @@ export class SplitPaymentsScreenRepository {
       if (N(r.drawer_posts) > 1) out.push({ paymentId: pid, kind: 'duplicate_drawer_posting', count: N(r.drawer_posts), ref });
     }
     return { checkedTenders: rows.length, findings: out };
+  }
+
+  /** extras (Split Payments 05) — Cross-Module Reconciliation for one ticket, by the references the modules share (the
+   *  ticket, the payment, the salon business day). READ-ONLY: nothing is moved, posted, voided or corrected here.
+   *   • giftCards — confirmed gift-card tenders on the ticket vs the gift-card ledger's redemptions for the ticket (by ticket
+   *                 or by one of its payments): matched / differs / not used;
+   *   • tips      — the ticket's tip vs the tip split to technicians (Tips): matched / unallocated / differs / not used;
+   *   • cash      — each confirmed cash tender's business day (branch time zone) and whether that day's drawer was counted
+   *                 (Cash Drawer / Daily Closeout): counted / open / not opened;
+   *   • checkout  — the ticket's own paid state vs what the tenders left due (Checkout ↔ Transactions): aligned / misaligned. */
+  private async crossModule(ctx: FinanceCtx, ticketId: string, ticketTipCents: number, dueCents: number) {
+    const T = ctx.tenantId;
+    const tz = await salonTimeZone(this.db, T);
+    const g = (await sql<{ tender: string | number; ledger: string | number }>`select
+        coalesce((select sum(p.amount_cents) from payments p where p.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid and lower(coalesce(p.method, '')) in ('gift_card', 'gift') and p.status in (${sql.join(CONFIRMED)})), 0)::bigint as tender,
+        coalesce((select sum(abs(x.amount_cents)) from gift_card_transactions x where x.tenant_id = ${T} and x.type in ('redeem', 'redemption')
+          and (x.ticket_id = ${ticketId}::uuid or x.payment_id in (select p2.id from payments p2 where p2.tenant_id = ${T} and p2.ticket_id = ${ticketId}::uuid))), 0)::bigint as ledger`.execute(this.db)).rows[0];
+    const alloc = N((await sql<{ c: string | number }>`select coalesce(sum(x.tip_cents), 0)::bigint as c from ticket_tip_allocations x where x.tenant_id = ${T} and x.ticket_id = ${ticketId}::uuid`.execute(this.db)).rows[0]?.c);
+    const cash = (await sql<{ id: string; amount_cents: string | number; day: string; statuses: string | null }>`select p.id::text as id, p.amount_cents, d.day,
+        (select string_agg(distinct s.status, ',') from cash_drawer_sessions s where s.tenant_id = p.tenant_id and s.branch_id = p.branch_id and s.business_date = d.day::date) as statuses
+      from payments p left join branches br on br.id = p.branch_id and br.tenant_id = p.tenant_id
+      cross join lateral (select to_char(coalesce(p.approved_at, p.created_at) at time zone coalesce(nullif(br.timezone, ''), ${tz}), 'YYYY-MM-DD') as day) d
+      where p.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid and lower(coalesce(p.method, '')) = 'cash' and p.status in (${sql.join(CONFIRMED)}) order by p.created_at, p.id`.execute(this.db)).rows;
+    const tk = (await sql<{ status: string | null; payment_status: string | null }>`select k.status, k.payment_status from tickets k where k.tenant_id = ${T} and k.id = ${ticketId}::uuid`.execute(this.db)).rows[0];
+    const due = dueCents;   // unpaid: the balance the row shows; paid: total − confirmed tenders
+    const paid = tk?.status === 'paid' || tk?.payment_status === 'paid';
+    const gt = N(g?.tender), gl = N(g?.ledger);
+    return {
+      giftCards: { tenderCents: gt, ledgerCents: gl, state: gt === 0 && gl === 0 ? 'not_used' as const : gt === gl ? 'matched' as const : 'differs' as const },
+      tips: { ticketTipCents: ticketTipCents, allocatedCents: alloc, state: ticketTipCents === 0 && alloc === 0 ? 'not_used' as const : alloc === ticketTipCents ? 'matched' as const : alloc === 0 ? 'unallocated' as const : 'differs' as const },
+      cash: cash.map((c) => { const st = (c.statuses ?? '').split(',').filter(Boolean);
+        return { paymentId: String(c.id), amountCents: N(c.amount_cents), businessDate: c.day, closeout: st.some((x) => x === 'reconciled' || x === 'discrepancy') ? 'counted' as const : st.length ? 'open' as const : 'not_opened' as const }; }),
+      checkout: { ticketPaid: paid, dueCents: due, state: paid && due > 0 ? 'misaligned' as const : 'aligned' as const },
+      note: 'read_only_no_money_moved' as const,
+    };
   }
 
   /** The registers that took a listed ticket (the filter list). */

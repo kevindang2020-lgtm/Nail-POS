@@ -26,6 +26,8 @@ export const posAIMoneyProtectionApi = {
     runs: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/detection/runs`, clean(q)),
     runDetection: () => api.post<any>(`/pos/money-protection-center/detection/run`, {}),
     check: () => api.post<any>(`/pos/money-protection-center/check`, {}),
+    /** MONEY PROTECTION ALERTS 14 · Money Protection 5 · 15 · Rules 15: the server-built CSV (provenance block, sanitized, audited) */
+    exportCsv: (q: Q = {}) => api.exportAsync<string>(`/pos/money-protection-center/export`, clean(q), 'text'),
   },
   // Advisory AI explanation of a single alert (sanitized server-side; never accusatory).
   explainAlert: (id: string) => api.post(`/pos/ai-money-protection/alerts/${id}/explain`, {}),

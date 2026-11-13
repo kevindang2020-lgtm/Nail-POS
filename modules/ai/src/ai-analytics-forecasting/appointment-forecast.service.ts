@@ -49,11 +49,58 @@ export function capacityGap(horizon: { date: string; point: number; lower: numbe
     const c = by.get(h.date) ?? { scheduledMinutes: 0, technicians: 0 };
     if (avg == null) return { date: h.date, expectedMinutes: null, lowerMinutes: null, upperMinutes: null, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: null, state: 'unknown' as CapacityState };
     const exp = Math.round(Math.max(0, h.point) * avg), lo = Math.round(Math.max(0, h.lower) * avg), hi = Math.round(Math.max(0, h.upper) * avg);
-    const state: CapacityState = c.scheduledMinutes === 0 ? (exp > 0 ? 'no_schedule' : 'ok') : exp > c.scheduledMinutes ? 'short' : hi > c.scheduledMinutes ? 'tight' : 'ok';
+    const state = capacityState(exp, hi, c.scheduledMinutes);
     return { date: h.date, expectedMinutes: exp, lowerMinutes: lo, upperMinutes: hi, scheduledMinutes: c.scheduledMinutes, technicians: c.technicians, gapMinutes: c.scheduledMinutes - exp, state };
   });
   return { avgAppointmentMinutes: avg, durationSample: cap.durationSample, durationWindowDays: cap.durationWindowDays, days,
     basis: 'Workload = forecast appointments x average booked minutes. Scheduled = weekly schedule with date overrides, breaks removed; time off is not subtracted. Advisory only: no shift is created or changed.' };
+}
+
+/** the one state rule (used by the real gap and by the what-if sandbox) */
+function capacityState(expectedMinutes: number, upperMinutes: number, scheduledMinutes: number): CapacityState {
+  return scheduledMinutes === 0 ? (expectedMinutes > 0 ? 'no_schedule' : 'ok') : expectedMinutes > scheduledMinutes ? 'short' : upperMinutes > scheduledMinutes ? 'tight' : 'ok';
+}
+
+// ── Extras (AI Analytics Forecasting 07): Non-mutating Scenario ───────────────────────────────────────────────────────────
+// A what-if illustration over the capacity gap: "if demand were X % different and Y extra technician minutes were scheduled
+// each day". It is a SANDBOX: versioned (CAPACITY_SCENARIO_VERSION), returned only when asked, labelled with its assumptions,
+// computed AFTER the real forecast run is recorded and never stored — not as a forecast run, not as an appointment, not as
+// revenue, not as a shift. The real forecast and the real gap in the same answer stay unchanged beside it.
+export const CAPACITY_SCENARIO_VERSION = 'capacity-scenario-v1';
+export interface CapacityScenarioAssumptions { demandChangePct: number; extraMinutesPerDay: number }
+export interface ForecastCapacityScenario {
+  version: string; sandbox: true; stored: false; assumptions: CapacityScenarioAssumptions;
+  days: { date: string; expectedMinutes: number | null; upperMinutes: number | null; scheduledMinutes: number; gapMinutes: number | null; state: CapacityState; baselineState: CapacityState }[];
+  counts: { short: number; tight: number; noSchedule: number; changed: number };
+  note: string;
+}
+/** PURE: the two query values → assumptions (null when neither is given). Whole numbers only: demand −50…+100 %, extra
+ *  scheduled minutes 0…960 per day. Anything else is refused, never clamped into a different question. */
+export function parseCapacityScenario(demandPct?: string, extraMinutes?: string): CapacityScenarioAssumptions | null {
+  const given = (v?: string) => v != null && String(v).trim() !== '';
+  if (!given(demandPct) && !given(extraMinutes)) return null;
+  const int = (v: string | undefined, lo: number, hi: number) => { if (!given(v)) return 0; const t = String(v).trim(); if (!/^-?\d+$/.test(t)) return null; const n = Number(t); return n >= lo && n <= hi ? n : null; };
+  const d = int(demandPct, -50, 100), e = int(extraMinutes, 0, 960);
+  if (d == null || e == null) throw withCode(new AiForecastError(AiForecastErrorCode.INVALID_SCENARIO, 'What-if: demand change must be a whole number from -50 to 100 (%), extra minutes from 0 to 960 per day.', 400), 'VALIDATION_FAILED');
+  return { demandChangePct: d, extraMinutesPerDay: e };
+}
+/** PURE: the sandbox over a real capacity gap. Workload scales by (100 + demand %) / 100; scheduled minutes gain the extra
+ *  minutes (added to the salon's total per day); the state uses the same rule as the real gap. A day with no duration
+ *  history stays unknown. */
+export function capacityScenario(gap: ForecastCapacityGap, a: CapacityScenarioAssumptions): ForecastCapacityScenario {
+  const f = (m: number) => Math.round((m * (100 + a.demandChangePct)) / 100);
+  const days = gap.days.map((d) => {
+    const sched = d.scheduledMinutes + a.extraMinutesPerDay;
+    if (d.expectedMinutes == null || d.upperMinutes == null) return { date: d.date, expectedMinutes: null, upperMinutes: null, scheduledMinutes: sched, gapMinutes: null, state: 'unknown' as CapacityState, baselineState: d.state };
+    const exp = f(d.expectedMinutes), hi = f(d.upperMinutes);
+    return { date: d.date, expectedMinutes: exp, upperMinutes: hi, scheduledMinutes: sched, gapMinutes: sched - exp, state: capacityState(exp, hi, sched), baselineState: d.state };
+  });
+  return {
+    version: CAPACITY_SCENARIO_VERSION, sandbox: true, stored: false, assumptions: a, days,
+    counts: { short: days.filter((d) => d.state === 'short').length, tight: days.filter((d) => d.state === 'tight').length, noSchedule: days.filter((d) => d.state === 'no_schedule').length,
+      changed: days.filter((d) => d.state !== d.baselineState).length },
+    note: 'What-if illustration only: the assumptions above are yours, not a forecast. Nothing is saved, booked, scheduled or counted as revenue.',
+  };
 }
 
 function addDays(iso: string, n: number): string {

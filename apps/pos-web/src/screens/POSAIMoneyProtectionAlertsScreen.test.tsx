@@ -4,9 +4,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+const { dl } = vi.hoisted(() => ({ dl: vi.fn() }));
+vi.mock('../components/FitKit', async (orig) => ({ ...(await orig<typeof import('../components/FitKit')>()), downloadText: dl }));
 import { setLanguage, useLanguage } from '@aipowersalon/mobile-sdk/i18n';
 const { mc, api } = vi.hoisted(() => {
-  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), alertBatch: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), alertBatch: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn(), exportCsv: vi.fn() };
   return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
 });
 vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
@@ -35,6 +37,34 @@ describe('POSAIMoneyProtectionAlertsScreen', () => {
     fireEvent.click(screen.getByTestId('mpx-preset-last_30'));
     fireEvent.click(screen.getByTestId('mpx-grp-dismissed'));
     await waitFor(() => expect(mc.alerts).toHaveBeenLastCalledWith(expect.objectContaining({ severity: 'HIGH', category: 'refund', preset: 'last_30', status: 'dismissed', page: 1 })));
+  });
+  it('MONEY PROTECTION ALERTS 14: Export asks the SERVER for the file with the current filters (no page / page size) and saves it; hidden without canExport', async () => {
+    mc.alerts.mockResolvedValue(page([row], { canExport: true }));
+    mc.exportCsv.mockResolvedValue('Export,AI Money Protection — alerts\r\n');
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    await screen.findByTestId('mpx-alert-row');
+    fireEvent.change(screen.getByTestId('mpx-severity'), { target: { value: 'CRITICAL' } });
+    fireEvent.click(screen.getByTestId('mpx-preset-last_30'));
+    await waitFor(() => expect(mc.alerts).toHaveBeenLastCalledWith(expect.objectContaining({ severity: 'CRITICAL', preset: 'last_30' })));
+    fireEvent.click(await screen.findByTestId('mpx-export'));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith('money-protection-alerts.csv', 'Export,AI Money Protection — alerts\r\n'));
+    const sent = mc.exportCsv.mock.calls[0][0];
+    expect(sent).toMatchObject({ view: 'alerts', status: 'open', severity: 'CRITICAL', preset: 'last_30', sort: 'newest' });
+    expect(sent).not.toHaveProperty('page'); expect(sent).not.toHaveProperty('pageSize');
+    expect(screen.getByTestId('mpx-export-note')).toHaveTextContent(/who made it/);
+    cleanup();
+    mc.alerts.mockResolvedValue(page([row], { canExport: false }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    await screen.findByTestId('mpx-alert-row');
+    expect(screen.queryByTestId('mpx-export')).toBeNull();
+  });
+  it('MONEY PROTECTION ALERTS 14: a refused export says why and saves nothing', async () => {
+    mc.alerts.mockResolvedValue(page([row], { canExport: true }));
+    mc.exportCsv.mockRejectedValue(Object.assign(new Error('x'), { code: 'PERMISSION_DENIED' }));
+    wrap(<POSAIMoneyProtectionAlertsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-export'));
+    await waitFor(() => expect(screen.getByTestId('mpx-export-note')).toBeInTheDocument());
+    expect(dl).not.toHaveBeenCalled();
   });
   it('shows an empty state that does not claim "nothing needs review"', async () => {
     mc.alerts.mockResolvedValue(page([]));

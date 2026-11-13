@@ -13,7 +13,7 @@ import { financeCtx, needPermission, runFinance } from './settlements-screen.con
 
 export const MONEY_OVERVIEW_SCREEN_REPOSITORY = 'MoneyOverviewScreenRepository';
 const PERIOD = { preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] } } as const;
-const OVERVIEW_Q = { filters: PERIOD, search: false, dateRange: { maxDays: 3700 } } as const;
+const OVERVIEW_Q = { filters: { ...PERIOD, verify: { type: 'bool' } }, search: false, dateRange: { maxDays: 3700 } } as const;   // verify: extras PAYMENTS & MONEY 01
 const SERVICES_LIST = { filters: PERIOD, search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const PAYOUTS_LIST = { filters: { status: { type: 'enum', values: ['pending', 'paid', 'all'] } }, search: false, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
 const SEARCH_LIST = { filters: PERIOD, search: { params: ['search'], maxLength: 100 }, maxLimit: 8, defaultLimit: 8, dateRange: { maxDays: 3700 } } as const;
@@ -28,6 +28,9 @@ export class MoneyOverviewScreenController {
   @Get('overview') @RequirePermission('pos.reports.view') @ListQuery(OVERVIEW_Q)
   overview(@Req() req: any, @Query() q: Record<string, string>) {
     const c = financeCtx(req); needPermission(c, 'pos.reports.view');
+    // extras (PAYMENTS & MONEY 01): ?verify=true = One-Click Financial Accuracy — every KPI and total beside a second,
+    // full-period read of the same figure (read-only; nothing is corrected)
+    if (String(q.verify) === 'true' || String(q.verify) === '1') return runFinance(async () => this.r().accuracy(c, await this.p(c, q)));
     return runFinance(async () => this.r().overview(c, await this.p(c, q)));
   }
 

@@ -452,4 +452,8 @@ export const MONEYPROTECTION_VI: Record<string, string> = {
   "mpx.triage.result": "{a} đã thay đổi · {r} giữ nguyên", // DRAFT — Kevin reviews
   "mpx.triage.failed": "Không tải được xử lý hàng loạt.", // DRAFT — Kevin reviews
   "mpx.triage.noMoney": "Xử lý hàng loạt chỉ xác nhận, bỏ qua hoặc mở lại cảnh báo. Không bao giờ trả tiền, thu tiền, hoàn tiền hay xóa nợ.", // DRAFT — Kevin reviews
+  "mpx.export.btn": "Xuất CSV", // DRAFT — Kevin reviews
+  "mpx.export.busy": "Đang xuất…", // DRAFT — Kevin reviews
+  "mpx.export.done": "Đã xuất. Tệp ghi rõ ai tạo, lúc nào, bộ lọc, độ mới của lần dò tìm và những gì được lược bỏ.", // DRAFT — Kevin reviews
+  "mpx.export.hint": "Mọi dòng khớp với bộ lọc hiện tại. Không có tên, số điện thoại khách, nội dung bằng chứng hay mã thanh toán. Lần xuất được ghi lại.", // DRAFT — Kevin reviews
 };

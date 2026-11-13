@@ -36,7 +36,7 @@ export function POSPaymentsOverviewScreen() {
   const [period, setPeriod] = useState<PeriodState>({ preset: 'today' }); const [space, setSpace] = useState<Space>('overview');
   const [search, setSearch] = useState(''); const [searchOpen, setSearchOpen] = useState(false); const q = search.trim(); const [tick, setTick] = useState(0);
   const [detail, setDetail] = useState<string | null>(null); const [note, setNote] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null);
-  const [kind, setKind] = useState(''); const [txPage, setTxPage] = useState(1);
+  const [kind, setKind] = useState(''); const [txPage, setTxPage] = useState(1); const [acc, setAcc] = useState(false);
   const pq = periodQuery(period);
   const o = useLoad(() => posMoneyOverviewApi.overview(pq), [JSON.stringify(pq), tick]);
   const freshAt = useFreshAt(o.data);   // data freshness: only after a successful read; a failed refresh keeps the last good time
@@ -63,9 +63,11 @@ export function POSPaymentsOverviewScreen() {
         <div className="fk-head-actions">
           <SystemCheckButton domain="payments" />
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
+          <button type="button" className="fk-btn" onClick={() => setAcc(true)} data-testid="accuracy">{tx('pm.acc.button')}</button>
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/reports/payments')} disabled={!can('reports.view')} title={!can('reports.view') ? tx('people.fit.noPermission') : undefined} data-testid="financial-report">{tx('pos.financial_report')}</button>
         </div>
       </header>
+      {acc ? <AccuracyDialog pq={pq} onClose={() => setAcc(false)} /> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
       <div className="fn-tabsrow pm-toolbar">
         <div className="fn-search pm-search"><input className="fk-search wide" type="search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && q.length >= 2) { e.preventDefault(); setSearchOpen(true); } }} placeholder={tx('pm.searchPh')} aria-label={tx('pm.searchPh')} data-testid="search" />
@@ -298,4 +300,32 @@ function PayoutForecast({ f }: { f?: { today: string; fundingDays: number; items
         {x.late ? <> <span className="fk-chip warn" data-testid="payout-forecast-late">{tx('pm.fc.late')}</span></> : null}</li>)}</ul>}
     <div className="fk-hint">{tx('pm.fc.note')}</div>
   </section>;
+}
+
+// extras (PAYMENTS & MONEY 01) — One-Click Financial Accuracy: the SERVER reads each of the eight KPIs and six all-time totals
+// a second way over the full period (Transactions, Refunds & Voids, the trend buckets, the Payouts list, the outstanding
+// parts) and says match / mismatch / single source. This dialog only shows that answer — nothing is recomputed or corrected.
+const ACC_TONE: Record<string, string> = { match: 'ok', mismatch: 'bad', single_source: 'mut' };
+function AccuracyDialog({ pq, onClose }: { pq: Record<string, unknown>; onClose: () => void }) {
+  const a = useLoad(() => posMoneyOverviewApi.accuracy(pq), [JSON.stringify(pq)]);
+  const r = a.data;
+  const val = (c: { unit: string }, v: number | null) => (v == null ? '—' : c.unit === 'count' ? fmtNumber(v) : fmtMoney(v));
+  return (
+    <FitDialog wide title={tx('pm.acc.title')} subtitle={r ? tx('pm.acc.sub', { p: periodText(r.period), t: when(r.checkedAt) }) : undefined} onClose={onClose} testId="accuracy-dialog"
+      footer={<button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button>}>
+      {a.error ? <StateBlock error={a.error} onRetry={a.reload} /> : !r ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        <div className={'fk-note ' + (r.overall === 'match' ? 'ok' : 'bad')} role="status" data-testid="accuracy-overall">
+          {tx(r.overall === 'match' ? 'pm.acc.allMatch' : 'pm.acc.someMismatch', { m: fmtNumber(r.counts.match), x: fmtNumber(r.counts.mismatch), s: fmtNumber(r.counts.singleSource) })}</div>
+        <table className="fk-table" data-testid="accuracy-table"><thead><tr><th>{tx('pm.acc.col.figure')}</th><th className="num">{tx('pm.acc.col.shown')}</th><th className="num">{tx('pm.acc.col.checked')}</th><th className="num">{tx('pm.acc.col.diff')}</th><th>{tx('pm.acc.col.source')}</th><th>{tx('pm.acc.col.state')}</th></tr></thead>
+          <tbody>{r.checks.map((c: { key: string; group: string; unit: string; shown: number; checked: number | null; difference: number | null; checker: string; state: string }) => (
+            <tr key={c.key} data-testid="accuracy-row" data-state={c.state}>
+              <td>{codeLabel('pm.acc.k.' + c.key, c.key)}<span className="fk-li-s">{tx(c.group === 'kpi' ? 'pm.acc.g.kpi' : 'pm.acc.g.total')}</span></td>
+              <td className="num">{val(c, c.shown)}</td><td className="num">{val(c, c.checked)}</td><td className="num">{c.difference ? val(c, c.difference) : c.difference === 0 ? '0' : '—'}</td>
+              <td>{codeLabel('pm.acc.src.' + c.checker, c.checker)}</td>
+              <td><span className={'fk-chip ' + (ACC_TONE[c.state] ?? 'mut')}>{codeLabel('pm.acc.st.' + c.state, c.state)}</span></td>
+            </tr>))}</tbody></table>
+        <div className="fk-hint">{tx('pm.acc.note')}</div>
+      </>}
+    </FitDialog>
+  );
 }

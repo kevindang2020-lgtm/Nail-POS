@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const mo = vi.hoisted(() => ({ overview: vi.fn(), services: vi.fn(), payouts: vi.fn(), search: vi.fn() }));
+const mo = vi.hoisted(() => ({ overview: vi.fn(), services: vi.fn(), payouts: vi.fn(), search: vi.fn(), accuracy: vi.fn() }));
 vi.mock('../api/posMoneyOverviewApi', () => ({ posMoneyOverviewApi: mo }));
 const txa = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), technicians: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
 vi.mock('../api/posTransactionsApi', () => ({ posTransactionsApi: txa }));
@@ -46,6 +46,22 @@ describe('POSPaymentsOverviewScreen', () => {
     for (const k of ['all', 'payments', 'refunds', 'voids', 'pending', 'failed']) expect(await screen.findByTestId('kind-' + k)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('kind-refunds'));
     await waitFor(() => expect(txa.list).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'refunds', preset: 'today', page: 1 })));
+  });
+  it('PAYMENTS & MONEY 01: Check accuracy asks the server for the same period and shows each figure beside its second read; a mismatch keeps both numbers', async () => {
+    const c = (key: string, group: string, unit: string, shown: number, checked: number | null, checker: string, state: string) => ({ key, group, unit, shown, checked, checker, state, difference: checked == null ? null : shown - checked });
+    mo.accuracy.mockResolvedValue({ period: PERIOD, scope: 'location', checkedAt: '2026-10-22T20:05:00Z', overall: 'mismatch', counts: { match: 2, mismatch: 1, singleSource: 1 },
+      checks: [c('collections', 'kpi', 'cents', 16815, 16815, 'transactions', 'match'), c('transactions', 'kpi', 'count', 3, 3, 'transactions', 'match'),
+        c('totalRevenue', 'total', 'cents', 18383, 17149, 'revenue_trend', 'mismatch'), c('failed', 'kpi', 'count', 1, null, 'single_source', 'single_source')] });
+    render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('accuracy'));
+    await waitFor(() => expect(mo.accuracy).toHaveBeenCalledWith({ preset: 'today' }));
+    expect(await screen.findByTestId('accuracy-overall')).toHaveTextContent('1 figure(s) do not match their second source. 2 matched; 1 have only one source.');
+    const rows = screen.getAllByTestId('accuracy-row');
+    expect(rows).toHaveLength(4);
+    expect(rows[0]).toHaveTextContent('Collections'); expect(rows[0]).toHaveTextContent('Transactions screen'); expect(rows[0]).toHaveTextContent('Matches');
+    expect(rows[2]).toHaveTextContent('$183.83'); expect(rows[2]).toHaveTextContent('$171.49'); expect(rows[2]).toHaveTextContent('$12.34'); expect(rows[2]).toHaveTextContent('Does not match');
+    expect(rows[3]).toHaveTextContent('One source only'); expect(rows[3]).toHaveTextContent('—');
+    expect(screen.getByTestId('accuracy-dialog').querySelectorAll('button:not([aria-label])').length).toBeLessThanOrEqual(1);   // Close only: nothing to correct here
   });
   it('a Quick Action the role cannot use is disabled, not hidden', async () => {
     perms = ['reports.view']; render(<MemoryRouter><POSPaymentsOverviewScreen /></MemoryRouter>); await screen.findByTestId('kpi-collections');

@@ -1163,4 +1163,15 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   "growth.aiBooking.rep.phoneMask": "[SĐT …{v}]", // DRAFT — Kevin reviews
   "growth.aiBooking.rep.appt": "lịch hẹn {v}", // DRAFT — Kevin reviews
   "growth.aiBooking.rep.error": "lỗi: {v}", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.title": "Giả định (thử nghiệm)", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.intro": "Thử giả định của bạn với khối lượng công việc ở trên. Đây chỉ là minh họa, không phải dự báo: không lưu, không đặt lịch, không xếp ca.", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.demand": "Thay đổi nhu cầu (%)", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.extra": "Số phút làm thêm mỗi ngày", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.run": "Xem giả định", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.range": "Nhập số nguyên: nhu cầu từ -50 đến 100 %, số phút thêm từ 0 đến 960.", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.none": "Không thể giả định: dự báo không có dữ liệu năng lực để so sánh.", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.label": "Thử nghiệm — giả định của bạn: nhu cầu {d} %, thêm {m} phút mỗi ngày ({v}). Không phải dự báo; không lưu gì.", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.summary": "Với giả định này: {s} ngày thiếu, {t} ngày sát; {c} ngày khác với dự báo thật.", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.state": "Trạng thái giả định", // DRAFT — Kevin reviews
+  "growth.aiForecast.whatIf.was": "Trạng thái dự báo thật", // DRAFT — Kevin reviews
 };
