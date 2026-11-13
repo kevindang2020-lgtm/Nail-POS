@@ -336,4 +336,27 @@ describe('Customer Retention — status is text + shape, not colour alone (extra
     fireEvent.click(screen.getByTestId('settings-save'));
     await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ riskDays: 60, approachingDays: 45, observationWindowDays: 30, bulkSelectionWarnAt: 150, expectedVersion: 3 }));
   });
+  it('round 10 (Win-Back 05 · 11 · 13, Retention 04 · 07): 180/365 inactivity, shared-phone chip, booking with the last technician, the thresholds in force, the selection review', async () => {
+    api.customers.mockImplementation(async () => list([row('c1', 'Ana Rivera', { sharedPhoneProfiles: 1, lastTechnician: { id: 't9', name: 'Tam N' } }),
+      row('c2', 'Bo Chen', { smsStatus: 'no_consent', priority: prio(15, 'low') }), row('c3', 'Cy Dao', { smsStatus: 'opted_out', priority: prio(10, 'low') })]));
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    const opts = [...(screen.getByTestId('flt-inactivity') as HTMLSelectElement).options].map((o) => o.value);
+    expect(opts).toEqual(expect.arrayContaining(['30', '60', '90', '120', '180', '365', 'custom']));
+    fireEvent.change(screen.getByTestId('flt-inactivity'), { target: { value: '365' } });
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ minDays: 365 })));
+    expect(screen.getAllByTestId('rt-shared-phone')).toHaveLength(1);
+    expect(screen.getByTestId('rt-shared-phone')).toHaveTextContent('Shared phone · 2 profiles');
+    expect(screen.getByTestId('rt-thresholds').textContent).toBe('At risk = no visit for 60+ days · Approaching = 45–59 days · default setting — change it in Settings');
+    fireEvent.click(screen.getAllByTestId('rt-row-book')[0]!);
+    expect(navigate).toHaveBeenLastCalledWith('/booking/new?customerId=c1&technicianId=t9&from=retention');
+    fireEvent.click(screen.getAllByTestId('rt-row-book')[1]!);
+    expect(navigate).toHaveBeenLastCalledWith('/booking/new?customerId=c2&from=retention');
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Ana Rivera/ }));
+    const review = await screen.findByTestId('sel-review');
+    expect(review.textContent).toMatch(/Review: 1 selected · 1 would get the text · 0 left out/);
+    fireEvent.click(screen.getByTestId('select-all-matching'));
+    fireEvent.click(await screen.findByTestId('select-all-confirm'));
+    await waitFor(() => expect(screen.getByTestId('sel-review').textContent).toMatch(/customers in this selection \(0 unticked\) — each one is checked again at Preview/));
+  });
 });
