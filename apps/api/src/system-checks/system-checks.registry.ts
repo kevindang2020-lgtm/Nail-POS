@@ -575,6 +575,28 @@ export const SYSTEM_CHECKS: Record<SystemCheckDomain, DomainDef> = {
 
 
 
+  // ── Device & Integration Logs (extras Device Integration Logs 01, round 10): logging accuracy & source coverage — the
+  //    registered devices against the events actually observed from them, and the workers that should be producing ─────
+  'device-logs': { permission: 'pos.logs.view', checks: [
+    // a check-in kiosk that is alive (seen in the last day) but has produced no event in 30 days — a silent source
+    { key: 'kiosk_alive_no_events', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM go_checkin_devices g WHERE g.tenant_id = ${t}::uuid ${br('g', b)} AND g.disabled_at IS NULL
+        AND g.last_seen_at > now() - interval '1 day'
+        AND NOT EXISTS (SELECT 1 FROM go_checkin_logs gl WHERE gl.tenant_id = g.tenant_id AND gl.device_id = g.id AND gl.created_at > now() - interval '30 days')`) },
+    // a payment terminal that is alive but has no device / integration event in 30 days — its events are not reaching the log
+    { key: 'terminal_alive_no_events', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM pos_payment_terminals w WHERE w.tenant_id::text = ${t} ${br('w', b)} AND w.disabled_at IS NULL
+        AND coalesce(w.last_seen_at, w.last_ping_at) > now() - interval '1 day'
+        AND NOT EXISTS (SELECT 1 FROM tenant_event_logs el WHERE el.tenant_id::text = w.tenant_id::text AND el.related_id = w.id::text AND el.created_at > now() - interval '30 days')`) },
+    // a device event from a producer the salon has not registered (no terminal, display, station or kiosk has that id)
+    { key: 'device_event_unregistered_source', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_event_logs e WHERE e.tenant_id = ${t}::uuid ${br('e', b)} AND e.category = 'device'
+        AND e.related_id IS NOT NULL AND e.created_at > now() - interval '7 days'
+        AND NOT EXISTS (SELECT 1 FROM pos_payment_terminals w2 WHERE w2.tenant_id::text = e.tenant_id::text AND w2.id::text = e.related_id)
+        AND NOT EXISTS (SELECT 1 FROM customer_display_devices cd WHERE cd.tenant_id = e.tenant_id AND cd.id::text = e.related_id)
+        AND NOT EXISTS (SELECT 1 FROM pos_stations ps WHERE ps.tenant_id = e.tenant_id AND ps.id::text = e.related_id)
+        AND NOT EXISTS (SELECT 1 FROM go_checkin_devices g2 WHERE g2.tenant_id = e.tenant_id AND g2.id::text = e.related_id)`) },
+    // a background job of this salon still 'running' after its worker lease ran out — a stuck worker
+    { key: 'job_stuck_running', severity: 'WARNING', count: (t) => n(sql`SELECT 1 FROM jobs jb WHERE jb.tenant_id = ${t}::uuid AND jb.status = 'running' AND jb.lease_until < now() - interval '5 minutes'`) },
+  ] },
+
   // ── Approvals Management & Authorization Center ───────────────────────────────────────────────────────────────────
   approvals: { permission: 'approvals.view', checks: [
     { key: 'pending_expired', severity: 'WARNING', count: (t, b) => n(sql`SELECT 1 FROM tenant_approval_requests a WHERE a.tenant_id = ${t}::uuid ${br('a', b)} AND a.status = 'pending' AND a.expires_at < now()`) },

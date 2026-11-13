@@ -761,4 +761,29 @@ describe('Check Technicians System — booking / queue / app sync', () => {
     expect(count(other, 'app_account_foreign').count).toBe(0); expect(count(other, 'service_certification_missing').count).toBe(0);
     expect((await q(sql`select (select count(*) from technicians) + (select count(*) from technician_services) + (select count(*) from users) as n`)).rows).toEqual(before);
   });
+  it('extras Device Integration Logs 01: source coverage — silent alive kiosk / terminal, events from an unregistered device, stuck jobs; own salon; writes nothing', async () => {
+    // own salon pair (ids 9520..9549, agent-4 round-10 range)
+    const T4 = id(9520), X4 = id(9521), B41 = id(9522), BX4 = id(9523);
+    const K1 = id(9524), K2 = id(9525), W1 = id(9526), W2 = id(9527), KX = id(9528);
+    await q(sql`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values (${T4}, 'S', 'Logs', 'sc-9520', 'SC9520', 'active'), (${X4}, 'X', 'Other', 'sc-9521', 'SC9521', 'active')`);
+    await q(sql`insert into branches (id, tenant_id, name) values (${B41}, ${T4}, 'Main'), (${BX4}, ${X4}, 'Other')`);
+    // K1 alive + silent; K2 alive with a recent event; KX the other salon's silent kiosk
+    await q(sql`insert into go_checkin_devices (id, tenant_id, branch_id, device_name, checkin_slug, last_seen_at, created_at, updated_at) values
+      (${K1}, ${T4}, ${B41}, 'Front', 'sc9520-front', now() - interval '1 hour', now(), now()), (${K2}, ${T4}, ${B41}, 'Side', 'sc9520-side', now() - interval '1 hour', now(), now()),
+      (${KX}, ${X4}, ${BX4}, 'Other', 'sc9521-other', now() - interval '1 hour', now(), now())`);
+    await q(sql`insert into go_checkin_logs (tenant_id, branch_id, device_id, event_type) values (${T4}, ${B41}, ${K2}, 'guest_checked_in')`);
+    // W1 alive + silent; W2 alive with an event
+    await q(sql`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, last_seen_at) values (${W1}, ${T4}, ${B41}, 'T1', 'active', now() - interval '1 hour'), (${W2}, ${T4}, ${B41}, 'T2', 'active', now() - interval '1 hour')`);
+    await q(sql`insert into tenant_event_logs (tenant_id, branch_id, category, severity, source, message, related_id) values
+      (${T4}, ${B41}, 'device', 'info', 'payment_terminal', 'sale', ${W2}), (${T4}, ${B41}, 'device', 'warning', 'payment_terminal', 'ghost device event', 'ghost-device-1')`);
+    await q(sql`insert into jobs (job_class, job_type, tenant_id, status, lease_owner, lease_until) values ('standard', 'reports.export', ${T4}, 'running', 'w1', now() - interval '1 hour'), ('standard', 'reports.export', ${T4}, 'running', 'w2', now() + interval '10 minutes')`);
+    const before = (await q(sql`select (select count(*) from jobs) + (select count(*) from tenant_event_logs) + (select count(*) from go_checkin_logs) as n`)).rows;
+    const r = await svc.run('device-logs', { tenantId: T4 });
+    expect(count(r, 'kiosk_alive_no_events')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'terminal_alive_no_events')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'device_event_unregistered_source')).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(count(r, 'job_stuck_running')).toMatchObject({ state: 'WARNING', count: 1 });   // only the expired lease
+    expect(count(await svc.run('device-logs', { tenantId: X4 }), 'kiosk_alive_no_events').count).toBe(1);
+    expect((await q(sql`select (select count(*) from jobs) + (select count(*) from tenant_event_logs) + (select count(*) from go_checkin_logs) as n`)).rows).toEqual(before);
+  });
 });

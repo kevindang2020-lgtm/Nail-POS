@@ -42,6 +42,20 @@ describe('SystemCheckButton (extras arc, Nov 9 2026)', () => {
     expect(rows[1]).toHaveTextContent('No two active suppliers share a name');
     expect(rows[1]).toHaveTextContent('2 found');
   });
+  it('extras Device Integration Logs 01: the device-logs check names silent kiosks / terminals, unregistered sources and stuck jobs with their fixes', async () => {
+    vi.mocked(posSystemChecksApi.run).mockResolvedValue({ domain: 'device-logs', overall: 'WARNING', checkedAt: '2026-11-13T20:00:00Z', branchId: null, checks: [
+      { key: 'kiosk_alive_no_events', state: 'WARNING', count: 1 }, { key: 'terminal_alive_no_events', state: 'READY', count: 0 },
+      { key: 'device_event_unregistered_source', state: 'WARNING', count: 3 }, { key: 'job_stuck_running', state: 'READY', count: 0 },
+    ] });
+    render(<SystemCheckButton domain="device-logs" />);
+    fireEvent.click(screen.getByTestId('syschk-device-logs'));
+    expect(posSystemChecksApi.run).toHaveBeenCalledWith('device-logs');
+    const rows = await screen.findAllByTestId('syschk-device-logs-row');
+    expect(rows[0]).toHaveTextContent('Every working check-in kiosk is sending its events');
+    expect(rows[0]).toHaveTextContent('Reopen the check-in page');
+    expect(rows[2]).toHaveTextContent('Every device event comes from a registered device');
+    expect(rows[2]).toHaveTextContent('3 found');
+  });
   it('extras Team Management #08: the team check lists training, certificate-date and waiting-approval checks with their fixes', async () => {
     vi.mocked(posSystemChecksApi.run).mockResolvedValue({ domain: 'technicians', overall: 'WARNING', checkedAt: '2026-11-12T20:00:00Z', branchId: null, checks: [
       { key: 'training_overdue', state: 'WARNING', count: 3 }, { key: 'training_certificate_unlinked', state: 'READY', count: 0 },

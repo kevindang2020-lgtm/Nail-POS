@@ -2147,4 +2147,13 @@ export const OPS_EN = {
   "lgx.drill.assign": "Device assignment",
   "lgx.drill.terminals": "Open in Payment Terminals",
   "lgx.drill.gateway": "Open Payment Gateway",
+  "syschk.device-logs.title": "Check Device Logs System",
+  "syschk.device-logs.kiosk_alive_no_events": "Every working check-in kiosk is sending its events",
+  "syschk.device-logs.kiosk_alive_no_events.fix": "A kiosk is online but has logged nothing for 30 days. Reopen the check-in page on it or re-pair it.",
+  "syschk.device-logs.terminal_alive_no_events": "Every working payment terminal is sending its events",
+  "syschk.device-logs.terminal_alive_no_events.fix": "A terminal is online but its events have not reached the log for 30 days. Check its connection settings with support.",
+  "syschk.device-logs.device_event_unregistered_source": "Every device event comes from a registered device",
+  "syschk.device-logs.device_event_unregistered_source.fix": "Events arrive from a device that is not registered here. Register it in Devices or remove the old device.",
+  "syschk.device-logs.job_stuck_running": "No background job is stuck",
+  "syschk.device-logs.job_stuck_running.fix": "A background job is still running after its worker stopped. Retry it from the Retries panel or contact support.",
 };

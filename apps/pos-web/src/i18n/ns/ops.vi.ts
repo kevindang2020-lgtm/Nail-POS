@@ -2146,4 +2146,13 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "lgx.drill.assign": "Phân công thiết bị", // DRAFT — Kevin reviews
   "lgx.drill.terminals": "Mở trong Máy thanh toán", // DRAFT — Kevin reviews
   "lgx.drill.gateway": "Mở Cổng thanh toán", // DRAFT — Kevin reviews
+  "syschk.device-logs.title": "Kiểm tra hệ thống Nhật ký thiết bị", // DRAFT — Kevin reviews
+  "syschk.device-logs.kiosk_alive_no_events": "Mọi máy check-in đang chạy đều gửi sự kiện", // DRAFT — Kevin reviews
+  "syschk.device-logs.kiosk_alive_no_events.fix": "Một máy check-in đang trực tuyến nhưng 30 ngày không ghi gì. Mở lại trang check-in hoặc ghép nối lại.", // DRAFT — Kevin reviews
+  "syschk.device-logs.terminal_alive_no_events": "Mọi máy thanh toán đang chạy đều gửi sự kiện", // DRAFT — Kevin reviews
+  "syschk.device-logs.terminal_alive_no_events.fix": "Một máy thanh toán trực tuyến nhưng 30 ngày không có sự kiện nào. Kiểm tra cài đặt kết nối với hỗ trợ.", // DRAFT — Kevin reviews
+  "syschk.device-logs.device_event_unregistered_source": "Mọi sự kiện thiết bị đều từ thiết bị đã đăng ký", // DRAFT — Kevin reviews
+  "syschk.device-logs.device_event_unregistered_source.fix": "Có sự kiện từ thiết bị chưa đăng ký ở đây. Đăng ký trong Thiết bị hoặc gỡ thiết bị cũ.", // DRAFT — Kevin reviews
+  "syschk.device-logs.job_stuck_running": "Không có tác vụ nền nào bị kẹt", // DRAFT — Kevin reviews
+  "syschk.device-logs.job_stuck_running.fix": "Một tác vụ nền vẫn đang chạy sau khi tiến trình dừng. Thử lại trong bảng Thử lại hoặc liên hệ hỗ trợ.", // DRAFT — Kevin reviews
 };

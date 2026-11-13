@@ -9,6 +9,7 @@
 // integration events come from the log store (webhook deliveries, deployments). Nothing is manufactured.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SystemCheckButton } from '../components/SystemCheck';
 import { posLogsApi, type LogEntryView, type LogsPage } from '../api/posLogsApi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/codeLabel';
@@ -129,6 +130,7 @@ export function TenantLogsScreen() {
     <div className="work" data-testid="lgx-screen" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="vh dfx-head">
         <div style={{ flex: '1 1 320px', minWidth: 0 }}><h1>{tx('pos.device_integration_logs')}</h1><div className="sub">{tt('lgx.subtitle')}</div></div>
+        <SystemCheckButton domain="device-logs" />
         <button className="btn ghost" data-testid="lgx-health" onClick={() => nav('/tenant/devices/health')}>{tt('lgx.toHealth')}</button>
         <button className="btn ghost" data-testid="lgx-alerts-open" onClick={() => setOps('alerts')}>{tt('lgx.alerts.btn')}</button>
         <button className="btn ghost" data-testid="lgx-retry-open" onClick={() => setOps('retry')}>{tt('lgx.retry.btn')}</button>
