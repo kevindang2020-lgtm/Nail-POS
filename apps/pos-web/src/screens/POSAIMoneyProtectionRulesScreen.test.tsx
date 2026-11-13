@@ -3,8 +3,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { waitFor, cleanup } from '@testing-library/react';
+const { dl } = vi.hoisted(() => ({ dl: vi.fn() }));
+vi.mock('../components/FitKit', async (orig) => ({ ...(await orig<typeof import('../components/FitKit')>()), downloadText: dl }));
 const { mc, api } = vi.hoisted(() => {
-  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn(), exportCsv: vi.fn() };
   return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
 });
 vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
@@ -98,6 +101,19 @@ describe('POSAIMoneyProtectionRulesScreen', () => {
 
 
 describe('Money Protection Rules — consistent empty states (extras #08)', () => {
+  it('Money Protection Rules 15: Export rule settings asks the server for view=rules and saves its file; hidden without canExport', async () => {
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: false, canExport: true });
+    mc.exportCsv.mockResolvedValue('Export,AI Money Protection — rule settings\r\n');
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rules-export'));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith('money-protection-rules.csv', 'Export,AI Money Protection — rule settings\r\n'));
+    expect(mc.exportCsv).toHaveBeenCalledWith({ view: 'rules' });
+    cleanup();
+    mc.rules.mockResolvedValue({ rules: [rule()], canEdit: false, canExport: false });
+    wrap(<POSAIMoneyProtectionRulesScreen />);
+    await screen.findByTestId('mpx-rule-row');
+    expect(screen.queryByTestId('mpx-rules-export')).toBeNull();
+  });
   it('permission denied and an API outage read differently', async () => {
     mc.rules.mockRejectedValueOnce({ status: 403 });
     const a = wrap(<POSAIMoneyProtectionRulesScreen />);

@@ -231,6 +231,7 @@ export class MoneyProtectionCenter {
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, status: group, severity, category, rule, dateField, sort, preset: per.preset, from: per.from, to: per.to },
       period: { today: per.today, timeZone: per.tz }, customersVisible: customers,
+      canExport: has(ctx, 'ai_money_protection.export'),     // MONEY PROTECTION ALERTS 14: the controlled export (GET export)
       canAct: has(ctx, 'ai_money_protection.investigate'),   // MONEY PROTECTION ALERTS 13: batch triage shown only when the person may act
       // extras (Money Protection 5 · 14): why a list is empty — paused, never checked, failed, stale, no data, or verified
       monitor: await this.monitorState(T),
@@ -505,7 +506,7 @@ export class MoneyProtectionCenter {
           alerts30d: N(c?.n30), open: N(c?.open), dismissed90d: N(c?.fp90), lastAlertAt: iso(c?.last),
           lastCheckedAt: enabled && layerOn(d.layer) && lastPass && (!s?.updated_at || new Date(lastPass as string) >= new Date(s.updated_at as string)) ? iso(lastPass) : null };
       }),
-      canEdit: has(ctx, 'ai_money_protection.manage_settings'),
+      canEdit: has(ctx, 'ai_money_protection.manage_settings'), canExport: has(ctx, 'ai_money_protection.export'),
     };
   }
 

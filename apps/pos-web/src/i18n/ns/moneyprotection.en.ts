@@ -452,4 +452,8 @@ export const MONEYPROTECTION_EN: Record<string, string> = {
   "mpx.triage.result": "{a} changed · {r} left unchanged",
   "mpx.triage.failed": "Batch triage could not be loaded.",
   "mpx.triage.noMoney": "Batch triage only acknowledges, dismisses or reopens alerts. It never pays, charges, refunds or writes anything off.",
+  "mpx.export.btn": "Export CSV",
+  "mpx.export.busy": "Exporting…",
+  "mpx.export.done": "Exported. The file opens with who made it, when, the filters, how fresh detection was, and what was left out.",
+  "mpx.export.hint": "Every matching row with the current filters. No customer names, phones, evidence text or payment references. The export is recorded.",
 };

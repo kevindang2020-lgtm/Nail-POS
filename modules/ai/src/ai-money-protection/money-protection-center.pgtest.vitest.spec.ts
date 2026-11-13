@@ -298,6 +298,9 @@ describe('Controlled export (MONEY PROTECTION ALERTS 14 · AI MONEY PROTECTION 5
     expect(await code(mc.exportCsv(ctx(), {}))).toBe('PERMISSION_DENIED');
     expect(await code(mc.exportCsv(ctx({ permissions: ['ai_money_protection.view', 'ai_money_protection.export'] }), { view: 'alerts' }))).toBe('PERMISSION_DENIED');
     expect(await exports()).toBe(a0);
+    // the screen shows Export only to those who may use it
+    expect((await mc.alerts(ctx(), {}) as any).canExport).toBe(false); expect((await mc.alerts(ctx({ permissions: EXP }), {}) as any).canExport).toBe(true);
+    expect((await mc.rules(ctx()) as any).canExport).toBe(false);
   });
   it('EX-02 alerts: provenance block (salon, location scope, who / when, period + basis + zone, filters, detection freshness, definitions, redaction, rows) then exactly the filtered list; sanitized; audited', async () => {
     const a0 = await exports();
