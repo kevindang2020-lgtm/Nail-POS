@@ -200,4 +200,10 @@ export const CHURNWATCH_EN: Record<string, string> = {
   "cwx.health.k.verdict_source": "Verdict source: Customer Retention",
   "cwx.health.d.verdict_source.PASSED": "Every verdict is Customer Retention's classification; the assistant's signals are supporting reasons only.",
   "cwx.health.d.verdict_source.UNAVAILABLE": "Customer Retention could not be read, so no verdict can be shown. Try again.",
+  "cwx.consent.smsStop": "Texted STOP — no follow-up texts",
+  "cwx.consent.smsStopLong": "Texted STOP: follow-up and marketing texts are blocked (booking codes still go)",
+  "cwx.consent.smsOk": "Texts allowed",
+  "cwx.consent.emailAll": "E-mail unsubscribed",
+  "cwx.consent.emailMarketing": "Unsubscribed from marketing e-mail",
+  "cwx.consent.emailOk": "E-mail allowed",
 };

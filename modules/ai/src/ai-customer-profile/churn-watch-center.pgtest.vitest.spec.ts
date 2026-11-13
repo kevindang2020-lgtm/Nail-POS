@@ -181,3 +181,23 @@ describe('Churn Watch — list, security, health', () => {
     expect((await cw.check(ctx()) as any).reused).toBe(true);
   });
 });
+
+// extras Churn Watch 07 (round 10): the opt-out checks are SHOWN here, read from the one opt-out store — a customer whose phone
+// texted STOP (or whose e-mail unsubscribed) says so in the queue and the evidence overlay; another salon's opt-out never shows
+describe('Churn Watch 07 — contact consent (read from the opt-out store)', () => {
+  it('SMS STOP and e-mail unsubscribe show per customer; other customers / salons are clean; nothing is written', async () => {
+    await q(sql`update customers set normalized_phone = '+15550007001', email = 'Poss@Example.com' where id = ${C.possible}`);
+    await q(sql`update customers set normalized_phone = '+15550007002' where id = ${C.elevated}`);
+    await q(sql`insert into notification_opt_outs (tenant_id, channel, address, reason, scope) values (${T}, 'sms', '+15550007001', 'STOP', 'all'), (${T}, 'email', 'poss@example.com', 'unsubscribe', 'marketing'),
+      (${X}, 'sms', '+15550007002', 'STOP', 'all')`);
+    const before = await q(sql`select (select count(*) from notification_opt_outs)::int + (select count(*) from churn_watch_review_events)::int as n`);
+    const items = await allItems();
+    const by = (cid: string) => items.find((i: any) => i.id === cid);
+    expect(by(C.possible).contactConsent).toMatchObject({ smsOptedOut: true, emailOptedOut: true, emailScope: 'marketing' });
+    expect(by(C.possible).contactConsent.smsOptedOutAt).toMatch(/^\d{4}-/);
+    expect(by(C.elevated).contactConsent).toEqual({ smsOptedOut: false, smsOptedOutAt: null, emailOptedOut: false, emailScope: null });   // the STOP is another salon's
+    const ov = await cw.customer(ctx(), C.possible, audit);
+    expect(ov.contactConsent).toMatchObject({ smsOptedOut: true, emailOptedOut: true });
+    expect(await q(sql`select (select count(*) from notification_opt_outs)::int + (select count(*) from churn_watch_review_events)::int as n`)).toEqual(before);
+  });
+});

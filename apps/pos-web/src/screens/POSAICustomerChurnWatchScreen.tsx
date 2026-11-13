@@ -169,7 +169,7 @@ export function POSAICustomerChurnWatchScreen() {
               <thead><tr><th>{t('cwx.col.customer')}</th><th>{t('cwx.col.lastVisit')}</th><th>{t('cwx.col.daysSince')}</th><th>{t('cwx.col.interval')}</th><th>{t('cwx.col.upcoming')}</th><th>{t('cwx.col.signal')}</th><th>{t('cwx.col.reason')}</th><th>{t('cwx.col.review')}</th><th /></tr></thead>
               <tbody>{list.items.map((r: any) => (
                 <tr key={r.id} data-testid="cwx-row" tabIndex={0} onClick={() => setOpenId(r.id)} onKeyDown={(e) => { if (e.key === 'Enter') setOpenId(r.id); }}>
-                  <td><b>{r.name || '—'}</b><div className="sub">{r.phone ?? t('cwx.notProvided')}</div></td>
+                  <td><b>{r.name || '—'}</b><div className="sub">{r.phone ?? t('cwx.notProvided')}</div>{r.contactConsent?.smsOptedOut ? <div className="sub" data-testid="cwx-row-sms-stop" style={{ color: '#A8321F' }}>{t('cwx.consent.smsStop')}</div> : null}</td>
                   <td className="nowrap">{when(r.lastVisitAt)}</td>
                   <td className="num">{r.daysSinceLast == null ? '—' : fmtNumber(r.daysSinceLast)}</td>
                   <td>{r.typicalIntervalDays ? t('cwx.days', { n: r.typicalIntervalDays }) : t('cwx.notEstablished')}</td>
@@ -238,6 +238,7 @@ function EvidenceOverlay({ id, onClose, onChanged, nav }: { id: string; onClose:
       {err ? <div className="err">{err}</div> : !d ? <div className="state">{t('cwx.loading')}</div> : <>
         {actErr ? <p className="err" role="alert" data-testid="cwx-act-err">{actErr}</p> : null}
         <p className="warn" data-testid="ov-note">{t('cwx.ov.caution')}</p>
+        {d.contactConsent ? <p className="sub" data-testid="ov-consent">{d.contactConsent.smsOptedOut ? t('cwx.consent.smsStopLong') : t('cwx.consent.smsOk')}{' · '}{d.contactConsent.emailOptedOut ? (d.contactConsent.emailScope === 'marketing' ? t('cwx.consent.emailMarketing') : t('cwx.consent.emailAll')) : t('cwx.consent.emailOk')}</p> : null}
         <h4>{t('cwx.ov.verdict')}</h4>
         <div data-testid="ov-verdict">{v.daysAway == null ? t('cwx.level.' + v.segment) : t('cwx.ov.verdictLine', { seg: t('cwx.level.' + v.segment), n: fmtNumber(v.daysAway) })}
           {v.since ? <div className="sub">{t('cwx.ov.verdictSince', { d: when(v.since) })}</div> : null}
