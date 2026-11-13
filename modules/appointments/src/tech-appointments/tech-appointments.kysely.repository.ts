@@ -28,6 +28,8 @@ import { buildMediaUrl } from '@aipowersalon/media';
 
 const DEFAULT_AVAIL_MIN = 600;
 const WORKING: TAWorkingStatus[] = ['available', 'in_service', 'on_break', 'off_today', 'scheduled_later'];
+/** TECH APPOINTMENTS 03: where a technician card's status comes from */
+export interface TechStatusWhy { source: 'technician_status' | 'not_recorded' | 'unmapped_status'; since: string | null; recorded: string | null }
 const parseServices = (v: any): TAService[] => { if (!v) return []; if (Array.isArray(v)) return v as TAService[]; try { const p = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; } catch { return []; } };
 type ExRow = { appointmentId: string; technicianId: string; customerId?: string; startTime: string; endTime: string; status: TAStatus };
 
@@ -73,7 +75,7 @@ export class KyselyTechApptRepository implements TechApptRepositoryPort {
   async serviceCatalog(ctx: TechApptContext) { return this._catalog(ctx); }
 
   // ---- technicians (real roster + real skill categories via technician_services) ----
-  private async _technicians(ctx: TechApptContext): Promise<{ technicianId: string; displayName: string; firstName: string; avatarUrl?: string | null; workingStatus: TAWorkingStatus; skills: string[]; availableMinutes: number }[]> {
+  private async _technicians(ctx: TechApptContext): Promise<{ technicianId: string; displayName: string; firstName: string; avatarUrl?: string | null; workingStatus: TAWorkingStatus; skills: string[]; availableMinutes: number; statusWhy: TechStatusWhy }[]> {
     const techs = await this.scoped(this.db.selectFrom('technicians as tech'), ctx, 'tech')
       .leftJoin('users as u', 'u.id', 'tech.user_id')
       .leftJoin('global_tech_profiles as gtp', (join: any) =>
@@ -88,13 +90,19 @@ export class KyselyTechApptRepository implements TechApptRepositoryPort {
     const ids = techs.map((t: any) => t.id);
     const links = ids.length ? await this.scoped(this.db.selectFrom('technician_services as ts'), ctx, 'ts').innerJoin('services as s', 's.id', 'ts.service_id').leftJoin('service_categories as c', 'c.id', 's.category_id')
       .where('ts.technician_id', 'in', ids).select(['ts.technician_id as tid', 'c.name as cat']).execute().catch(() => []) : [];
-    const stat = ids.length ? await this.scoped(this.db.selectFrom('technician_statuses'), ctx).where('technician_id', 'in', ids).select(['technician_id', 'status']).execute().catch(() => []) : [];
+    // TECH APPOINTMENTS 03 (round 10): ordered by when each status was set, so the LATEST one wins (unordered rows let an old
+    // status win at random) — and its time is kept for the "why"
+    const stat = ids.length ? await this.scoped(this.db.selectFrom('technician_statuses'), ctx).where('technician_id', 'in', ids).select(['technician_id', 'status', 'changed_at']).orderBy('changed_at', 'asc').execute().catch(() => []) : [];
     const skillBy: Record<string, Set<string>> = {}; for (const l of links) { (skillBy[l.tid] ||= new Set()).add(l.cat || 'General'); }
-    const statBy: Record<string, string> = {}; for (const s of stat) statBy[s.technician_id] = s.status;
+    const statBy: Record<string, string> = {}; const atBy: Record<string, string | null> = {};
+    for (const s2 of stat) { statBy[s2.technician_id] = s2.status; atBy[s2.technician_id] = s2.changed_at ? new Date(s2.changed_at as unknown as string).toISOString() : null; }
     return techs.map((t: any) => {
       const first = (t.full_name || '').split(' ')[0] || t.id; const ws = WORKING.includes(statBy[t.id] as TAWorkingStatus) ? (statBy[t.id] as TAWorkingStatus) : 'available';
       const rawPhoto = t.tech_avatar_url || t.gtp_avatar_url || t.user_avatar_url || null;
-      return { technicianId: t.id, displayName: t.full_name || t.id, firstName: first, avatarUrl: rawPhoto ? buildMediaUrl(rawPhoto) : null, workingStatus: ws, skills: [...(skillBy[t.id] || [])], availableMinutes: ws === 'off_today' ? 0 : DEFAULT_AVAIL_MIN };
+      const recorded = statBy[t.id] ?? null;
+      const statusWhy: TechStatusWhy = recorded == null ? { source: 'not_recorded', since: null, recorded: null }
+        : WORKING.includes(recorded as TAWorkingStatus) ? { source: 'technician_status', since: atBy[t.id] ?? null, recorded } : { source: 'unmapped_status', since: atBy[t.id] ?? null, recorded };
+      return { technicianId: t.id, displayName: t.full_name || t.id, firstName: first, avatarUrl: rawPhoto ? buildMediaUrl(rawPhoto) : null, workingStatus: ws, skills: [...(skillBy[t.id] || [])], availableMinutes: ws === 'off_today' ? 0 : DEFAULT_AVAIL_MIN, statusWhy };
     });
   }
   async technicians(ctx: TechApptContext) { return this._technicians(ctx); }
@@ -138,7 +146,11 @@ export class KyselyTechApptRepository implements TechApptRepositoryPort {
   private techColumn(t: any, dayRows: any[]): POSTechAppointmentTechnician {
     const mine = dayRows.filter((a) => a.technician_id === t.technicianId && !['cancelled', 'no_show'].includes(a.status));
     const scheduled = mine.reduce((acc, a) => acc + Number(a.duration_minutes || durationOfServices(parseServices(a.services))), 0);
-    return { technicianId: t.technicianId, displayName: t.displayName, firstName: t.firstName, workingStatus: t.workingStatus, appointmentCount: mine.length, scheduledMinutes: scheduled, availableMinutes: t.availableMinutes, serviceSkillGroups: t.skills };
+    const col: POSTechAppointmentTechnician = { technicianId: t.technicianId, displayName: t.displayName, firstName: t.firstName, workingStatus: t.workingStatus, appointmentCount: mine.length, scheduledMinutes: scheduled, availableMinutes: t.availableMinutes, serviceSkillGroups: t.skills };
+    // TECH APPOINTMENTS 03 (round 10): why the card reads as it does — the recorded status and when, or that none was
+    // recorded (then the card defaults to Available, said so); and the appointment being served now, if any
+    const serving = mine.find((a) => a.status === 'in_service');
+    return Object.assign(col, { statusWhy: { ...(t.statusWhy ?? { source: 'not_recorded', since: null, recorded: null }), servingAppointmentId: serving ? String(serving.id) : null } });
   }
 
   async query(ctx: TechApptContext, f: TechApptFilters): Promise<POSTechAppointmentsFullState> {
@@ -230,7 +242,7 @@ export class KyselyTechApptRepository implements TechApptRepositoryPort {
     );
   }
 
-  async setStatus(ctx: TechApptContext, id: string, st: TAStatus): Promise<boolean> {
+  async setStatus(ctx: TechApptContext, id: string, st: TAStatus, reason?: string): Promise<boolean> {
     const before = await this.scoped(this.db.selectFrom('pos_tech_appointments'), ctx).where('id', '=', id).select(['status']).executeTakeFirst().catch(() => undefined);
     const STATUS_EVENT: Partial<Record<string, typeof DOMAIN_EVENTS[keyof typeof DOMAIN_EVENTS]>> = {
       confirmed: DOMAIN_EVENTS.APPOINTMENT_CONFIRMED, completed: DOMAIN_EVENTS.APPOINTMENT_COMPLETED,
@@ -248,7 +260,8 @@ export class KyselyTechApptRepository implements TechApptRepositoryPort {
       const res = await q.executeTakeFirst();
       const ok = Number(res?.numUpdatedRows ?? 0) > 0;
       if (!ok) { raced = !!from; return false; }
-      await this.recordChanges(ctx, id, 'status_changed', [{ field: 'status', old: before?.status, new: st }]);
+      // TECH APPOINTMENTS 10 (round 10): the reason travels with the change (same statement, same time) so History Diff can show it
+      await this.recordChanges(ctx, id, 'status_changed', [{ field: 'status', old: before?.status, new: st }, ...(reason?.trim() ? [{ field: 'reason', old: null, new: reason.trim().slice(0, 300) }] : [])]);
       const eventType = STATUS_EVENT[st];
       if (eventType && this.outbox) await this.outbox.write(trx, createDomainEvent({
         eventType, tenantId: ctx.tenantId, branchId: ctx.branchId, aggregateType: 'appointment', aggregateId: id,

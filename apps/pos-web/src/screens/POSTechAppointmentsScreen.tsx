@@ -47,6 +47,8 @@ export function POSTechAppointmentsScreen() {
   const [view, setView] = useState<'day' | 'week'>('day');
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [period, setPeriod] = useState<PeriodState>({ preset: 'today' }); const [dateField, setDateField] = useState('scheduled');
+  // TECH APPOINTMENTS 04 (round 10): the Gap Finder's service length (minutes); null = no highlighting
+  const [gapLen, setGapLen] = useState<number | null>(null);
   const [status, setStatus] = useState('all'); const [source, setSource] = useState('all'); const [techFilter, setTechFilter] = useState(''); const [sort, setSort] = useState('start');
   const [page, setPage] = useState(1); const [hp, setHp] = useState(1); const [hPeriod, setHPeriod] = useState<PeriodState>({ preset: 'week' }); const [wp, setWp] = useState(1);
   const [laneSearch, setLaneSearch] = useState(''); const laneQ = useDebounced(laneSearch.trim(), 250); const [lanePage, setLanePage] = useState(1);
@@ -137,6 +139,9 @@ export function POSTechAppointmentsScreen() {
               <div className="fk-li-s">{t.serviceSkillGroups?.length ? t.serviceSkillGroups.join(' · ') : tx('tm.noSkills')}</div>
               <div className="tm-card-n">{tx('tm.cardLine', { n: nf(t.appointmentCount), b: nf(t.scheduledMinutes), f: nf(t.availableMinutes) })}</div>
               <div className="fk-li-s">{mine[0] ? tx('tm.nextAt', { t: hm12(mine[0].startTime), c: mine[0].customerName ?? '' }) : tx('tm.noNext')}</div>
+              {t.statusWhy ? <div className="fk-li-s" data-testid="tech-status-why">{t.statusWhy.source === 'technician_status' ? tx('tm.why.recorded', { s: liveStatus(t.workingStatus), at: t.statusWhy.since ? whenTime(t.statusWhy.since) : '—' })
+                : t.statusWhy.source === 'unmapped_status' ? tx('tm.why.unmapped', { s: String(t.statusWhy.recorded ?? '—') }) : tx('tm.why.none')}
+                {t.statusWhy.servingAppointmentId ? <> · <button type="button" className="fk-link" onClick={() => void openAppt(t.statusWhy.servingAppointmentId)} data-testid="tech-serving">{tx('tm.why.serving')}</button></> : null}</div> : null}
               <button type="button" className="fk-btn sm" onClick={() => setFullDay(t.technicianId)} data-testid="view-full-day">{tx('tm.viewFullDay')}</button>
             </div>; })}</div>}
         <div className="fk-hint">{tx('tm.freeRule')}</div>
@@ -144,7 +149,12 @@ export function POSTechAppointmentsScreen() {
 
       <FitPanel testId="board" title={tx('tm.board')} actions={<div className="fk-seg" role="tablist" aria-label={tx('tm.board')}>{(['day', 'week'] as const).map((v) => <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)} data-testid={'view-' + v}>{tx('tm.view.' + v)}</button>)}</div>}>
         {view === 'day' ? (board.error ? <StateBlock error={board.error} onRetry={board.reload} /> : !board.data ? <div className="fk-loading">{tx('pos.loading')}</div>
-          : <TechTimeline rows={rowsFromBoard(board.data)} onTech={setFullDay} onAppt={openAppt} nowMinute={day === today ? kp.data?.nowMinute ?? null : null} />)
+          : <><div className="tm-gapfinder" data-testid="gap-finder">
+              <label>{tx('tm.gap.label')} <select className="fk-select" value={gapLen ?? ''} onChange={(e) => setGapLen(e.target.value ? Number(e.target.value) : null)} data-testid="gap-len"><option value="">{tx('tm.gap.off')}</option>{[15, 30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{tx('tm.gap.min', { n: String(m) })}</option>)}</select></label>
+              {gapLen ? (() => { const fits = rowsFromBoard(board.data).flatMap((r: { name: string; openSlots: { slotId: string; startTime: string; endTime: string; durationMinutes?: number }[] }) => r.openSlots.filter((o) => (o.durationMinutes ?? 0) >= gapLen).map((o) => ({ ...o, name: r.name })));
+                return <span className="fk-li-s" data-testid="gap-count">{fits.length ? tx('tm.gap.found', { n: nf(fits.length), m: String(gapLen) }) + ' · ' + fits.slice(0, 6).map((o) => `${o.name} ${hm12(o.startTime)}–${hm12(o.endTime)}`).join(' · ') : tx('tm.gap.none', { m: String(gapLen) })}</span>; })() : null}
+            </div>
+            <TechTimeline rows={rowsFromBoard(board.data)} onTech={setFullDay} onAppt={openAppt} nowMinute={day === today ? kp.data?.nowMinute ?? null : null} fitMinutes={gapLen} /></>)
           : week.error ? <StateBlock error={week.error} onRetry={week.reload} /> : !week.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : <><table className="fk-table fn-table cg-table tm-week" data-testid="week-table"><thead><tr><th>{tx('tm.col.technician')}</th>{week.data.days.map((d: string) => <th key={d} className={'num' + (d === today ? ' tm-today' : '')}>{d.slice(5)}</th>)}</tr></thead>
             <tbody>{week.data.technicians.map((t: any) => <tr key={t.technicianId}><td>{t.name}</td>{t.days.map((c: any) => <td key={c.date} className="num"><button type="button" className={'tm-cell' + (c.appointments ? ' on' : '')} onClick={() => { setDate(c.date); setView('day'); }} title={tx('tm.cellTitle', { n: nf(c.appointments), m: nf(c.bookedMinutes) })}>{c.appointments ? `${nf(c.appointments)} · ${Math.round(c.bookedMinutes / 6) / 10}h` : '—'}</button></td>)}</tr>)}</tbody></table>
@@ -189,7 +199,7 @@ export function POSTechAppointmentsScreen() {
         <PeriodBar value={hPeriod} onChange={(p) => { setHPeriod(p); setHp(1); }} server={hist.data?.period} allowAll compact />
         {hist.error ? <StateBlock error={hist.error} onRetry={hist.reload} /> : !hist.data ? <div className="fk-loading">{tx('pos.loading')}</div> : hist.data.items.length === 0 ? <Empty title={tx('tm.noChanges')} />
           : <table className="fk-table fn-table cg-table" data-testid="history-table"><thead><tr><th>{tx('tm.col.when')}</th><th>{tx('tm.col.change')}</th><th>{tx('tm.col.appointment')}</th><th className="t-opt">{tx('tm.col.by')}</th></tr></thead>
-            <tbody>{hist.data.items.map((h: any) => <tr key={h.id} data-testid="history-row"><td>{whenTime(h.at)}</td><td>{apptStatus(h.changeType)}{h.field ? <span className="fk-li-s">{h.field}: {h.oldValue ?? '—'} → {h.newValue ?? '—'}</span> : null}</td>
+            <tbody>{hist.data.items.map((h: any) => <tr key={h.id} data-testid="history-row"><td>{whenTime(h.at)}</td><td>{apptStatus(h.changeType)}{h.field ? <span className="fk-li-s">{h.field}: {h.oldValue ?? '—'} → {h.newValue ?? '—'}</span> : null}{h.reason ? <span className="fk-li-s" data-testid="history-reason">{tx('tm.why.reason', { r: h.reason })}</span> : null}</td>
               <td>{h.customer ?? '—'}<span className="fk-li-s">{h.technician ?? ''}{h.apptDate ? ` · ${h.apptDate} ${hm12(h.apptStart)}` : ''}</span></td><td className="t-opt">{h.actor ?? '—'}</td></tr>)}</tbody></table>}
       </FitPanel>
 

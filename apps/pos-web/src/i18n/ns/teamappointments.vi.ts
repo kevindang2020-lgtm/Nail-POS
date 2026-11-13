@@ -168,4 +168,14 @@ export const TEAMAPPOINTMENTS_VI = {
   'tm.pv.proof.verified': 'Đã xác minh số qua SMS', // DRAFT — Kevin reviews
   'tm.pv.proof.recently_verified': 'Số đã xác minh gần đây', // DRAFT — Kevin reviews
   'tm.pv.proof.staff_override': 'Nhân viên đã xác nhận số', // DRAFT — Kevin reviews
+  'tm.why.recorded': '{s} — đặt lúc {at}', // DRAFT — Kevin reviews
+  'tm.why.unmapped': 'Trạng thái đã ghi “{s}” không có trên bảng — hiển thị là Rảnh', // DRAFT — Kevin reviews
+  'tm.why.none': 'Hôm nay chưa ghi trạng thái — hiển thị là Rảnh', // DRAFT — Kevin reviews
+  'tm.why.serving': 'đang phục vụ — mở', // DRAFT — Kevin reviews
+  'tm.why.reason': 'Lý do: {r}', // DRAFT — Kevin reviews
+  'tm.gap.label': 'Tìm khoảng trống — thời lượng dịch vụ', // DRAFT — Kevin reviews
+  'tm.gap.off': 'Tắt', // DRAFT — Kevin reviews
+  'tm.gap.min': '{n} phút', // DRAFT — Kevin reviews
+  'tm.gap.found': '{n} khoảng trống dài ít nhất {m} phút', // DRAFT — Kevin reviews
+  'tm.gap.none': 'Hôm nay không có khoảng trống từ {m} phút trở lên', // DRAFT — Kevin reviews
 };

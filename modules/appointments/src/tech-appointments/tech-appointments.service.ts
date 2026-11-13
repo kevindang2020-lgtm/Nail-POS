@@ -214,7 +214,7 @@ export class TechAppointmentsService {
   async cancel(ctx: TechApptContext, id: string, body: CancelAppointmentRequest): Promise<POSTechAppointmentItem> {
     this.need(ctx, 'pos.tech_appointments.cancel'); await this.apptOr404(ctx, id);
     if (!body?.reason?.trim()) throw withCode(new ValidationError('Cancelling requires a reason'), 'CANCEL_REASON_REQUIRED');
-    await this.repo.setStatus(ctx, id, 'cancelled'); this.log(ctx, 'pos_tech_appointment_cancelled', 'pos_tech_appointment', id, undefined, undefined, { reason: body.reason });
+    await this.repo.setStatus(ctx, id, 'cancelled', body.reason); this.log(ctx, 'pos_tech_appointment_cancelled', 'pos_tech_appointment', id, undefined, undefined, { reason: body.reason });
     this.announce(ctx, EVENTS.appointmentCancelled, id);
     return (await this.repo.detail(ctx, id))!;
   }

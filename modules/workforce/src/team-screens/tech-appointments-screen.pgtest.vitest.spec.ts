@@ -101,4 +101,11 @@ describe('Tech Appointments', () => {
     const items = (await repo.list(ctx, { q: 'Mai Le' })).items;
     expect(items.map((x) => [x.technician, x.phoneVerification])).toEqual([['Kevin Dang', 'staff_override'], ['Vishal verma', null]]);
   });
+  it('TECH APPOINTMENTS 10 (round 10): a change written with its reason shows the reason on that change; the reason row is never a change of its own', async () => {
+    await q(`insert into appointment_change_log (tenant_id, branch_id, appointment_id, change_type, field, old_value, new_value, actor_type, source, created_at) values
+      ($1,$2,$3,'status_changed','status','booked','cancelled','OWNER','tech_app', now() + interval '1 minute'), ($1,$2,$3,'status_changed','reason',null,'Customer called — flu','OWNER','tech_app', now() + interval '1 minute')`, [T, B, id('f2')]);
+    const h = await repo.history(ctx, { preset: 'today' });
+    expect(h.items.map((x) => [x.changeType, x.field, x.newValue, x.reason])).toEqual([['status_changed', 'status', 'cancelled', 'Customer called — flu'], ['rescheduled', 'start_time', '10:30', null]]);
+    expect(h.totalItems).toBe(2);
+  });
 });
