@@ -12,13 +12,13 @@ export const TEAM_MEMBERS_SCREEN = 'TeamMembersScreenRepository';
 const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const RANGE = { dateRange: { maxDays: 3700 } } as const;
 const FILTERS = { preset: PRESET, tab: { type: 'enum', values: TM_TABS }, role: { type: 'enum', values: TM_ROLES }, department: { type: 'enum', values: TM_DEPTS }, status: { type: 'enum', values: TM_STATUSES },
-  shift: { type: 'enum', values: TM_SHIFTS }, account: { type: 'enum', values: TM_ACCOUNTS }, basis: { type: 'enum', values: TM_BASES }, sort: { type: 'enum', values: TM_SORTS }, extra: { type: 'enum', values: TM_EXTRAS } } as const;
+  shift: { type: 'enum', values: TM_SHIFTS }, ids: { type: 'text', maxLength: 3800 }, account: { type: 'enum', values: TM_ACCOUNTS }, basis: { type: 'enum', values: TM_BASES }, sort: { type: 'enum', values: TM_SORTS }, extra: { type: 'enum', values: TM_EXTRAS } } as const;
 const DIRECTORY = { filters: FILTERS, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, ...RANGE, params: ['page'] } as const;
 const EXPORT = { filters: { ...FILTERS, lang: { type: 'enum', values: ['en', 'vi'] }, requestId: { type: 'text', maxLength: 100 } }, search: { maxLength: 100 }, maxLimit: 1, defaultLimit: 1, ...RANGE } as const;
 const ATTENDANCE = { filters: { preset: PRESET }, maxLimit: 50, defaultLimit: 8, ...RANGE, params: ['page'] } as const;
 const WORK = { filters: { preset: PRESET, scope: { type: 'enum', values: ['upcoming', 'past', 'services'] } }, maxLimit: 50, defaultLimit: 8, ...RANGE, params: ['page'] } as const;
 const HISTORY = { maxLimit: 50, defaultLimit: 8, params: ['page'] } as const;
-const dir = (q: any): DirectoryFilters => ({ q: s(q?.q), tab: s(q?.tab), staffRole: s(q?.role), status: s(q?.status), shift: s(q?.shift), department: s(q?.department), account: s(q?.account), extra: s(q?.extra),
+const dir = (q: any): DirectoryFilters => ({ ids: s(q?.ids), q: s(q?.q), tab: s(q?.tab), staffRole: s(q?.role), status: s(q?.status), shift: s(q?.shift), department: s(q?.department), account: s(q?.account), extra: s(q?.extra),
   basis: s(q?.basis), sort: s(q?.sort), ...per(q), page: q?.page, pageSize: q?.pageSize });
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)

@@ -44,7 +44,11 @@ const SCHEDULE_EDIT = ['pos.technicians.schedule.edit'];
 const ADJ_OK = ['posted', 'approved', 'applied'];
 const ymd = (v: unknown) => dateColumnYmd(v);   // a Postgres DATE column (the driver's local-midnight Date) → its calendar day
 
+/** 200-Technician 08: the selected member ids of a bulk action — well-formed uuids only, at most 100 (anything else is dropped) */
+export function selectedIds(raw: unknown): string[] { return [...new Set(String(raw ?? '').split(',').map((x) => x.trim().toLowerCase()).filter((x) => UUID.test(x)))].slice(0, 100); }
 export interface DirectoryFilters {
+  /** 200-Technician 08 — Quick Bulk Staff Actions: only these member ids (the rows the manager selected; at most 100) */
+  ids?: string;
   q?: string; tab?: string; staffRole?: string; status?: string; shift?: string; department?: string; account?: string; extra?: string; basis?: string; sort?: string;
   preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown;
 }
@@ -245,6 +249,7 @@ export class TeamMembersScreenRepository {
     const tabRoles = withTab && f.tab && TAB_ROLE[f.tab] ? TAB_ROLE[f.tab] : null;
     const extra = (TM_EXTRAS as readonly string[]).includes(String(f.extra)) ? String(f.extra) : null;
     const basis = f.basis === 'created' ? 'created' : 'service';
+    const selected = selectedIds(f.ids);
     const deptText = like(low.replace(/\s+/g, '_'));
     const verified = sql`r.rating is not null and not coalesce(r.is_hidden_by_manager, false) and not coalesce(r.is_spam, false)`;
     const hits = {
@@ -269,6 +274,7 @@ export class TeamMembersScreenRepository {
         or (${extra} = 'no_login' and m.user_id is null) or (${extra} = 'has_login' and m.user_id is not null)
         or (${extra} = 'unrated' and m.technician_id is not null and not exists (select 1 from reviews r where r.tenant_id = ${T} and r.technician_id = m.technician_id and ${verified})))
       and (${basis} <> 'created' or ${inPeriod(sql`m.created_at`, per)})
+      and (${selected.length === 0} or m.member_id::text = any(${selected}::text[]))
       and (${raw} = '' or ${hits.id} or ${hits.email} or ${hits.phone} or ${hits.name} or ${hits.role} or ${hits.dept} or ${hits.service} or ${hits.appointment})`;
     const via = raw === '' ? sql`null::text` : sql`case when ${hits.id} then 'id' when ${hits.email} then 'email' when ${hits.phone} then 'phone' when ${hits.name} then 'name' when ${hits.role} then 'role'
       when ${hits.dept} then 'department' when ${hits.service} then 'service' else 'appointment' end`;
@@ -331,7 +337,8 @@ export class TeamMembersScreenRepository {
 
   /** the audited server-built CSV of the directory with the SAME filters (no paging; capped at 2,000 rows) */
   exportCsv(ctx: TeamCtx, f: DirectoryFilters & { lang?: string }, requestId: string) {
-    const ef: ExportFilters = { preset: typeof f.preset === 'string' ? f.preset : undefined, from: typeof f.from === 'string' ? f.from : undefined, to: typeof f.to === 'string' ? f.to : undefined, q: f.q, sort: f.sort, lang: f.lang };
+    const ef: ExportFilters = { preset: typeof f.preset === 'string' ? f.preset : undefined, from: typeof f.from === 'string' ? f.from : undefined, to: typeof f.to === 'string' ? f.to : undefined, q: f.q, sort: f.sort, lang: f.lang,
+      ...(f.ids ? { selectedCount: selectedIds(f.ids).length } : {}) };
     return auditedExport(this.db, ctx, 'TEAM_DIRECTORY', ef, requestId, async () => {
       const out: any[] = []; let per: TPeriod | null = null;
       for (let p = 1; p <= 20; p++) { const r = await this.directory(ctx, { ...f, page: p, pageSize: 100 }); per = r.period; out.push(...r.items); if (p >= r.totalPages) break; }

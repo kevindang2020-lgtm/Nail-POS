@@ -192,6 +192,36 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(await screen.findByTestId('note')).toHaveTextContent(/Export ready/);
   });
 
+  it('200-Technician 08 — bulk staff actions: select rows, review only them (server ids filter), print them, export them after a confirm', async () => {
+    api.exportCsv.mockResolvedValue('\uFEFFEmployee ID,Name\r\nEMP-U-V,Vishal verma');
+    (globalThis as any).URL.createObjectURL = vi.fn(() => 'blob:x'); (globalThis as any).URL.revokeObjectURL = vi.fn();
+    mount(); await screen.findAllByTestId('member-row');
+    expect(screen.queryByTestId('bulk-bar')).toBeNull();
+    fireEvent.click(screen.getAllByTestId('bulk-select-row')[1]);
+    expect(screen.getByTestId('bulk-count')).toHaveTextContent('1 selected');
+    fireEvent.click(screen.getByTestId('bulk-review'));
+    await waitFor(() => expect(api.directory).toHaveBeenLastCalledWith(expect.objectContaining({ ids: 'u-v' })));
+    fireEvent.click(screen.getByTestId('bulk-print'));
+    expect(screen.getAllByTestId('bulk-print-row').map((n) => n.textContent)).toEqual([expect.stringContaining('Vishal verma')]);
+    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByTestId('bulk-export'));
+    expect(api.exportCsv).not.toHaveBeenCalled();   // a confirm first
+    expect(screen.getByTestId('bulk-confirm')).toHaveTextContent('Export 1 selected team member(s) to CSV? The export is recorded.');
+    fireEvent.click(screen.getByTestId('bulk-export-yes'));
+    await waitFor(() => expect(api.exportCsv).toHaveBeenCalledWith(expect.objectContaining({ ids: 'u-v', lang: 'en' })));
+    fireEvent.click(screen.getByTestId('bulk-clear'));
+    expect(screen.queryByTestId('bulk-bar')).toBeNull();
+    await waitFor(() => expect(api.directory.mock.calls.at(-1)?.[0]?.ids).toBeUndefined());
+  });
+  it('200-Technician 08 — the page checkbox selects every row on the page; the plain Export never sends ids', async () => {
+    api.exportCsv.mockResolvedValue('x'); (globalThis as any).URL.createObjectURL = vi.fn(() => 'blob:x'); (globalThis as any).URL.revokeObjectURL = vi.fn();
+    mount(); await screen.findAllByTestId('member-row');
+    fireEvent.click(screen.getByTestId('bulk-select-page'));
+    expect(screen.getByTestId('bulk-count')).toHaveTextContent('2 selected');
+    fireEvent.click(screen.getByTestId('export'));
+    await waitFor(() => expect(api.exportCsv).toHaveBeenCalled());
+    expect(api.exportCsv.mock.calls[0][0].ids).toBeUndefined();
+  });
   it('Data Accuracy Alerts shows its open count in the header', async () => {
     mount();
     await waitFor(() => expect(screen.getByTestId('open-alerts')).toHaveTextContent('2'));

@@ -46,7 +46,7 @@ export function toCsv(header: string[], rows: unknown[][]): string {
 }
 const d2 = (c: number) => (c / 100).toFixed(2);
 
-export interface ExportFilters { preset?: string; from?: string; to?: string; q?: string; sort?: string; tier?: string; lang?: string }
+export interface ExportFilters { preset?: string; from?: string; to?: string; q?: string; sort?: string; tier?: string; lang?: string; /** 200-Tech 08: an export of SELECTED rows — how many were asked for (the ids themselves are not logged) */ selectedCount?: number }
 export interface ExportResult { csv: string; filename: string; rows: number; bytes: number; requestId: string }
 
 export async function commissionCsv(repo: CommissionScreenRepository, ctx: TeamCtx, f: ExportFilters) {
@@ -66,7 +66,7 @@ export async function teamPerformanceCsv(repo: TeamPerformanceScreenRepository, 
 
 /** the safe filter summary: enumerated values only; free text is reduced to its presence and length */
 export function safeFilters(f: ExportFilters) {
-  return { preset: f.preset ?? null, from: f.from ?? null, to: f.to ?? null, sort: f.sort ?? null, tier: f.tier ?? null, lang: f.lang === 'vi' ? 'vi' : 'en', search: f.q ? { present: true, length: f.q.length } : { present: false } };
+  return { preset: f.preset ?? null, from: f.from ?? null, to: f.to ?? null, sort: f.sort ?? null, tier: f.tier ?? null, lang: f.lang === 'vi' ? 'vi' : 'en', search: f.q ? { present: true, length: f.q.length } : { present: false }, ...(f.selectedCount != null ? { selectedCount: f.selectedCount } : {}) };
 }
 
 export async function auditedExport(db: Kysely<any>, ctx: TeamCtx, type: ReportType, f: ExportFilters, requestId: string,

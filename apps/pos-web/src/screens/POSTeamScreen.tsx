@@ -75,11 +75,16 @@ export function POSTeamScreen() {
   const [alertsOpen, setAlertsOpen] = useState(false); const [openAlerts, setOpenAlerts] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false); const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [addOpen, setAddOpen] = useState(false); const [catalogOpen, setCatalogOpen] = useState(false);
+  // 200-Technician 08 — Quick Bulk Staff Actions: pick rows, then review only them (the server filters by id, so More Filters
+  // such as 'no login' / 'missing mapping' show the exceptions AMONG the selection), print them, or export them (the audited CSV,
+  // after a confirm). Nothing is assigned, notified or changed.
+  const [sel, setSel] = useState<string[]>([]); const [selOnly, setSelOnly] = useState(false); const [bulkAsk, setBulkAsk] = useState<null | 'export'>(null); const [printOpen, setPrintOpen] = useState<any[] | null>(null);
+  const toggleSel = (id: string) => setSel((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : xs.length >= 100 ? xs : [...xs, id]));
   const pq = periodQuery(period);
   useEffect(() => setMemPage(1), [q, tab, role, status, shift, department, account, extra, sort, basis, period.preset, period.from, period.to, pageSize]);
   const dash = useLoad(() => posTeamMembersScreenApi.dashboard(pq), [JSON.stringify(pq), tick, live.tick]);
   const fq = { ...pq, q: mode === 'staff' ? q || undefined : undefined, tab: tab === 'all' ? undefined : tab, role: role || undefined, status: status || undefined, shift: shift || undefined, department: department || undefined,
-    account: account === 'current' ? undefined : account, extra: extra || undefined, sort: sort === 'newest' ? undefined : sort, basis: basis === 'service' ? undefined : basis };
+    account: account === 'current' ? undefined : account, extra: extra || undefined, sort: sort === 'newest' ? undefined : sort, basis: basis === 'service' ? undefined : basis, ...(selOnly && sel.length ? { ids: sel.join(',') } : {}) };
   const dirKey = JSON.stringify(fq) + '|' + page + '|' + pageSize;
   const dir = useLoad(() => posTeamMembersScreenApi.directory({ ...fq, page, pageSize }).then((r: any) => ({ ...r, reqKey: dirKey })), [dirKey, tick, live.tick]);
   const dirD: any = useNewest(dir.data as { asOf?: string | null } | null, dirKey);   // an older answer never replaces a newer one
@@ -99,10 +104,10 @@ export function POSTeamScreen() {
   const isNew = (m: any) => !!created && (m.memberId === created || m.technicianId === created || m.userId === created);
   const newOnPage = !!created && !!dirD && page === 1 && dirD.items.some(isNew);
   const newName = useLoad(() => (created ? posTeamMembersScreenApi.profile(created) : Promise.resolve(null)), [created]);
-  const doExport = async () => {
-    setExporting(true); setNote(null);
+  const doExport = async (selected = false) => {
+    setExporting(true); setNote(null); setBulkAsk(null);
     try {
-      const csv = await posTeamMembersScreenApi.exportCsv({ ...fq, lang: getLanguage() === 'vi' ? 'vi' : 'en', requestId: requestId() });
+      const csv = await posTeamMembersScreenApi.exportCsv({ ...fq, ...(selected ? { ids: sel.join(',') } : {}), lang: getLanguage() === 'vi' ? 'vi' : 'en', requestId: requestId() });
       downloadText(`team-members-${d?.period?.from ?? 'all'}-${d?.period?.to ?? 'all'}.csv`, String(csv ?? '')); setNote({ tone: 'ok', text: tx('tmm.exported') });
     } catch (e) { setNote({ tone: 'bad', text: isForbidden(e) ? tx('tmm.exportForbidden') : (e as Error)?.message || tx('tmm.exportFailed') }); }
     finally { setExporting(false); }
@@ -124,7 +129,7 @@ export function POSTeamScreen() {
           <button type="button" className="fk-btn ghost" onClick={() => setDateShift('pick')} data-testid="open-date-shift">{tx('tmm.editDateShift')}</button>
           {alertsAllowed ? <button type="button" className={'fk-btn ' + (alertsOpen ? '' : 'ghost')} aria-expanded={alertsOpen} onClick={() => setAlertsOpen((v) => !v)} data-testid="open-alerts">{tx('tmm.al.title')}{openAlerts ? <span className="tq-n">{nf(openAlerts)}</span> : null}</button> : null}
           <SystemCheckButton domain="technicians" testId="syschk-team" />
-          <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} aria-busy={exporting} data-testid="export">{exporting ? tx('tmm.exporting') : tx('pos.export')}</button>
+          <button type="button" className="fk-btn ghost" onClick={() => void doExport()} disabled={exporting} aria-busy={exporting} data-testid="export">{exporting ? tx('tmm.exporting') : tx('pos.export')}</button>
           <button type="button" className="fk-btn primary" title={tx('tms.add.rule')} onClick={() => setAddOpen(true)} data-testid="add-member">{tx('pos.add_team_member')}</button>
         </div>
       </header>
@@ -191,10 +196,21 @@ export function POSTeamScreen() {
           <label className="fk-field">{tx('tmm.f.sort')}<select className="fk-select" value={sort} onChange={(e) => setSort(e.target.value)} data-testid="sort">{SORTS.map((x) => <option key={x} value={x}>{tx('tmm.sort.' + x)}</option>)}</select></label>
         </div> : null}
         {dir.error ? <StateBlock error={dir.error} onRetry={dir.reload}><span className="fk-hint">{tx('tmm.searchKept')}</span></StateBlock> : !dirD ? <div className="fk-loading">{tx('pos.loading')}</div> : dirD.items.length === 0 ? <Empty title={tx('pos.no_matching_team_members')}>{q || role || status || shift || department || extra || tab !== 'all' ? <button type="button" className="fk-btn" onClick={clearAll}>{tx('pos.clear_all')}</button> : null}</Empty> :
-          <div className="tmm-scroll"><table className="fk-table fn-table cg-table tmm-table" data-testid="member-table">
-            <thead><tr><th>{tx('pos.team_member')}</th><th>{tx('pos.role_2')}</th><th className="t-opt2">{tx('pos.department')}</th><th>{tx('pos.shift')}</th><th>{tx('pos.status')}</th><th>{tx('pos.performance')}</th>
+          <div className="tmm-scroll">
+          {sel.length ? <div className="mos-tools" data-testid="bulk-bar" role="toolbar" aria-label={tx('tmm.bulk.aria')}>
+            <b data-testid="bulk-count">{tx('tmm.bulk.count', { n: String(sel.length) })}</b>
+            <button type="button" className="fk-btn ghost sm" aria-pressed={selOnly} onClick={() => setSelOnly((v) => !v)} data-testid="bulk-review">{selOnly ? tx('tmm.bulk.showAll') : tx('tmm.bulk.review')}</button>
+            <button type="button" className="fk-btn ghost sm" onClick={() => setPrintOpen(dirD.items.filter((m: any) => sel.includes(m.memberId)))} data-testid="bulk-print">{tx('tmm.bulk.print')}</button>
+            {bulkAsk === 'export' ? <span data-testid="bulk-confirm">{tx('tmm.bulk.confirmExport', { n: String(sel.length) })} <button type="button" className="fk-btn sm" onClick={() => void doExport(true)} disabled={exporting} data-testid="bulk-export-yes">{tx('tmm.bulk.exportYes')}</button> <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk(null)}>{tx('pos.cancel')}</button></span>
+              : <button type="button" className="fk-btn ghost sm" onClick={() => setBulkAsk('export')} disabled={exporting} data-testid="bulk-export">{tx('tmm.bulk.export')}</button>}
+            <button type="button" className="fk-link" onClick={() => { setSel([]); setSelOnly(false); setBulkAsk(null); }} data-testid="bulk-clear">{tx('tmm.bulk.clear')}</button>
+            <span className="fk-hint">{tx('tmm.bulk.rule')}</span>
+          </div> : null}
+          <table className="fk-table fn-table cg-table tmm-table" data-testid="member-table">
+            <thead><tr><th><input type="checkbox" aria-label={tx('tmm.bulk.selectPage')} data-testid="bulk-select-page" checked={dirD.items.length > 0 && dirD.items.every((m: any) => sel.includes(m.memberId))} onChange={(e) => { const ids = dirD.items.map((m: any) => m.memberId as string); setSel((xs) => (e.target.checked ? [...new Set([...xs, ...ids])].slice(0, 100) : xs.filter((x) => !ids.includes(x)))); }} /></th><th>{tx('pos.team_member')}</th><th>{tx('pos.role_2')}</th><th className="t-opt2">{tx('pos.department')}</th><th>{tx('pos.shift')}</th><th>{tx('pos.status')}</th><th>{tx('pos.performance')}</th>
               <th className="num">{tx('pos.services')}</th><th className="num t-opt">{tx('pos.revenue')}</th><th className="num">{tx('tmm.col.commission')}</th><th aria-label={tx('pos.actions')}>{tx('pos.actions')}</th></tr></thead>
             <tbody>{dirD.items.map((m: any) => <tr key={m.memberId} data-testid="member-row" className={isNew(m) ? 'tm2-new' : undefined} data-new={isNew(m) ? '1' : undefined}>
+              <td><input type="checkbox" aria-label={tx('tmm.bulk.selectRow', { name: m.name })} checked={sel.includes(m.memberId)} onChange={() => toggleSel(m.memberId)} data-testid="bulk-select-row" /></td>
               <td><div className="tc-who"><ProfileAvatarWithPreview name={m.name} url={m.avatarUrl} size={34} type={m.isProvider ? 'technician' : 'staff'} />
                 <span><button type="button" className="fk-link tmm-name" onClick={() => setProfile({ id: m.memberId })} title={tx('pos.open_profile')} data-testid="row-name">{m.name}</button>
                   <span className="fk-li-s"><span className="mos-mono">{m.code}</span>{m.email ? ` · ${m.email}` : ''}{m.phone ? ` · ${m.phone}` : ''}</span>
@@ -213,6 +229,12 @@ export function POSTeamScreen() {
                 <button type="button" className="fk-btn ghost sm t-opt" onClick={() => nav('/messages')} aria-label={tx('pos.message')}>✉</button></td>
             </tr>)}</tbody></table></div>}
         <p className="fk-hint">{tx('tmm.dirRule')}</p>
+        {printOpen ? <div className="co-overlay" role="dialog" aria-modal="true" aria-label={tx('tmm.bulk.printTitle')} data-testid="bulk-print-view"><div className="co-card">
+          <h2>{tx('tmm.bulk.printTitle')}</h2>
+          <table className="fk-table"><thead><tr><th>{tx('pos.team_member')}</th><th>{tx('pos.role_2')}</th><th>{tx('pos.shift')}</th><th>{tx('pos.status')}</th></tr></thead>
+            <tbody>{printOpen.map((m: any) => <tr key={m.memberId} data-testid="bulk-print-row"><td>{m.name} <span className="mos-mono">{m.code}</span></td><td>{m.roles.map(roleName).join(' + ')}</td><td>{m.shift ? rangeText(m.shift) : '—'}</td><td>{liveName(m.live)}</td></tr>)}</tbody></table>
+          <div className="mos-tools"><button type="button" className="fk-btn" onClick={() => window.print()} data-testid="bulk-print-go">{tx('tmm.bulk.printGo')}</button><button type="button" className="fk-btn ghost" onClick={() => setPrintOpen(null)}>{tx('pos.close')}</button></div>
+        </div></div> : null}
       </FitPanel>}
 
       <div className="mos-row two cg-row">
