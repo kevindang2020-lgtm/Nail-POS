@@ -34,7 +34,8 @@ export interface GoCheckInDataPort {
   setDeviceToken(tenantId: string, id: string, hash: string, tokenExpiresAt?: Date | null): Promise<void>;
   setDeviceStatus(tenantId: string, id: string, status: DeviceRow['status']): Promise<void>;
   setDeviceBranches(tenantId: string, id: string, patch: { branchId?: string | null; allowedBranchIds?: string[]; welcomeMessage?: string | null }): Promise<void>;
-  touchDevice(id: string): Promise<void>;
+  /** round 10 (Tablets 02): `facts` = the OS / battery the device reported (null = not reported; the last reading stays) */
+  touchDevice(id: string, facts?: { os: string | null; battery: { percent: number; charging: boolean | null } | null }): Promise<void>;
   // sessions
   createSession(i: CreateSessionInput): Promise<SessionRow>;
   sessionById(id: string): Promise<SessionRow | null>;

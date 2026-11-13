@@ -2108,4 +2108,12 @@ export const OPS_EN = {
   "ptl.cb.processed": "Processed",
   "ptl.cb.not_processed": "Not processed",
   "ptl.cb.signature_failed": "Signature failed — ignored",
+  "dfx.reason.BATTERY_LOW": "Battery low and not charging — plug it in",
+  "dfx.fact.osVersion": "Operating system",
+  "dfx.fact.battery": "Battery",
+  "dfx.battery.unreported": "— (this device does not report its battery)",
+  "dfx.battery.charging": "charging",
+  "dfx.battery.notCharging": "not charging",
+  "dfx.battery.read": "read {at}",
+  "dfx.battery.stale": "old reading — not the current level",
 };

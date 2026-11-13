@@ -19,7 +19,9 @@ export interface DeviceRow {
 /** The checkout attached to a display right now — the staff-facing facts only (§81: first name and ticket number). */
 export interface ActiveSessionRow { sessionId: string; deviceId: string; ticketId: string | null; ticketNumber: string | null; customerFirstName: string | null; state: string }
 export interface StationRow { id: string; branchId: string; name: string }
-export interface HeartbeatFacts { mode: DisplayReportedMode; appVersion: string; width: number; height: number; pixelRatio: number; profile: DisplayProfile; adPolicy?: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null }
+export interface HeartbeatFacts { mode: DisplayReportedMode; appVersion: string; width: number; height: number; pixelRatio: number; profile: DisplayProfile; adPolicy?: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null;
+  /** round 10 (Tablets 02): the OS and battery the device's browser exposes; null = not reported (never guessed) */
+  os?: string | null; battery?: { percent: number; charging: boolean | null } | null }
 export interface DevicePatch { name?: string; stationId?: string | null; maintenance?: boolean }
 /** An audit_logs row written in the SAME transaction as the change it records. */
 export interface DisplayAudit { action: string; metadata: Record<string, unknown> }
@@ -152,6 +154,10 @@ export class KyselyDisplayDevicesRepository implements DisplayDevicesPort {
            SET last_seen_at = now(), reported_mode = ${hb.mode}, app_version = ${hb.appVersion}, screen_width = ${hb.width},
                screen_height = ${hb.height}, pixel_ratio = ${hb.pixelRatio}, display_profile = ${hb.profile}
          WHERE tenant_id = ${tenantId} AND id = ${deviceId}`.execute(trx);
+      // round 10 (Tablets 02): the OS and the battery, only when the device reported them (a missing reading leaves the last one
+      // with its own battery_reported_at, so the fleet can tell a stale battery figure from a live one)
+      if (hb.os) await sql`UPDATE customer_display_devices SET os_version = ${hb.os} WHERE tenant_id = ${tenantId} AND id = ${deviceId}`.execute(trx);
+      if (hb.battery) await sql`UPDATE customer_display_devices SET battery_percent = ${hb.battery.percent}, battery_charging = ${hb.battery.charging}, battery_reported_at = now() WHERE tenant_id = ${tenantId} AND id = ${deviceId}`.execute(trx);
       // G7: what the display last APPLIED (policy version + mode) — the only source of "policy applied" in the fleet status
       if (hb.adPolicy) await sql`UPDATE customer_display_devices SET applied_ad_policy_version = ${hb.adPolicy.version}, applied_ad_mode = ${hb.adPolicy.mode},
           applied_ad_at = CASE WHEN applied_ad_policy_version IS DISTINCT FROM ${hb.adPolicy.version} OR applied_ad_mode IS DISTINCT FROM ${hb.adPolicy.mode} THEN now() ELSE applied_ad_at END

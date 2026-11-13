@@ -2107,4 +2107,12 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ptl.cb.processed": "Đã xử lý", // DRAFT — Kevin reviews
   "ptl.cb.not_processed": "Chưa xử lý", // DRAFT — Kevin reviews
   "ptl.cb.signature_failed": "Chữ ký không hợp lệ — đã bỏ qua", // DRAFT — Kevin reviews
+  "dfx.reason.BATTERY_LOW": "Pin yếu và không sạc — hãy cắm sạc", // DRAFT — Kevin reviews
+  "dfx.fact.osVersion": "Hệ điều hành", // DRAFT — Kevin reviews
+  "dfx.fact.battery": "Pin", // DRAFT — Kevin reviews
+  "dfx.battery.unreported": "— (thiết bị này không báo pin)", // DRAFT — Kevin reviews
+  "dfx.battery.charging": "đang sạc", // DRAFT — Kevin reviews
+  "dfx.battery.notCharging": "không sạc", // DRAFT — Kevin reviews
+  "dfx.battery.read": "đọc lúc {at}", // DRAFT — Kevin reviews
+  "dfx.battery.stale": "số đọc cũ — không phải mức pin hiện tại", // DRAFT — Kevin reviews
 };

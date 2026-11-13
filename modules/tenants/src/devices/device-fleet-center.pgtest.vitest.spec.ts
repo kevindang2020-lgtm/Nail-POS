@@ -74,6 +74,31 @@ describe('device fleet — each page reads its own registry', () => {
     const l2 = await fc.list(ctx(B2), { class: 'tablet' });
     expect(l2.items.map((d) => d.name).sort()).toEqual(['Other branch display', 'Spare iPad']);
   });
+  it('round 10 (Tablets 02): OS and battery only as reported; a low battery (fresh, not charging) needs attention; a stale reading is marked stale; unreported = null', async () => {
+    const before = await fc.list(ctx(), { class: 'tablet', sort: 'name' });
+    expect(before.items.find((d) => d.name === 'Display 1')!.facts).toMatchObject({ osVersion: null, batteryPercent: null, batteryCharging: null, batteryReportedAt: null, batteryStale: false });
+    await q(sql`update customer_display_devices set os_version = 'Android 13', battery_percent = 9, battery_charging = false, battery_reported_at = now() - interval '1 minute' where device_name = 'Display 1' and tenant_id = ${T}`);
+    let d1 = (await fc.list(ctx(), { class: 'tablet', sort: 'name' })).items.find((d) => d.name === 'Display 1')!;
+    expect(d1).toMatchObject({ status: 'online', reason: 'BATTERY_LOW' });
+    expect(d1.facts).toMatchObject({ osVersion: 'Android 13', batteryPercent: 9, batteryCharging: false, batteryStale: false });
+    await q(sql`update customer_display_devices set battery_charging = true where device_name = 'Display 1' and tenant_id = ${T}`);
+    expect((await fc.list(ctx(), { class: 'tablet', sort: 'name' })).items.find((d) => d.name === 'Display 1')!.reason).toBeNull();   // charging → fine
+    await q(sql`update customer_display_devices set battery_charging = false, battery_reported_at = now() - interval '2 hours' where device_name = 'Display 1' and tenant_id = ${T}`);
+    d1 = (await fc.list(ctx(), { class: 'tablet', sort: 'name' })).items.find((d) => d.name === 'Display 1')!;
+    expect(d1.reason).toBeNull(); expect(d1.facts.batteryStale).toBe(true);   // an old reading is never treated as the current level
+    await q(sql`update customer_display_devices set os_version = null, battery_percent = null, battery_charging = null, battery_reported_at = null where device_name = 'Display 1' and tenant_id = ${T}`);
+    // a Go Check-In iPad kiosk reports the same facts with its session heartbeat (migration 931)
+    await q(sql`update go_checkin_devices set os_version = 'iPadOS 17.4', battery_percent = 5, battery_charging = false, battery_reported_at = now(), last_seen_at = now() where checkin_slug = 'df-k4'`);
+    const k4 = (await fc.list(ctx(), { class: 'tablet', sort: 'name' })).items.find((d) => d.name === 'Spare iPad')!;
+    expect(k4.facts).toMatchObject({ role: 'kiosk', osVersion: 'iPadOS 17.4', batteryPercent: 5, batteryCharging: false, batteryStale: false });
+    expect(k4.reason).toBe('NO_BRANCH');   // a more urgent reason still wins; the battery stays in the facts
+    await q(sql`update go_checkin_devices set os_version = null, battery_percent = null, battery_charging = null, battery_reported_at = null, last_seen_at = now() - interval '3 hours' where checkin_slug = 'df-k4'`);
+    const lobby = await q(sql`update go_checkin_devices set battery_percent = 3, battery_charging = false, battery_reported_at = now(), last_seen_at = now() where checkin_slug = 'df-k1' returning id`);
+    expect(lobby).toHaveLength(1);
+    const k1 = (await fc.list(ctx(), { class: 'kiosk', sort: 'name' })).items.find((d) => d.name === 'Lobby kiosk')!;
+    expect(k1).toMatchObject({ status: 'online', reason: 'BATTERY_LOW' });
+    await q(sql`update go_checkin_devices set battery_percent = null, battery_charging = null, battery_reported_at = null, last_seen_at = now() - interval '1 minute' where checkin_slug = 'df-k1'`);
+  });
   it('DF-04 assignments (all): displays + kiosks + terminals; filters, search, unassigned, pages', async () => {
     const all = await fc.list(ctx(), { class: 'all', pageSize: 10 });
     expect(all.total).toBe(8);

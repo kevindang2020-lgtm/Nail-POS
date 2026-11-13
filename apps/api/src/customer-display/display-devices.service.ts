@@ -62,7 +62,13 @@ export function parseHeartbeat(body: unknown): HeartbeatFacts {
   // G7: the advertising policy the display APPLIED (its acknowledgment); anything malformed is simply not an ACK
   const ap = b.adPolicy && typeof b.adPolicy === 'object' ? b.adPolicy as Record<string, unknown> : null;
   const adPolicy = ap && Number.isInteger(ap.version) && Number(ap.version) >= 0 && (ap.mode === 'PLATFORM_ONLY' || ap.mode === 'TENANT_ONLY') ? { version: Number(ap.version), mode: ap.mode as 'PLATFORM_ONLY' | 'TENANT_ONLY' } : null;
-  return { mode, appVersion, width, height, pixelRatio: Math.round(pr * 100) / 100, profile, adPolicy };
+  // round 10 (Tablets 02): optional, and never fatal — a malformed OS / battery reading is simply not recorded
+  const osRaw = typeof b.os === 'string' ? b.os.trim() : '';
+  const os = /^[\x20-\x7e]{1,64}$/.test(osRaw) ? osRaw : null;
+  const bt = b.battery && typeof b.battery === 'object' ? b.battery as Record<string, unknown> : null;
+  const pct = bt ? Number(bt.percent) : NaN;
+  const battery = bt && Number.isFinite(pct) && pct >= 0 && pct <= 100 ? { percent: Math.round(pct), charging: typeof bt.charging === 'boolean' ? bt.charging : null } : null;
+  return { mode, appVersion, width, height, pixelRatio: Math.round(pr * 100) / 100, profile, adPolicy, os, battery };
 }
 
 export class DisplayDevicesService {

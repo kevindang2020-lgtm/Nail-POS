@@ -154,6 +154,8 @@ export const GO_DEVICE_CREATE_BODY: BodySchema = S.object({ deviceName: str(200)
 export const GO_DEVICE_UPDATE_BODY: BodySchema = S.object({ status: str(16), branchId: id, allowedBranchIds: ids(50), welcomeMessage: str(500) });
 export const GO_START_BODY: BodySchema = S.object({ branchId: id });
 export const GO_PHONE_BODY: BodySchema = S.object({ phone: str(40) });
+/** round 10 (Tablets 02): the heartbeat may carry what the device's browser exposes — its OS and battery (optional) */
+export const GO_HEARTBEAT_BODY: BodySchema = S.object({ os: str(64), battery: S.nullable(S.object({ percent: S.nullable(S.number()), charging: S.nullable(S.boolean()) })) });
 export const GO_CUSTOMER_BODY: BodySchema = S.object({ customerId: id });
 export const GO_CREATE_CUSTOMER_BODY: BodySchema = S.object({ firstName: str(100), lastName: str(100), fullName: str(200), phone: str(40), email: str(254), smsConsent: flag });
 export const GO_APPOINTMENT_BODY: BodySchema = S.object({ appointmentId: id });

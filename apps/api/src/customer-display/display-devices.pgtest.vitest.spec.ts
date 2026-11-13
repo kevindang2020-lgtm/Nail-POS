@@ -151,6 +151,14 @@ describe('the salon\'s displays (tenant-scoped)', () => {
     expect(now?.lastSeenAt).toBeTruthy();
     expect(await devices.recordHeartbeat(T2, devId, hb)).toBeNull();
     expect(await devices.device(T2, devId)).toBeNull();
+    // round 10 (Tablets 02): no OS / battery reported → nothing stored (never a guessed value)
+    expect((await q(`select os_version, battery_percent, battery_reported_at from customer_display_devices where id = $1`, [devId]))[0]).toEqual({ os_version: null, battery_percent: null, battery_reported_at: null });
+    await devices.recordHeartbeat(T, devId, { ...hb, os: 'Android 13', battery: { percent: 12, charging: false } });
+    const r = (await q(`select os_version, battery_percent, battery_charging, battery_reported_at from customer_display_devices where id = $1`, [devId]))[0];
+    expect(r).toMatchObject({ os_version: 'Android 13', battery_percent: 12, battery_charging: false }); expect(r.battery_reported_at).toBeTruthy();
+    await devices.recordHeartbeat(T, devId, hb);   // a later beat without a battery reading keeps the last one with its own time
+    expect((await q(`select battery_percent from customer_display_devices where id = $1`, [devId]))[0].battery_percent).toBe(12);
+    await expect(q(`update customer_display_devices set battery_percent = 101 where id = $1`, [devId])).rejects.toThrow();
   });
 
   it('what is ON a display: open sessions only — a released (completed), cancelled or expired one is history', async () => {

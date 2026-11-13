@@ -157,6 +157,30 @@ describe('Tablets — app version lifecycle (extras #08)', () => {
     expect(screen.getByTestId('dfx-ver-policy')).toHaveTextContent('no upgrade is required');
     expect(screen.queryByText(/unsupported/i)).toBeNull();
   });
+  it('round 10 (Tablets 02): a display shows its OS and battery as reported — low battery reason, charging, when read, stale marked; unreported says so', async () => {
+    m.devices.mockResolvedValue(listOf([
+      dev({ id: 't1', source: 'display', class: 'tablet', name: 'Tab A', type: 'tablet', reason: 'BATTERY_LOW', facts: { appVersion: '2.10.0', osVersion: 'Android 13', batteryPercent: 9, batteryCharging: false, batteryReportedAt: '2026-11-13T10:00:00Z', batteryStale: false } }),
+      dev({ id: 't2', source: 'display', class: 'tablet', name: 'Tab B', type: 'tablet', facts: { appVersion: '2.10.0', osVersion: null, batteryPercent: null, batteryCharging: null, batteryReportedAt: null, batteryStale: false } }),
+      dev({ id: 't3', source: 'display', class: 'tablet', name: 'Tab C', type: 'tablet', facts: { batteryPercent: 80, batteryCharging: true, batteryReportedAt: '2026-11-12T10:00:00Z', batteryStale: true } }),
+    ]));
+    r('tablets');
+    const rows = await screen.findAllByTestId('dfx-row');
+    expect(rows[0]).toHaveTextContent('Battery low and not charging — plug it in');
+    fireEvent.click(within(rows[0]).getByTestId('dfx-view'));
+    let d = await screen.findByTestId('dfx-detail');
+    expect(d).toHaveTextContent('Android 13');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent(/^9% · not charging · read /);
+    expect(within(d).queryByText('false')).toBeNull();   // booleans are words, never "false"
+    fireEvent.click(within(d).getByText('Close'));
+    fireEvent.click(within(rows[1]).getByTestId('dfx-view'));
+    d = await screen.findByTestId('dfx-detail');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('this device does not report its battery');
+    fireEvent.click(within(d).getByText('Close'));
+    fireEvent.click(within(rows[2]).getByTestId('dfx-view'));
+    d = await screen.findByTestId('dfx-detail');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('80% · charging');
+    expect(within(d).getByTestId('dfx-battery')).toHaveTextContent('old reading — not the current level');
+  });
   it('a register (not a display) has no version line', async () => {
     r('reception-pos');
     await screen.findAllByTestId('dfx-row');

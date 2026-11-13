@@ -286,7 +286,10 @@ function VersionLine({ st, newest }: { st: ReturnType<typeof appVersionStanding>
 function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {
   const nav = useNavigate();
   const owner = d.source === 'terminal' ? '/tenant/devices/payment-terminals' : d.source === 'display' || d.source === 'station' ? '/tenant/devices/customer-displays' : null;
-  const facts = Object.entries(d.facts ?? {}).filter(([k, v]) => v != null && v !== '' && k !== 'routing');
+  // round 10 (Tablets 02): the battery is one line (level · charging · when read, stale marked); the OS as reported; never guessed
+  const BATTERY_KEYS = ['batteryPercent', 'batteryCharging', 'batteryReportedAt', 'batteryStale'];
+  const facts = Object.entries(d.facts ?? {}).filter(([k, v]) => v != null && v !== '' && k !== 'routing' && !BATTERY_KEYS.includes(k));
+  const bp = typeof d.facts?.batteryPercent === 'number' ? d.facts.batteryPercent : null;
   const routing = d.source === 'terminal' ? (d.facts?.routing as TerminalRoutingView | undefined) : undefined;
   return (
     <FitDialog wide testId="dfx-detail" title={d.name || tt('dfx.unnamed')} subtitle={`${d.source === 'station' ? tx('pos.reception_pos') : typeLabel(d.type)} · ${d.branch ?? tt('dfx.noBranch')}`} onClose={onClose}
@@ -298,6 +301,8 @@ function DeviceDetail({ d, onClose }: { d: DfDevice; onClose: () => void }) {
         <dt>{tx('pos.last_sync')}</dt><dd>{when(d.lastSeenAt)}</dd>
         <dt>{tt('dfx.date.created')}</dt><dd>{when(d.createdAt)}</dd>
         {facts.map(([k, v]) => <Fragment key={k}><dt>{tt('dfx.fact.' + k)}</dt><dd>{typeof v === 'string' && /^[a-z_]+$/.test(v) ? tt('dfx.val.' + v) : String(v)}</dd></Fragment>)}
+        {d.source === 'display' ? <><dt>{tt('dfx.fact.battery')}</dt><dd data-testid="dfx-battery">{bp == null ? tt('dfx.battery.unreported')
+          : `${bp}%${d.facts?.batteryCharging === true ? ' · ' + tt('dfx.battery.charging') : d.facts?.batteryCharging === false ? ' · ' + tt('dfx.battery.notCharging') : ''} · ${tt('dfx.battery.read', { at: when((d.facts?.batteryReportedAt as string | null) ?? null) })}${d.facts?.batteryStale ? ' · ' + tt('dfx.battery.stale') : ''}`}</dd></> : null}
       </dl>
       {routing ? <RoutingGuard r={routing} onOpen={(to) => nav(to)} /> : null}
       <h3 className="dfx-h3">{tt('dfx.tab.history')}</h3>

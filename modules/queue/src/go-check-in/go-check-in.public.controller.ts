@@ -2,7 +2,7 @@
 // NO auth guards: a kiosk has no logged-in user. Authentication is the per-session token (header `x-checkin-token`
 // or `?token=`), and tenant/branch are resolved server-side from the device — never sent by the client.
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
-import { ACCEPT_ALTERNATE_BODY, GO_APPOINTMENT_BODY, GO_CREATE_CUSTOMER_BODY, GO_CUSTOMER_BODY, GO_PHONE_BODY, GO_PIN_BODY, GO_START_BODY, GO_WALK_IN_BODY } from '../request-schemas';
+import { ACCEPT_ALTERNATE_BODY, GO_APPOINTMENT_BODY, GO_CREATE_CUSTOMER_BODY, GO_CUSTOMER_BODY, GO_PHONE_BODY, GO_HEARTBEAT_BODY, GO_PIN_BODY, GO_START_BODY, GO_WALK_IN_BODY } from '../request-schemas';
 import { Controller, Get, Post, Body, Param, Query, Req, Headers, HttpException } from '@nestjs/common';
 import { GoCheckInService, GoCheckInError } from './go-check-in.service';
 import { ListQueries } from '@aipowersalon/database';
@@ -32,7 +32,7 @@ export class GoCheckInPublicController {
   @Get(':slug/config') config(@Param('slug') slug: string) { return run(() => this.svc.getConfig(slug)); }
   @Post(':slug/start-session') start(@Param('slug') slug: string, @Body(ValidatedBody(GO_START_BODY, { strict: true })) b: any) { return run(() => this.svc.startSession(slug, b?.branchId)); }
 
-  @Post('session/:sessionId/heartbeat') heartbeat(@Param('sessionId') id: string, @Headers('x-checkin-token') h?: string, @Query('token') q?: string) { return run(() => this.svc.heartbeat(id, tokenFrom(h, q))); }
+  @Post('session/:sessionId/heartbeat') heartbeat(@Param('sessionId') id: string, @Body(ValidatedBody(GO_HEARTBEAT_BODY, { strict: true })) b: any, @Headers('x-checkin-token') h?: string, @Query('token') q?: string) { return run(() => this.svc.heartbeat(id, tokenFrom(h, q), b)); }
 
   // ---- customer lookup ----
   @Post('session/:sessionId/lookup-phone') lookup(@Param('sessionId') id: string, @Body(ValidatedBody(GO_PHONE_BODY, { strict: true })) b: any, @Headers('x-checkin-token') h?: string, @Query('token') q?: string) { return run(() => this.svc.lookupPhone(id, tokenFrom(h, q), b?.phone)); }
