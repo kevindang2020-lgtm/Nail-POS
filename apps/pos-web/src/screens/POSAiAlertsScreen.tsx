@@ -310,6 +310,14 @@ function ExplainDialog({ eventId, onClose }: { eventId: string; onClose: () => v
         {d.kind === 'appointment_funnel' && x?.funnel ? <table className="tbl" data-testid="bzx-funnel"><tbody>
           {['totalBookings', 'completed', 'cancelled', 'noShow', 'cancelledPercent', 'noShowPercent'].filter((k) => x.funnel[k] != null).map((k) => <tr key={k}><td>{bt('bzx.x.' + k)}</td><td className="num">{k.endsWith('Percent') ? `${x.funnel[k]}%` : bzNum(x.funnel[k])}</td></tr>)}
         </tbody></table> : null}
+        {/* round 10 (AI BUSINESS ALERTS 13) — one click from the evidence to the authoritative view, for the alert's own period */}
+        <div className="rvw-chips" data-testid="bzx-src-links" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {d.kind === 'revenue_bridge' ? <Link className="btn ghost" data-testid="bzx-src-sales" to={`/tenant/reports/sales${d.period?.from ? `?from=${encodeURIComponent(d.period.from)}&to=${encodeURIComponent(d.period.to ?? d.period.from)}` : ''}`}>{bt('bzx.src.sales')}</Link> : null}
+          {d.kind === 'appointment_funnel' ? <Link className="btn ghost" data-testid="bzx-src-booking" to={`/booking${d.period?.to ? `?date=${encodeURIComponent(d.period.to)}` : ''}`}>{bt('bzx.src.booking')}</Link> : null}
+          {d.kind === 'appointment_funnel' ? <Link className="btn ghost" data-testid="bzx-src-history" to="/tenant/customers/appointment-history">{bt('bzx.src.history')}</Link> : null}
+          <Link className="btn ghost" data-testid="bzx-src-staff" to="/tenant/team/performance">{bt('bzx.src.staff')}</Link>
+          <Link className="btn ghost" data-testid="bzx-src-customers" to="/tenant/customers">{bt('bzx.src.customers')}</Link>
+        </div>
         <p className="sub">{bt('bzx.a.notProof')}</p>
       </>}
     </FitDialog>
