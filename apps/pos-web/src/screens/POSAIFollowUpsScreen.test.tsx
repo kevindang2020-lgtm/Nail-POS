@@ -44,7 +44,9 @@ describe('POSAIFollowUpsScreen', () => {
     mount();
     expect((await screen.findByTestId('aifu-rec-evidence')).textContent).toMatch(/Overdue by 30 min/);
     const when = screen.getByTestId('aifu-rec-when').textContent ?? '';
-    expect(when).toMatch(/1:30/); expect(when).toMatch(/3:00/);   // opened 90 min before the 15:00 check (TZ=UTC)
+    // opened 90 min before the 15:00Z check — compared as local clock minutes so the test holds in any machine time zone
+    const hm = (iso: string) => { const d = new Date(iso); return `${((d.getHours() + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    expect(when).toContain(hm('2026-11-10T13:30:00Z')); expect(when).toContain(hm('2026-11-10T15:00:00Z'));
   });
   it('keeps the six original status chips and Back to Command Center', async () => {
     mount();
