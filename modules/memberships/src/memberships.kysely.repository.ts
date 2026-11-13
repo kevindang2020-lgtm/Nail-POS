@@ -5,7 +5,7 @@
 import { Kysely, sql } from 'kysely';
 import { branchTimeZone, tenantTimeZone, transitionStatus, type DB } from '@aipowersalon/database';
 import { MEMBERSHIP_PLAN } from './membership-machine';
-import type { MembershipsRepositoryPort, MembershipsContext } from './memberships.repository';
+import type { MembershipsRepositoryPort, MembershipsContext, MembershipExportKind } from './memberships.repository';
 import type {
   MembershipOverview, OverviewFilters, PlanRow, PlanDetail, CreatePlanRequest, PublishVersionRequest, MemberRow, ActivityRow,
   MemberExportRow, PaymentExportRow, RedemptionExportRow, VersionChangeFacts,
@@ -401,5 +401,12 @@ export class KyselyMembershipsRepository implements MembershipsRepositoryPort {
       where rd.tenant_id = ${ctx.tenantId} ${bScope}
       order by rd.created_at desc`.execute(this.db);
     return r.rows.map((x) => ({ customerName: x.customer_name ?? '', serviceName: x.service_name, standardValueCents: n(x.standard_value_cents), allocatedValueCents: n(x.allocated_value_cents), upgradeChargeCents: n(x.upgrade_charge_cents), technicianName: x.technician_name, createdAt: iso(x.created_at) }));
+  }
+
+  /** extras Membership Overview 16 · 08 (round 10): one immutable audit row per membership export (a sensitive PII export):
+   *  the actor, which list, which location (null = every location the actor may see) and the row count. Never the rows. */
+  async auditExport(ctx: MembershipsContext, kind: MembershipExportKind, branchId: string | null, rows: number): Promise<void> {
+    await sql`insert into membership_audit (tenant_id, branch_id, actor_user_id, actor_role, action, reason, result)
+      values (${ctx.tenantId}, ${branchId}, ${/^[0-9a-f-]{36}$/i.test(ctx.userId || '') ? ctx.userId : null}, ${ctx.role || null}, ${'export.' + kind}, ${branchId ? 'one location' : 'all locations'}, ${'rows=' + String(rows)})`.execute(this.db);
   }
 }

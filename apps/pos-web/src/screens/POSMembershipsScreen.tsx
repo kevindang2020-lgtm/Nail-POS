@@ -50,6 +50,8 @@ const PAGE = 10, PANEL = 5;
 const PERIOD0: Record<Tab, PeriodState> = { overview: { preset: 'all' }, members: { preset: 'all' }, plans: { preset: 'all' }, payments: { preset: 'month' }, benefits: { preset: 'all' }, activity: { preset: 'all' } };
 
 const nf = (n: number) => fmtNumber(n || 0);
+/** one month of the server's membership statement (GET pos/memberships/payments → statement; extras Membership Overview 13 · 12) */
+interface StatementMonth { month: string; payments: number; collectedCents: number; refundedCents: number; netCents: number; failed: number; cardCents: number; invoiceCents: number; recordedCents: number; invoiceConfirmedCents: number; invoiceUnconfirmedCents: number }
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric' }) || '—' : '—');
 const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 const ymd = (iso?: string | null) => (iso ? String(iso).slice(0, 10) : '');
@@ -342,6 +344,14 @@ export function POSMembershipsScreen() {
           <div className={payments.data.totals.failed ? 'bad' : ''}><span>{tx('mos.tot.failed')}</span><b>{nf(payments.data.totals.failed)}</b></div>
           <span className="fk-hint">{tx('mos.tot.rule')}</span>
         </div> : null}
+        {payments.data?.statement?.length ? <FitPanel testId="pay-statement" title={tx('mos.stmt.title')}>
+          <p className="fk-hint">{tx('mos.stmt.rule')}</p>
+          <table className="fk-table"><thead><tr><th>{tx('mos.stmt.month')}</th><th className="num">{tx('mos.tot.collected')}</th><th className="num">{tx('mos.tot.refunded')}</th><th className="num">{tx('mos.tot.net')}</th><th className="num">{tx('mos.tot.failed')}</th>
+            <th className="num t-opt">{tx('mos.stmt.card')}</th><th className="num t-opt">{tx('mos.stmt.recorded')}</th><th className="num">{tx('mos.stmt.invoice')}</th></tr></thead>
+            <tbody>{payments.data.statement.map((m: StatementMonth) => <tr key={m.month} data-testid={'stmt-' + m.month}><td>{m.month}</td><td className="num">{fmtMoney(m.collectedCents)}</td><td className="num">{fmtMoney(m.refundedCents)}</td><td className="num">{fmtMoney(m.netCents)}</td>
+              <td className={'num' + (m.failed ? ' bad' : '')}>{nf(m.failed)}</td><td className="num t-opt">{fmtMoney(m.cardCents)}</td><td className="num t-opt">{fmtMoney(m.recordedCents)}</td>
+              <td className="num">{fmtMoney(m.invoiceCents)}{m.invoiceUnconfirmedCents ? <span className="fk-chip warn" data-testid={'stmt-unconfirmed-' + m.month}>{tx('mos.stmt.unconfirmed', { amount: fmtMoney(m.invoiceUnconfirmedCents) })}</span> : null}</td></tr>)}</tbody></table>
+        </FitPanel> : null}
         <FitPanel testId="payments-list" title={<>{tx('mos.tab.payments')}{countOf(payments.data)}</>} actions={
           <select className="fk-select" aria-label={tx('pos.status')} value={payStatusSel} onChange={(e) => setPayStatusSel(e.target.value)} data-testid="pay-status">{PAY_STATUSES.map((s) => <option key={s} value={s}>{payStatus(s)}</option>)}</select>
         } footer={<Pager info={pageOf(payments.data)} onPage={setPg('payments')} label={tx('mos.tab.payments')} />}>

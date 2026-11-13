@@ -186,11 +186,32 @@ export class MembershipListsRepository {
     const total = N((await sql<any>`select count(*)::int as n ${from} where mp.tenant_id = ${T} and ${payW}`.execute(this.db)).rows[0]?.n);
     const sums = (await sql<any>`select coalesce(sum(mp.amount_cents) filter (where mp.status = 'succeeded'), 0)::bigint as ok, coalesce(sum(mp.amount_cents) filter (where mp.status = 'refunded'), 0)::bigint as refunded,
         count(*) filter (where mp.status = 'failed')::int as failed ${from} where mp.tenant_id = ${T} and ${payW}`.execute(this.db)).rows[0];
+    // extras Membership Overview 13 · 12 (round 10) — the monthly statement: the same payments (any status) in the same period,
+    // grouped by the salon-local month of the chosen date, with the money split by how it was collected and the invoice share
+    // tied to the Invoices ledger (an invoice collection only counts as confirmed while its invoice is 'paid'). Read only.
+    const stW = sql`${this.inP(col, per)} and (${mid}::uuid is null or mp.customer_membership_id = ${mid})
+      and (${raw} = '' or coalesce(c.full_name, '') ilike ${l} or coalesce(p.name, '') ilike ${l} or coalesce(mp.processor_ref, '') ilike ${l} or mp.id::text = ${raw.toLowerCase()}
+        or (${phoneish} and regexp_replace(coalesce(c.normalized_phone, ''), '\\D', '', 'g') like ${'%' + digits + '%'}))`;
+    const months = (await sql<{ month: string; ok: string; refunded: string; failed: number; card_ok: string; invoice_ok: string; recorded_ok: string; invoice_confirmed: string; payments: number }>`
+      select to_char(date_trunc('month', ${col} at time zone ${per.tz}), 'YYYY-MM') as month,
+        coalesce(sum(mp.amount_cents) filter (where mp.status = 'succeeded'), 0)::bigint as ok,
+        coalesce(sum(mp.amount_cents) filter (where mp.status = 'refunded'), 0)::bigint as refunded,
+        count(*) filter (where mp.status = 'failed')::int as failed,
+        coalesce(sum(mp.amount_cents) filter (where mp.status = 'succeeded' and mp.processor not in ('invoice', 'recorded', 'manual')), 0)::bigint as card_ok,
+        coalesce(sum(mp.amount_cents) filter (where mp.status = 'succeeded' and mp.processor = 'invoice'), 0)::bigint as invoice_ok,
+        coalesce(sum(mp.amount_cents) filter (where mp.status = 'succeeded' and mp.processor in ('recorded', 'manual')), 0)::bigint as recorded_ok,
+        coalesce(sum(mp.amount_cents) filter (where mp.status = 'succeeded' and mp.processor = 'invoice'
+          and exists (select 1 from invoices iv where iv.tenant_id = mp.tenant_id and iv.id::text = mp.processor_ref and iv.status = 'paid')), 0)::bigint as invoice_confirmed,
+        count(*)::int as payments
+      ${from} where mp.tenant_id = ${T} and ${stW}
+      group by 1 order by 1 desc limit 24`.execute(this.db)).rows;
     const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select mp.id, mp.customer_id, mp.customer_membership_id, c.full_name, p.name as plan_name, mp.kind, mp.amount_cents, mp.tax_cents, mp.status, mp.processor, mp.processor_ref, mp.failure_reason, mp.created_at, mp.settled_at
       ${from} where mp.tenant_id = ${T} and ${payW} order by ${col} desc, mp.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     return { status: st ?? 'all', period: per, dateField: f.dateField === 'created' ? 'created' : 'paid',
       totals: { collectedCents: N(sums?.ok), refundedCents: N(sums?.refunded), netCents: N(sums?.ok) - N(sums?.refunded), failed: N(sums?.failed) },
+      statement: months.map((m) => ({ month: m.month, payments: N(m.payments), collectedCents: N(m.ok), refundedCents: N(m.refunded), netCents: N(m.ok) - N(m.refunded), failed: N(m.failed),
+        cardCents: N(m.card_ok), invoiceCents: N(m.invoice_ok), recordedCents: N(m.recorded_ok), invoiceConfirmedCents: N(m.invoice_confirmed), invoiceUnconfirmedCents: N(m.invoice_ok) - N(m.invoice_confirmed) })),
       items: rows.map((r: any) => ({ id: String(r.id), customerId: String(r.customer_id), membershipId: r.customer_membership_id ? String(r.customer_membership_id) : null, customerName: String(r.full_name || ''), planName: r.plan_name ?? null, kind: String(r.kind),
         amountCents: N(r.amount_cents), taxCents: N(r.tax_cents), status: String(r.status), processor: String(r.processor ?? ''), reference: r.processor_ref ? '••' + String(r.processor_ref).slice(-6) : null,
         failure: r.status === 'failed' ? (r.failure_reason ? String(r.failure_reason).slice(0, 120) : null) : null, createdAt: iso(r.created_at), settledAt: iso(r.settled_at) })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };

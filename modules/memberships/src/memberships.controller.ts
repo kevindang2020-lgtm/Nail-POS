@@ -14,7 +14,7 @@ import { MembershipsControllerListQueries } from './memberships.list-queries';
 
 function ctxFrom(req: any): MembershipsContext {
   const c = req?.ctx || {};
-  return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] };
+  return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [], authz: c.authz ?? null };
 }
 function overviewFilters(q: any): OverviewFilters {
   return {

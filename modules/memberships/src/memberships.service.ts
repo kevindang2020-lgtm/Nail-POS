@@ -111,9 +111,40 @@ export class MembershipsService {
     return { ...body, techSplitPct: techSplit, ownerSplitPct: ownerSplit, billingInterval: interval, priceCents: price, isCustomPricing: isCustom };
   }
 
-  exportMembers(ctx: MembershipsContext, branchId?: string): Promise<MemberExportRow[]> { return this.repo.exportMembers(ctx, branchId || undefined); }
-  exportPayments(ctx: MembershipsContext, branchId?: string): Promise<PaymentExportRow[]> { return this.repo.exportPayments(ctx, branchId || undefined); }
-  exportRedemptions(ctx: MembershipsContext, branchId?: string): Promise<RedemptionExportRow[]> { return this.repo.exportRedemptions(ctx, branchId || undefined); }
+  // extras Membership Overview 16 · 08 (round 10): the three exports are sensitive (customer names + money). A user confined
+  // to some locations exports only those (another location → BRANCH_ACCESS_DENIED; none chosen → their one location), and
+  // every export writes one audit row (actor, list, location, row count) — the PII audit event.
+  async exportMembers(ctx: MembershipsContext, branchId?: string): Promise<MemberExportRow[]> {
+    const b = exportBranch(ctx, branchId); const rows = await this.repo.exportMembers(ctx, b ?? undefined);
+    await this.repo.auditExport?.(ctx, 'members', b, rows.length); return rows;
+  }
+  async exportPayments(ctx: MembershipsContext, branchId?: string): Promise<PaymentExportRow[]> {
+    const b = exportBranch(ctx, branchId); const rows = await this.repo.exportPayments(ctx, b ?? undefined);
+    await this.repo.auditExport?.(ctx, 'payments', b, rows.length); return rows;
+  }
+  async exportRedemptions(ctx: MembershipsContext, branchId?: string): Promise<RedemptionExportRow[]> {
+    const b = exportBranch(ctx, branchId); const rows = await this.repo.exportRedemptions(ctx, b ?? undefined);
+    await this.repo.auditExport?.(ctx, 'redemptions', b, rows.length); return rows;
+  }
+}
+
+/** the locations the actor may reach: explicit grants first; a BRANCH / SELECTED_BRANCHES scope without grants → the session
+ *  branch; a whole-salon user → null (not confined). Decided from the session's grants, never from a role name. */
+export function allowedMembershipBranches(ctx: MembershipsContext): string[] | null {
+  const ids = (ctx.authz?.branchIds ?? []).filter((b): b is string => !!b);
+  if (ids.length) return ids;
+  const confined = ctx.authz?.scope === 'BRANCH' || ctx.authz?.scope === 'SELECTED_BRANCHES';
+  if (!confined) return null;
+  return ctx.branchId ? [ctx.branchId] : [];
+}
+/** the location an export runs for (null = every location — only for an unconfined user) */
+export function exportBranch(ctx: MembershipsContext, requested?: string): string | null {
+  const allowed = allowedMembershipBranches(ctx);
+  const want = requested || null;
+  if (!allowed) return want;
+  if (want) { if (!allowed.includes(want)) throw withCode(new ForbiddenError('You do not have access to this location.'), 'BRANCH_ACCESS_DENIED'); return want; }
+  if (allowed.length === 1) return allowed[0]!;
+  throw withCode(new ForbiddenError('Choose one of your locations to export.'), 'BRANCH_ACCESS_DENIED');
 }
 
 function clampInt(v: unknown, dflt: number, lo: number, hi: number): number {

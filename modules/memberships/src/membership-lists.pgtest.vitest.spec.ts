@@ -175,4 +175,26 @@ describe('Membership Overview — search, periods, tabs and Member Details (Oct 
     await expect(lists.memberDetail(ctx, id('d99'))).rejects.toThrow(/could not be found/);
     await expect(lists.memberDetail(ctx, 'nope')).rejects.toThrow(/could not be found/);
   });
+  // extras Membership Overview 13 · 12 (round 10): the monthly statement beside the payments list — per salon-local month,
+  // every status, card / invoice / recorded split, the invoice share tied to the Invoices ledger; never another salon.
+  it('monthly statement: per month collected / refunded / net / failed, how it was collected, invoice share confirmed by the Invoices ledger', async () => {
+    const thisMonth = await lists.payments(ctx, { status: 'all', page: 1, pageSize: 10 });
+    expect(thisMonth.statement).toHaveLength(1);
+    expect(thisMonth.statement[0]).toMatchObject({ payments: 4, collectedCents: 7800, refundedCents: 3900, netCents: 3900, failed: 1, recordedCents: 7800, cardCents: 0, invoiceCents: 0 });
+    // the status filter narrows the list, never the statement (the statement is the month's whole ledger)
+    expect((await lists.payments(ctx, { status: 'failed', page: 1, pageSize: 10 })).statement[0]).toMatchObject({ payments: 4, collectedCents: 7800 });
+    // an invoice collection whose invoice is paid (confirmed) and one whose invoice was voided (unconfirmed), plus a card one
+    await q(`insert into invoices (id, tenant_id, branch_id, customer_id, invoice_number, status, subtotal_cents, total_cents, issue_date) values
+      ($1,$3,$4,$5,'INV-950-1','paid',2000,2000,'2026-11-01'), ($2,$3,$4,$5,'INV-950-2','void',1500,1500,'2026-11-01')`, [id('ab1'), id('ab2'), T, B, id('c00')]);
+    await q(`insert into membership_payments (tenant_id, branch_id, customer_membership_id, customer_id, kind, amount_cents, status, processor, processor_ref, idempotency_key, settled_at) values
+      ($1,$2,$3,$4,'enrollment',2000,'succeeded','invoice',$5,'st950-a', now()), ($1,$2,$3,$4,'enrollment',1500,'succeeded','invoice',$6,'st950-b', now()),
+      ($1,$2,$3,$4,'renewal',1000,'succeeded','clover','ref-950','st950-c', now())`, [T, B, id('d00'), id('c00'), id('ab1'), id('ab2')]);
+    const st = (await lists.payments(ctx, { status: 'all', preset: 'all', page: 1, pageSize: 10 })).statement;
+    expect(st).toHaveLength(2);
+    expect(st[0]).toMatchObject({ collectedCents: 12300, cardCents: 1000, invoiceCents: 3500, recordedCents: 7800, invoiceConfirmedCents: 2000, invoiceUnconfirmedCents: 1500 });
+    expect(st[1]).toMatchObject({ payments: 1, collectedCents: 3900, netCents: 3900 });   // last month
+    expect(st[0]!.month > st[1]!.month).toBe(true);
+    const other = (await lists.payments(ctx2, { status: 'all', preset: 'all', page: 1, pageSize: 10 })).statement;
+    expect(other.map((m) => m.collectedCents)).toEqual([99900]);
+  });
 });

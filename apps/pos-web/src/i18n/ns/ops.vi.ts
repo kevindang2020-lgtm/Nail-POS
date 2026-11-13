@@ -2103,4 +2103,32 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   "ops.liveOps.kc.k.customerRetentionPercent": "Tỷ lệ khách hàng quay lại", // DRAFT — Kevin reviews
   "ops.liveOps.kc.k.aiBookingConversionPercent": "Tỷ lệ chuyển đổi đặt lịch AI", // DRAFT — Kevin reviews
   "ops.serving.review.vip": "VIP", // DRAFT — Kevin reviews
+  "syschk.memberships.duplicate_live_membership": "Không có khách nào giữ hai thẻ hội viên còn hiệu lực của cùng một gói", // DRAFT — Kevin reviews
+  "syschk.memberships.duplicate_live_membership.fix": "Mở cả hai thẻ, giữ thẻ đúng và kết thúc thẻ trùng (các chỉ số đếm từng thẻ).", // DRAFT — Kevin reviews
+  "syschk.memberships.plan_version_other_plan": "Mỗi thẻ hội viên dùng điều khoản của chính gói của nó", // DRAFT — Kevin reviews
+  "syschk.memberships.plan_version_other_plan.fix": "Chuyển thẻ sang một phiên bản của chính gói đó, hoặc xếp thẻ vào gói có điều khoản nó đang dùng.", // DRAFT — Kevin reviews
+  "syschk.memberships.period_window_inverted": "Không có kỳ thanh toán hay thời hạn nào kết thúc trước khi bắt đầu", // DRAFT — Kevin reviews
+  "syschk.memberships.period_window_inverted.fix": "Sửa ngày của kỳ hoặc thời hạn để mục Sắp hết hạn thấy được.", // DRAFT — Kevin reviews
+  "syschk.memberships.cancelled_without_time": "Mỗi thẻ đã hủy đều ghi lại thời điểm hủy", // DRAFT — Kevin reviews
+  "syschk.memberships.cancelled_without_time.fix": "Ghi lại thời điểm hủy; mục Đã hủy tháng này không đếm được nếu thiếu.", // DRAFT — Kevin reviews
+  "syschk.memberships.status_not_last_transition": "Trạng thái của mỗi thẻ khớp với lần thay đổi được ghi gần nhất", // DRAFT — Kevin reviews
+  "syschk.memberships.status_not_last_transition.fix": "Xem lại lịch sử thẻ: trạng thái đã đổi mà không có dòng nhật ký.", // DRAFT — Kevin reviews
+  "syschk.memberships.collected_missing_from_kpi": "Mỗi khoản đã thu đều có thời điểm quyết toán (để chỉ số doanh thu đếm được)", // DRAFT — Kevin reviews
+  "syschk.memberships.collected_missing_from_kpi.fix": "Kiểm tra khoản thanh toán với nhà cung cấp và ghi thời điểm quyết toán.", // DRAFT — Kevin reviews
+  "syschk.memberships.payment_scope_differs": "Mỗi khoản thanh toán được xếp đúng chi nhánh và khách của thẻ", // DRAFT — Kevin reviews
+  "syschk.memberships.payment_scope_differs.fix": "Xem lại khoản thanh toán: doanh thu chi nhánh và danh sách hội viên đang đếm ở hai nơi khác nhau.", // DRAFT — Kevin reviews
+  "syschk.memberships.stacked_with_deal_not_allowed": "Không có quyền lợi nào được dùng trên phiếu có ưu đãi khi ưu đãi không được cộng dồn với thẻ hội viên", // DRAFT — Kevin reviews
+  "syschk.memberships.stacked_with_deal_not_allowed.fix": "Xem lại phiếu và cài đặt cộng dồn giảm giá.", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_outside_plan_branch": "Quyền lợi của gói chỉ một chi nhánh chỉ được dùng tại chi nhánh đó", // DRAFT — Kevin reviews
+  "syschk.memberships.redeemed_outside_plan_branch.fix": "Xem lại phiếu, hoặc mở bán gói tại chi nhánh kia.", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_value_over_standard": "Không có quyền lợi nào ghi giá trị cao hơn giá chuẩn hoặc dưới không", // DRAFT — Kevin reviews
+  "syschk.memberships.redemption_value_over_standard.fix": "Xem lại lần dùng quyền lợi: Báo cáo và hoa hồng đọc giá trị này.", // DRAFT — Kevin reviews
+  "syschk.memberships.paid_redemption_no_technician": "Mỗi quyền lợi dùng trên phiếu đã thanh toán đều ghi tên thợ", // DRAFT — Kevin reviews
+  "syschk.memberships.paid_redemption_no_technician.fix": "Gán thợ cho dòng dịch vụ trên phiếu để trả hoa hồng.", // DRAFT — Kevin reviews
+  "syschk.discounts.discounted_ticket_duplicate_callback": "Không có phiếu được giảm giá nào ghi cùng một khoản thanh toán của nhà cung cấp hai lần", // DRAFT — Kevin reviews
+  "syschk.discounts.discounted_ticket_duplicate_callback.fix": "Xem lại cả hai khoản thanh toán với nhà cung cấp; lượt dùng ưu đãi chỉ được đếm một lần.", // DRAFT — Kevin reviews
+  "syschk.memberships.member_text_failed": "Không có tin nhắn nhắc thẻ hội viên nào trong 30 ngày qua bị nhà cung cấp báo lỗi", // DRAFT — Kevin reviews
+  "syschk.memberships.member_text_failed.fix": "Mở Thông báo để xem lý do lỗi; lời nhắc trong ứng dụng vẫn đã được ghi.", // DRAFT — Kevin reviews
+  "syschk.memberships.member_text_no_receipt": "Mỗi tin nhắn nhắc thẻ hội viên gửi hơn một ngày trước đều có xác nhận đã nhận", // DRAFT — Kevin reviews
+  "syschk.memberships.member_text_no_receipt.fix": "Kiểm tra phản hồi trạng thái của nhà cung cấp SMS trong Cài đặt nhắn tin.", // DRAFT — Kevin reviews
 };
