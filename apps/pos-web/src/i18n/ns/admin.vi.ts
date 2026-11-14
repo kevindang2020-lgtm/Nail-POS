@@ -572,4 +572,14 @@ export const ADMIN_VI: Record<keyof typeof ADMIN_EN, string> = {
   "admin.display.toggle.walkinAllowAddOns": "Khách được chọn dịch vụ thêm", // DRAFT — Kevin reviews
   "admin.display.toggle.walkinAllowAddOnsDesc": "Các dịch vụ trong danh mục Add-ons của tiệm.", // DRAFT — Kevin reviews
   "admin.display.walkinSection": "Khách vãng lai tự chọn dịch vụ", // DRAFT — Kevin reviews
+  "admin.display.branch.title": "Cài đặt khách vãng lai theo chi nhánh", // DRAFT — Kevin reviews
+  "admin.display.branch.desc": "Mỗi chi nhánh theo cài đặt chung của tiệm ở trên cho đến khi bạn đặt riêng. Chỉ màn hình và kiosk của chi nhánh đó thay đổi.", // DRAFT — Kevin reviews
+  "admin.display.branch.pick": "Chi nhánh", // DRAFT — Kevin reviews
+  "admin.display.branch.sameAsSalon": "Theo cài đặt tiệm", // DRAFT — Kevin reviews
+  "admin.display.branch.ownSetting": "Riêng chi nhánh này", // DRAFT — Kevin reviews
+  "admin.display.branch.useSalon": "Dùng cài đặt tiệm", // DRAFT — Kevin reviews
+  "admin.display.branch.save": "Lưu cài đặt chi nhánh", // DRAFT — Kevin reviews
+  "admin.display.branch.saved": "Đã lưu cài đặt chi nhánh", // DRAFT — Kevin reviews
+  "admin.display.branch.failed": "Không lưu được cài đặt chi nhánh.", // DRAFT — Kevin reviews
+  "admin.display.branch.loadFailed": "Không tải được cài đặt chi nhánh.", // DRAFT — Kevin reviews
 };

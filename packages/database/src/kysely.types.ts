@@ -7455,6 +7455,7 @@ export interface DB {
   service_categories: ServiceCategoriesTable;
   services: ServicesCatalogTable;
   walkin_service_requests: WalkinServiceRequestsTable;
+  branch_walkin_settings: BranchWalkinSettingsTable;
   technician_services: TechnicianServicesTable;
   customers: CustomersTable;
   customer_loyalty_profiles: CustomerLoyaltyProfilesTable;
@@ -8409,6 +8410,13 @@ export interface WalkinServiceRequestsTable {
   lines: Generated<unknown>; services_pending: Generated<boolean>; estimated_total_cents: Generated<number | string>; estimated_minutes: Generated<number>;
   status: Generated<string>; queue_item_id: string | null; result: unknown | null; created_at: Ts; updated_at: Ts;
   updated_by: string | null;   // migration 991 (actor stamp; NULL for display writes)
+}
+/** per-location walk-in overrides (NULL = same as the salon) — branch_walkin_settings migration */
+export interface BranchWalkinSettingsTable {
+  tenant_id: string; branch_id: string;
+  service_selection_enabled: boolean | null; technician_preference_enabled: boolean | null; walkin_require_services: boolean | null;
+  walkin_show_prices: boolean | null; walkin_show_durations: boolean | null; walkin_allow_add_ons: boolean | null;
+  created_at: Ts; updated_at: Ts; updated_by: string | null;
 }
 export interface DevicePushTokensTable {
   id: Generated<string>; tenant_id: string | null; user_id: string; platform: string; token: string;

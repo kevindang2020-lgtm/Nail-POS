@@ -98,6 +98,16 @@ export interface GoCheckInSettings {
   walkinRequireServices: boolean; walkinShowPrices: boolean; walkinShowDurations: boolean; walkinAllowAddOns: boolean;
 }
 
+/** The six walk-in switches a location may set for itself (migration 993). Everything else stays salon-wide. */
+export type WalkInBranchKey = 'serviceSelectionEnabled' | 'technicianPreferenceEnabled' | 'walkinRequireServices' | 'walkinShowPrices' | 'walkinShowDurations' | 'walkinAllowAddOns';
+/** A location's overrides: null = "same as the salon". */
+export type WalkInBranchOverride = Record<WalkInBranchKey, boolean | null>;
+/** GET /pos/settings/go-check-in/branches — every active location with its overrides and what its displays actually use. */
+export interface WalkInBranchSettingsRow { branchId: string; branchName: string; override: WalkInBranchOverride; effective: Record<WalkInBranchKey, boolean> }
+export interface WalkInBranchSettingsList { salon: Record<WalkInBranchKey, boolean>; branches: WalkInBranchSettingsRow[] }
+/** PUT /pos/settings/go-check-in/branches/:branchId — any subset of the six; null clears that override. */
+export type WalkInBranchPatch = Partial<WalkInBranchOverride>;
+
 /** A Go Check-In device as the Super Admin device list shows it (the service maps its row to this view). */
 export type GoCheckInDeviceStatus = 'active' | 'inactive' | 'disabled' | 'revoked' | 'expired';
 export interface GoCheckInDeviceView {

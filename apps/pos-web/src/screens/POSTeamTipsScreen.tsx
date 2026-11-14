@@ -20,6 +20,7 @@ import { FitDialog, Pager, Empty, useDebounced, type PageInfo } from '../compone
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { useSessionState } from '../components/useSessionState';
 import { useRealtime } from '../realtime/useRealtime';
+import { useCan } from '../components/usePermissions';
 
 type TechRef = { id: string; name: string | null };
 type TipRow = { ticketId: string; ticketNumber: string | null; collectedAt: string | null; customer: { id: string; name: string | null; phone: string | null } | null; technicians: TechRef[]; method: string;
@@ -31,7 +32,7 @@ type Summary = {
   reconciliation: { collectedCents: number; allocatedCents: number; unallocatedCents: number; reversedCents: number; paidOutCents: number; pendingPayoutCents: number; payableCents?: number; accruedCents?: number; balanced: boolean };
   period: ServerPeriod; permissions?: { customer?: boolean };
 };
-type Filters = { period: PeriodState; method: string; status: string; pageSize: number };
+type Filters = { period: PeriodState; method: string; status: string; pageSize: number; branchId?: string };
 
 const PAGE_SIZES = [10, 25, 50, 100];
 const STATUSES = ['tipped', 'unallocated', 'partial', 'mismatch', 'reversed', 'paid_out', 'pending_payout'];
@@ -42,19 +43,27 @@ const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', da
 const pageInfo = (d: Paged<unknown> | null | undefined): PageInfo | null => (d ? { page: d.page, pageSize: d.pageSize, totalItems: d.total, totalPages: d.pageCount } : null);
 const pct = (n: number | null | undefined) => (n == null ? '—' : `${fmtNumber(n, 1)}%`);
 const techNames = (r: TipRow) => (r.technicians.length ? r.technicians.map((t) => t.name ?? '—').join(', ') : tx('tp.noTechnician'));
-const DEFAULT_FILTERS: Filters = { period: { preset: 'month' }, method: '', status: '', pageSize: 25 };
+const DEFAULT_FILTERS: Filters = { period: { preset: 'month' }, method: '', status: '', pageSize: 25, branchId: '' };
+/** the CSV is built by the server from the same scope as the page (period, location, search, method, status) — every matching row */
+export function downloadCsv(csv: string, name: string) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
 
 export function POSTeamTipsScreen() {
   // period / method / status / page size survive leaving and coming back (this tab); the search text is never stored
   const [filters, setFilters] = useSessionState<Filters>('aps.teamTips.filters', DEFAULT_FILTERS);
-  const { period, method, status } = filters; const pageSize = PAGE_SIZES.includes(filters.pageSize) ? filters.pageSize : 25;
+  const { period, method, status } = filters; const branchId = filters.branchId ?? ''; const pageSize = PAGE_SIZES.includes(filters.pageSize) ? filters.pageSize : 25;
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [page, setPage] = useState(1); const [leaderPage, setLeaderPage] = useState(1);
   const [tick, setTick] = useState(0);
   const [techOpen, setTechOpen] = useState<TechRef | null>(null); const [accOpen, setAccOpen] = useState(false);
   const [fresh, setFresh] = useState(false);   // a newer tip arrived while the user reads page 2+
-  const pq = JSON.stringify(period);
-  const scope = useMemo(() => ({ ...periodQuery(period), dateField: 'collected' }), [pq]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const pq = JSON.stringify([period, branchId]);   // the period AND the location scope the cards, leaderboard and lists
+  const scope = useMemo(() => ({ ...periodQuery(period), dateField: 'collected', ...(branchId ? { branchId } : {}) }), [pq]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const can = useCan(); const canExport = can('pos.reports.export');
+  const branches = useLoad(() => api.branches(), []);
+  const [exporting, setExporting] = useState(false); const [exportNote, setExportNote] = useState<{ ok: boolean; text: string } | null>(null);
   const listQ = { ...scope, search: q || undefined, method: method || undefined, status: status || undefined, sort: 'collected_desc' };
   // a materially changed scope (period, search, method, status, page size) starts again on page 1
   const scopeKey = JSON.stringify([scope, q, method, status, pageSize]);
@@ -85,6 +94,12 @@ export function POSTeamTipsScreen() {
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
   const reset = () => { setSearch(''); setFilters(DEFAULT_FILTERS); };
   const loadingAll = sum.loading && !sum.data;
+  const doExport = async () => {
+    setExporting(true); setExportNote(null);
+    try { downloadCsv(String(await api.exportCsv(listQ)), 'team-tips.csv'); setExportNote({ ok: true, text: tx('tp.team.exported') }); }
+    catch (e: any) { setExportNote({ ok: false, text: e?.message || tx('tp.team.exportFailed') }); }
+    finally { setExporting(false); }
+  };
 
   if (isForbidden(sum.error)) return <div className="work ttp" data-testid="team-tips"><h1>{tx('pos.team_tips')}</h1><StateBlock error={sum.error} onRetry={sum.reload} /></div>;
   return (
@@ -95,6 +110,8 @@ export function POSTeamTipsScreen() {
         <div className="ttp-actions">
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="tt-refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn" onClick={() => setAccOpen(true)} data-testid="tt-accuracy-open">{tx('tp.team.acc.open')}</button>
+          {canExport ? <button type="button" className="fk-btn" onClick={() => { void doExport(); }} disabled={exporting} data-testid="tt-export">{tx(exporting ? 'tp.team.exporting' : 'tp.team.export')}</button> : null}
+          {exportNote ? <span role="status" className="ttp-note" data-tone={exportNote.ok ? 'ok' : 'bad'} data-testid="tt-export-note">{exportNote.text}</span> : null}
         </div>
       </header>
 
@@ -125,6 +142,11 @@ export function POSTeamTipsScreen() {
             aria-label={tx(canCustomer ? 'tp.team.searchPhCustomer' : 'tp.team.searchPh')} data-testid="tips-search" />
           {search ? <button type="button" className="fk-x" aria-label={tx('finance.clearSearch')} onClick={() => setSearch('')} data-testid="tt-search-clear">✕</button> : null}
         </div>
+        {(branches.data?.length ?? 0) > 1 ? (
+          <select className="fk-select" value={branchId} onChange={(e) => set({ branchId: e.target.value })} aria-label={tx('tp.team.branchLabel')} data-testid="tt-branch">
+            <option value="">{tx('tp.team.allBranches')}</option>{branches.data!.map((b) => <option key={b.id} value={b.id}>{b.name || '—'}</option>)}
+          </select>
+        ) : null}
         <select className="fk-select" value={method} onChange={(e) => set({ method: e.target.value })} aria-label={tx('tp.methodLabel')} data-testid="tt-method">
           <option value="">{tx('tp.allMethods')}</option>{['card', 'cash', 'split'].map((m) => <option key={m} value={m}>{tx('tp.method.' + m)}</option>)}
         </select>

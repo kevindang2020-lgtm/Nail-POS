@@ -214,12 +214,18 @@ describe.skipIf(!url)('Owner & Manager Payment App — real-Postgres races (mand
   it('§166 / §216 card-data scan: no PAN / CVV / track data in payments, payment_attempts, audit or outbox rows; the CHECKs refuse a non-4-digit last4', async () => {
     const pan = '4242424242424242';
     const tables = ['payments', 'payment_attempts', 'audit_logs', 'outbox_events', 'mobile_pay_devices', 'checkout_locks'];
+    const versions = ((await sql`select checkout_version as v from checkout_locks where tenant_id in (${T}, ${T2}) and checkout_version is not null
+      union select checkout_version from payment_attempts where tenant_id in (${T}, ${T2}) and checkout_version is not null`.execute(db)).rows as any[])
+      .map((r) => String(r.v)).filter((v) => /^[0-9a-f]{16}$/.test(v));   // only well-formed version digests are trusted
     for (const t of tables) {
       const rows = (await sql`select ${sql.table(t)}::text as x from ${sql.table(t)} where tenant_id in (${T}, ${T2}) and ${sql.table(t)}::text ~ ${'[0-9]{13,19}'}`.execute(db)).rows as any[];
       // uuids and timestamps never contain 13+ consecutive digits; a stored PAN would. One exception is not card data: a checkout
       // version stamped in epoch milliseconds (13 digits, within ten years of now) — the lock row carries it
       const epochMs = (d: string) => d.length === 13 && Math.abs(Number(d) - Date.now()) < 10 * 365 * 86_400_000;
-      const runs = rows.flatMap((r) => String(r.x).match(/[0-9]{13,19}/g) ?? []).filter((d) => !epochMs(d));
+      // and the checkout VERSION (computeCheckoutVersion: the first 16 hex chars of a sha256) — by chance a hex digest can hold
+      // 13+ decimal digits in a row (seen: 9d21724177262485), which is not card data; only runs inside a stored version are excused
+      const fromVersion = (d: string) => versions.some((v) => v.includes(d));
+      const runs = rows.flatMap((r) => String(r.x).match(/[0-9]{13,19}/g) ?? []).filter((d) => !epochMs(d) && !fromVersion(d));
       expect(runs.length, `${t} carries a 13–19 digit run`).toBe(0);
       const r2 = (await sql`select count(*)::int as n from ${sql.table(t)} where tenant_id in (${T}, ${T2}) and ${sql.table(t)}::text ilike ${'%' + pan + '%'}`.execute(db)).rows[0] as any;
       expect(r2.n).toBe(0);

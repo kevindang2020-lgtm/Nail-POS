@@ -1,5 +1,5 @@
 import { memo, type PointerEvent as ReactPointerEvent } from 'react';
-import type { Appointment } from '../domain/scheduleTypes';
+import type { Appointment, AppointmentMarks } from '../domain/scheduleTypes';
 import { technicianAccent } from '../domain/technicianColor';
 import { CheckIcon } from './icons';
 import { useBoardText } from '../i18n/boardText';
@@ -33,9 +33,11 @@ export interface AppointmentCardProps {
   draggable: boolean;
   onOpen: (a: Appointment) => void;
   onPointerDown: (e: ReactPointerEvent, a: Appointment) => void;
+  /** host marks (AI optimizer lock); the conflict outline and badge are drawn beside the card by the column */
+  marks?: AppointmentMarks;
 }
 
-export const AppointmentCard = memo(function AppointmentCard({ appointment: a, top, height, durationMinutes, dragging, pending, draggable, onOpen, onPointerDown }: AppointmentCardProps) {
+export const AppointmentCard = memo(function AppointmentCard({ appointment: a, top, height, durationMinutes, dragging, pending, draggable, onOpen, onPointerDown, marks }: AppointmentCardProps) {
   const { t } = useBoardText();
   const glyph = STATUS_GLYPH[a.status];
   const statusText = t(`status.${a.status}`);
@@ -62,6 +64,7 @@ export const AppointmentCard = memo(function AppointmentCard({ appointment: a, t
     >
       <span className="bsb-card-rail" aria-hidden="true" data-testid={`bsb-rail-${a.id}`} />
       <span className="bsb-card-name">
+        {marks?.locked && <span className="bsb-card-ailock" data-testid={`bsb-ai-lock-${a.id}`} title={marks.locked.title} aria-label={marks.locked.title}>🔒</span>}
         <span className="bsb-status" aria-hidden="true">{a.status === 'confirmed' || a.status === 'completed' ? <CheckIcon /> : glyph}</span>
         <span className="bsb-sr">{statusText}:</span>
         {isWalkIn ? t('card.walkInName', { name: a.customerName }) : a.customerName}

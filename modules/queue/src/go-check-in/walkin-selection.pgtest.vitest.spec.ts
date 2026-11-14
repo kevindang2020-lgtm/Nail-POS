@@ -307,3 +307,44 @@ describe('technician preference is a request, only when the salon allows it', ()
     await repo.upsertSettings(T, { technicianPreferenceEnabled: false });
   });
 });
+
+describe('per-location walk-in settings (migration 993 — Kevin, Nov 13 2026)', () => {
+  const D_SECOND = 'e9930000-0000-4000-8000-000000000104';
+  it('each location follows the salon until it sets its own switch; null goes back to the salon; another salon\'s branch is refused', async () => {
+    await q(`insert into customer_display_devices (id, tenant_id, branch_id, device_name, pairing_status) values ($1,$2,$3,'CPad second','paired') on conflict (id) do nothing`, [D_SECOND, T, B_OTHER]);
+    await repo.upsertSettings(T, { walkinShowPrices: true, technicianPreferenceEnabled: true });
+    const list0 = await svc.listBranchWalkIn(T);
+    expect(list0.branches.map((b) => b.branchName)).toEqual(['Main', 'Second']);                     // this salon's locations only
+    expect(list0.branches.every((b) => Object.values(b.override).every((v) => v === null))).toBe(true);
+
+    // Second turns prices off and technician choice off for ITS displays only
+    const after = await svc.updateBranchWalkIn(T, B_OTHER, { walkinShowPrices: false, technicianPreferenceEnabled: false, bogus: true }, null);
+    const second = after.branches.find((b) => b.branchId === B_OTHER)!, main = after.branches.find((b) => b.branchId === B)!;
+    expect(second.override).toMatchObject({ walkinShowPrices: false, technicianPreferenceEnabled: false, walkinShowDurations: null });
+    expect(second.effective).toMatchObject({ walkinShowPrices: false, technicianPreferenceEnabled: false, walkinShowDurations: true });
+    expect(main.effective).toMatchObject({ walkinShowPrices: true, technicianPreferenceEnabled: true });
+
+    const atSecond = await session(D_SECOND, T, B_OTHER), atMain = await session(D, T, B);
+    expect(atSecond.config.settings).toMatchObject({ walkinShowPrices: false, technicianPreferenceEnabled: false });
+    expect(atMain.config.settings).toMatchObject({ walkinShowPrices: true, technicianPreferenceEnabled: true });
+    const cs = await svc.walkInCatalog(atSecond.sessionId, atSecond.sessionToken), cm = await svc.walkInCatalog(atMain.sessionId, atMain.sessionToken);
+    expect(cs.rules).toMatchObject({ showPrices: false, allowTechnicianPreference: false });
+    expect(cs.services.every((x) => x.priceCents === null)).toBe(true);                               // no price on Second's CPad
+    expect(cm.rules).toMatchObject({ showPrices: true, allowTechnicianPreference: true });
+
+    // a salon-wide change still reaches Second wherever Second has no override of its own
+    await repo.upsertSettings(T, { walkinShowDurations: false });
+    expect((await svc.listBranchWalkIn(T)).branches.find((b) => b.branchId === B_OTHER)!.effective.walkinShowDurations).toBe(false);
+
+    // null = "same as the salon" again
+    const back = await svc.updateBranchWalkIn(T, B_OTHER, { walkinShowPrices: null }, null);
+    expect(back.branches.find((b) => b.branchId === B_OTHER)!.effective.walkinShowPrices).toBe(true);
+    const stored = await q(`select walkin_show_prices, technician_preference_enabled from branch_walkin_settings where tenant_id = $1 and branch_id = $2`, [T, B_OTHER]);
+    expect(stored[0]).toMatchObject({ walkin_show_prices: null, technician_preference_enabled: false });
+
+    // another salon's location cannot be written through this salon
+    await expect(svc.updateBranchWalkIn(T, B2, { walkinShowPrices: false }, null)).rejects.toMatchObject({ status: 404, code: 'BRANCH_NOT_FOUND' });
+    expect(await count('branch_walkin_settings', 'branch_id = $1', [B2])).toBe(0);
+    await repo.upsertSettings(T, { walkinShowDurations: true });
+  });
+});

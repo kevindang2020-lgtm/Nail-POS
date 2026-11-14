@@ -5,7 +5,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 
-const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicianEarnings: vi.fn(), accuracy: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
+const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicianEarnings: vi.fn(), accuracy: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn(), branches: vi.fn() }));
+const perms = vi.hoisted(() => ({ list: ['pos.reports.view', 'pos.reports.export'] as string[] }));
+vi.mock('../components/usePermissions', () => ({ useCan: () => (p: string) => perms.list.includes(p) }));
 const live = vi.hoisted(() => ({ cb: null as null | (() => unknown) }));
 vi.mock('../api/posTipsScreenApi', () => ({ posTipsScreenApi: api }));
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: (_s: string, cb: () => unknown) => { live.cb = cb; } }));
@@ -31,6 +33,8 @@ beforeEach(() => {
   api.distribution.mockResolvedValue(paged([leader()], { pageSize: 10 }));
   api.transactions.mockResolvedValue(paged([row()]));
   api.technicianEarnings.mockResolvedValue(earnings);
+  api.branches.mockResolvedValue([{ id: 'b1', name: 'Main' }]);
+  perms.list = ['pos.reports.view', 'pos.reports.export'];
 });
 
 describe('POSTeamTipsScreen', () => {
@@ -163,5 +167,42 @@ describe('POSTeamTipsScreen', () => {
     expect(api.transactions).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 1 }));
     fireEvent.click(screen.getByTestId('tt-new-activity'));
     await waitFor(() => expect(api.transactions).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 25 })));
+  });
+});
+
+describe('Team Tips — location filter and export (Nov 13 2026)', () => {
+  it('one location → no location filter; several → every read carries the chosen location', async () => {
+    render(<POSTeamTipsScreen />);
+    await screen.findByTestId('tt-kpi-total');
+    await waitFor(() => expect(api.branches).toHaveBeenCalled());
+    expect(screen.queryByTestId('tt-branch')).toBeNull();
+  });
+  it('picking a location reloads the cards, leaderboard and list for it only', async () => {
+    api.branches.mockResolvedValue([{ id: 'b1', name: 'Main' }, { id: 'b2', name: 'Maui' }]);
+    render(<POSTeamTipsScreen />);
+    const pick = await screen.findByTestId('tt-branch');
+    fireEvent.change(pick, { target: { value: 'b2' } });
+    await waitFor(() => expect(api.summary).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2' })));
+    expect(api.distribution).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2' }));
+    expect(api.transactions).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', page: 1 }));
+  });
+  it('Export CSV sends the page\'s whole scope (no page) and downloads it; hidden without the export permission', async () => {
+    api.exportCsv.mockResolvedValue('Ticket,Tip\n1052,9.60\n');
+    const url = vi.fn(() => 'blob:x'); (URL as any).createObjectURL = url; (URL as any).revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const { unmount } = render(<POSTeamTipsScreen />);
+    fireEvent.change(await screen.findByTestId('tt-method'), { target: { value: 'card' } });
+    fireEvent.click(screen.getByTestId('tt-export'));
+    await waitFor(() => expect(api.exportCsv).toHaveBeenCalledTimes(1));
+    const sent = api.exportCsv.mock.calls[0][0];
+    expect(sent).toMatchObject({ method: 'card', dateField: 'collected' });
+    expect(sent.page).toBeUndefined(); expect(sent.pageSize).toBeUndefined();
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(await screen.findByTestId('tt-export-note')).toHaveTextContent(/downloaded/i);
+    click.mockRestore(); unmount();
+    perms.list = ['pos.reports.view'];
+    render(<POSTeamTipsScreen />);
+    await screen.findByTestId('tt-kpi-total');
+    expect(screen.queryByTestId('tt-export')).toBeNull();
   });
 });

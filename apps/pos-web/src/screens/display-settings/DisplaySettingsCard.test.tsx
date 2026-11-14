@@ -4,8 +4,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-const h = vi.hoisted(() => ({ get: vi.fn(), save: vi.fn() }));
-vi.mock('../../api/posDisplaySettingsApi', () => ({ posDisplaySettingsApi: { get: () => h.get(), save: (p: any) => h.save(p) } }));
+const h = vi.hoisted(() => ({ get: vi.fn(), save: vi.fn(), branches: vi.fn(), saveBranch: vi.fn() }));
+vi.mock('../../api/posDisplaySettingsApi', () => ({ posDisplaySettingsApi: { get: () => h.get(), save: (p: any) => h.save(p), branches: () => h.branches(), saveBranch: (id: string, p: any) => h.saveBranch(id, p) } }));
 import { DisplaySettingsCard } from './DisplaySettingsCard';
 
 const S = { enabled: true, appointmentCheckinEnabled: true, walkinCheckinEnabled: true, newCustomerEnabled: true, serviceSelectionEnabled: true,
@@ -13,6 +13,37 @@ const S = { enabled: true, appointmentCheckinEnabled: true, walkinCheckinEnabled
   autoSendToQueue: true, requireFrontDeskApproval: false, confirmationTimeoutSeconds: 8, displayLanguages: ['en'] };
 
 beforeEach(() => { h.get.mockReset(); h.save.mockReset(); h.get.mockResolvedValue({ ...S }); h.save.mockImplementation(async (p: any) => ({ ...S, ...p })); });
+const SALON6 = { serviceSelectionEnabled: true, technicianPreferenceEnabled: true, walkinRequireServices: true, walkinShowPrices: true, walkinShowDurations: true, walkinAllowAddOns: true };
+const NONE = { serviceSelectionEnabled: null, technicianPreferenceEnabled: null, walkinRequireServices: null, walkinShowPrices: null, walkinShowDurations: null, walkinAllowAddOns: null };
+const LIST = { salon: SALON6, branches: [
+  { branchId: 'b1', branchName: 'Cherry Hill', override: NONE, effective: SALON6 },
+  { branchId: 'b2', branchName: 'Moorestown', override: { ...NONE, walkinShowPrices: false }, effective: { ...SALON6, walkinShowPrices: false } },
+] };
+beforeEach(() => { h.branches.mockReset(); h.saveBranch.mockReset(); h.branches.mockResolvedValue({ salon: SALON6, branches: [LIST.branches[0]] }); });
+
+describe('walk-in settings by location (migration 993)', () => {
+  it('one location → no per-location panel (the salon settings are its settings)', async () => {
+    render(<DisplaySettingsCard />);
+    await screen.findByTestId('display-settings-card');
+    await waitFor(() => expect(h.branches).toHaveBeenCalled());
+    expect(screen.queryByTestId('branch-walkin-settings')).toBeNull();
+  });
+  it('a location follows the salon until set; saving sends only the change; "Use salon setting" sends null', async () => {
+    h.branches.mockResolvedValue(LIST);
+    h.saveBranch.mockImplementation(async (_id: string, p: any) => ({ ...LIST, branches: [LIST.branches[0], { ...LIST.branches[1], override: { ...LIST.branches[1].override, ...p } }] }));
+    render(<DisplaySettingsCard />);
+    await screen.findByTestId('branch-walkin-settings');
+    expect(screen.getByTestId('branch-walkin-walkinShowPrices')).toHaveAttribute('data-own', 'no');      // Cherry Hill follows the salon
+    fireEvent.change(screen.getByTestId('branch-walkin-pick'), { target: { value: 'b2' } });
+    expect(screen.getByTestId('branch-walkin-walkinShowPrices')).toHaveAttribute('data-own', 'yes');
+    expect(screen.getByTestId('branch-walkin-save')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('branch-walkin-reset-walkinShowPrices'));
+    fireEvent.click(screen.getByTestId('branch-walkin-serviceSelectionEnabled').querySelector('input')!);
+    fireEvent.click(screen.getByTestId('branch-walkin-save'));
+    await waitFor(() => expect(h.saveBranch).toHaveBeenCalledWith('b2', { walkinShowPrices: null, serviceSelectionEnabled: false }));
+  });
+});
+
 
 describe('Customer display settings (§118)', () => {
   it('shows the salon\'s options and NO display-language choice (the display is English only)', async () => {

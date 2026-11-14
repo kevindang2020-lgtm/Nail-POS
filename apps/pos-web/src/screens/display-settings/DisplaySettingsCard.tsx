@@ -5,6 +5,7 @@
 // & Branding. The master check-in switch is the platform's (Super Admin) and is shown, not edited. Only what changed is
 // sent; the server cleans and refuses an unusable language list.
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { BranchWalkInSettings } from './BranchWalkInSettings';
 import { posDisplaySettingsApi, type DisplaySettingsPatch, type GoCheckInSettings } from '../../api/posDisplaySettingsApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -54,6 +55,7 @@ export function DisplaySettingsCard() {
   const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [salonVersion, setSalonVersion] = useState(0);   // the per-location panel reloads after the salon's switches are saved
 
   useEffect(() => {
     let live = true;
@@ -74,7 +76,7 @@ export function DisplaySettingsCard() {
   const dirty = Object.keys(patch).length > 0;
   const save = async () => {
     setBusy(true); setNote(null);
-    try { const s = withWalkInDefaults(await posDisplaySettingsApi.save(patch)); setSaved(s); setForm(s); setNote({ ok: true, msg: t('pos.display_settings_saved') }); }
+    try { const s = withWalkInDefaults(await posDisplaySettingsApi.save(patch)); setSaved(s); setForm(s); setSalonVersion((v) => v + 1); setNote({ ok: true, msg: t('pos.display_settings_saved') }); }
     catch (e: any) { setNote({ ok: false, msg: e?.message || t('pos.the_display_settings_could_not_be_1bcd') }); }
     finally { setBusy(false); }
   };
@@ -112,6 +114,7 @@ export function DisplaySettingsCard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8, marginBottom: 16 }} data-testid="display-settings-walkin">
         {WALKIN_TOGGLES.map(tile)}
       </div>
+      <BranchWalkInSettings salonVersion={salonVersion} />
 
       {/* Kevin (Oct 28 2026): the customer display is English only — no language choice here (the server keeps it English) */}
       {SHOW_DISPLAY_LANGUAGES ? (<>

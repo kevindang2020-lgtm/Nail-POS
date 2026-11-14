@@ -34,7 +34,7 @@ describe.skipIf(!url)('AI Front Desk on real Postgres: one activation per agent,
     await q(sql`insert into branches (id, tenant_id, name, timezone) values (${B}, ${T}, 'Main', 'America/New_York')`);
     await q(sql`insert into users (id, tenant_id, full_name, email, status, role) values (${OWNER}, ${T}, 'Owner', ${TAG + '@race.test'}, 'active', 'OWNER')`);
     await q(sql`insert into tenant_messaging_credentials (tenant_id, provider, account_sid, auth_token_enc, from_number, status, last_validated_at) values (${T}, 'twilio', 'AC_race', 'enc', '+16095550100', 'configured', now())`);
-    await q(sql`insert into voice_integration_keys (tenant_id, branch_id, label, provider, prefix, secret_hash) values (${T}, ${B}, 'live', 'retell', ${'vk_' + TAG.slice(0, 6)}, 'h')`);
+    await q(sql`insert into voice_integration_keys (tenant_id, branch_id, label, provider, prefix, secret_hash) values (${T}, ${B}, 'live', 'retell', ${'vk_' + TAG.slice(0, 6)}, ${'h_' + TAG})`);   // a per-run hash: active key hashes are unique database-wide, so a fixed 'h' blocked every later run on the same database
     // two complete agents mapped to the SAME provider agent (a duplicate mapping the system check flags) — both pass preflight
     for (const n of ['Desk One', 'Desk Two']) {
       const r = await q(sql`insert into ai_receptionist_agents (tenant_id, branch_id, name, status, provider, provider_agent_id, handoff_destination, booking_mode, wizard_state)

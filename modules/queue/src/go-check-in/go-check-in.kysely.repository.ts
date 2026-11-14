@@ -15,6 +15,7 @@ import { GoCheckInSettings, DEFAULT_SETTINGS } from './go-check-in.dto';
 import { minutesOf, type KioskTechFacts } from './go-check-in-rules';
 import type { WalkInCatalogRow } from './walkin-selection';
 import type { WalkInRequestState } from '@aipowersalon/api-contracts/customer';
+import type { WalkInBranchOverride } from '@aipowersalon/api-contracts/tenant';
 
 const dev = (r: any): DeviceRow => ({
   id: r.id, tenantId: r.tenant_id, branchId: r.branch_id ?? null, deviceName: r.device_name, deviceType: r.device_type,
@@ -37,6 +38,12 @@ const settingsFrom = (r: any): GoCheckInSettings => !r ? { ...DEFAULT_SETTINGS }
   // migration 990 (SUNMI guide 4A.9): absent column (an older row read before the migration) = the guide's default, ON
   walkinRequireServices: r.walkin_require_services !== false, walkinShowPrices: r.walkin_show_prices !== false,
   walkinShowDurations: r.walkin_show_durations !== false, walkinAllowAddOns: r.walkin_allow_add_ons !== false,
+});
+const nb = (v: unknown): boolean | null => (typeof v === 'boolean' ? v : null);
+const branchOverrideFrom = (r: any): WalkInBranchOverride => ({
+  serviceSelectionEnabled: nb(r.service_selection_enabled), technicianPreferenceEnabled: nb(r.technician_preference_enabled),
+  walkinRequireServices: nb(r.walkin_require_services), walkinShowPrices: nb(r.walkin_show_prices),
+  walkinShowDurations: nb(r.walkin_show_durations), walkinAllowAddOns: nb(r.walkin_allow_add_ons),
 });
 const cust = (r: any): CustRow => ({ customerId: r.id, firstName: r.first_name, lastName: r.last_name, email: r.email ?? null });
 /** The service names on an appointment (its services JSON), in order. */
@@ -339,6 +346,37 @@ export class KyselyGoCheckInRepository implements GoCheckInDataPort {
     if (branchId) { const b: any = await this.db.selectFrom('branches').select(['name']).where('id', '=', branchId).executeTakeFirst().catch(() => null); branchName = b?.name ?? undefined; }
     return { salonName: (t?.display_name || t?.legal_name || ''), branchName };
   }
+  // ---- migration 993: per-location walk-in overrides (NULL column = same as the salon) ----
+  async getBranchWalkIn(tenantId: string, branchId: string): Promise<WalkInBranchOverride | null> {
+    const r = await this.db.selectFrom('branch_walkin_settings')
+      .select(['service_selection_enabled', 'technician_preference_enabled', 'walkin_require_services', 'walkin_show_prices', 'walkin_show_durations', 'walkin_allow_add_ons'])
+      .where('tenant_id', '=', tenantId).where('branch_id', '=', branchId).executeTakeFirst();
+    return r ? branchOverrideFrom(r) : null;
+  }
+  async listBranchWalkIn(tenantId: string): Promise<{ branchId: string; branchName: string; override: WalkInBranchOverride }[]> {
+    const rows = await this.db.selectFrom('branches as b')
+      .leftJoin('branch_walkin_settings as w', (j) => j.onRef('w.branch_id', '=', 'b.id').onRef('w.tenant_id', '=', 'b.tenant_id'))
+      .select(['b.id as branch_id', 'b.name as branch_name', 'w.service_selection_enabled', 'w.technician_preference_enabled', 'w.walkin_require_services', 'w.walkin_show_prices', 'w.walkin_show_durations', 'w.walkin_allow_add_ons'])
+      .where('b.tenant_id', '=', tenantId).where('b.status', '=', 'active').orderBy('b.name').orderBy('b.id').execute();
+    return rows.map((r: any) => ({ branchId: String(r.branch_id), branchName: String(r.branch_name ?? ''), override: branchOverrideFrom(r) }));
+  }
+  async upsertBranchWalkIn(tenantId: string, branchId: string, patch: Partial<WalkInBranchOverride>, userId: string | null): Promise<WalkInBranchOverride | null> {
+    const own = await this.db.selectFrom('branches').select('id').where('tenant_id', '=', tenantId).where('id', '=', branchId).executeTakeFirst();
+    if (!own) return null;
+    const cols = {
+      ...('serviceSelectionEnabled' in patch ? { service_selection_enabled: patch.serviceSelectionEnabled ?? null } : {}),
+      ...('technicianPreferenceEnabled' in patch ? { technician_preference_enabled: patch.technicianPreferenceEnabled ?? null } : {}),
+      ...('walkinRequireServices' in patch ? { walkin_require_services: patch.walkinRequireServices ?? null } : {}),
+      ...('walkinShowPrices' in patch ? { walkin_show_prices: patch.walkinShowPrices ?? null } : {}),
+      ...('walkinShowDurations' in patch ? { walkin_show_durations: patch.walkinShowDurations ?? null } : {}),
+      ...('walkinAllowAddOns' in patch ? { walkin_allow_add_ons: patch.walkinAllowAddOns ?? null } : {}),
+    };
+    await this.db.insertInto('branch_walkin_settings').values({ tenant_id: tenantId, branch_id: branchId, ...cols, updated_by: userId, updated_at: new Date() })
+      .onConflict((oc) => oc.columns(['tenant_id', 'branch_id']).doUpdateSet({ ...cols, updated_by: userId, updated_at: new Date() }).where('branch_walkin_settings.tenant_id', '=', tenantId))
+      .execute();
+    return this.getBranchWalkIn(tenantId, branchId);
+  }
+
   async listBranchNames(tenantId: string, ids: string[]): Promise<{ id: string; name: string }[]> {
     if (!ids.length) return [];
     const rows: any[] = await this.db.selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', tenantId).where('id', 'in', ids).execute().catch(() => []);

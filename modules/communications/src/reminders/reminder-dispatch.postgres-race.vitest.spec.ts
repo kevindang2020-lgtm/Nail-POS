@@ -104,7 +104,11 @@ describe.skipIf(!url)('appointment reminders on real Postgres: one reminder per 
 
   it('a reschedule racing the pre-send re-check: the record and the provider always agree (10 rounds)', async () => {
     for (let i = 0; i < 10; i++) {
-      const st = Date.now() + 24 * H + 20 * M + i * M; const a = await appt(st); const l = local(st);
+      // the schema refuses end_time <= start_time and an appointment cannot cross midnight: a start (or its +3 h reschedule)
+      // at exactly 23:59 local has no valid end, so step one minute past it (the test ran red only between ~23:20 and midnight)
+      const raw = Date.now() + 24 * H + 20 * M + i * M;
+      const st = local(raw).time === '23:59' || local(raw + 3 * H).time === '23:59' ? raw + M : raw;
+      const a = await appt(st); const l = local(st);
       const dp = (svcs[0] as any).data.dispatch;
       const c = await dp.claim({ tenantId: T, appointmentId: a, leadMinutes: 1440, occurrenceKey: occurrenceKey(l.date, l.time), channel: 'sms', branchId: B, customerId: null, intendedSendAtMs: st - 24 * H, apptStartMs: st, tz: TZ, state: 'claimed', reason: null });
       const cand = { appointmentId: a, startsAtMs: st, status: 'booked', address: '+16095550111', apptDate: l.date, startTime: l.time };

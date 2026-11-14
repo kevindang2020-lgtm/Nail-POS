@@ -234,3 +234,16 @@ export interface TechnicianMatch {
 }
 
 export type Unsubscribe = () => void;
+
+/**
+ * Read-only marks a host may draw over the board — e.g. the AI Scheduling Optimizer's lock, open conflict and open
+ * suggestion on an appointment, and its unused gaps on a technician's column (the same marks the Classic board draws).
+ * Marks never change a booking: a badge only asks the host to open something (the optimizer), nothing else.
+ */
+export interface AppointmentMarks {
+  locked?: { title: string };
+  conflict?: 'info' | 'warning' | 'critical';
+  badge?: { label: string; title: string; ariaLabel: string; onOpen: () => void };
+}
+export interface OverlayGap { id: string; technicianId: ID; startMinute: number; endMinute: number; title: string }
+export interface BoardOverlay { appointments: Readonly<Record<ID, AppointmentMarks>>; gaps: readonly OverlayGap[] }

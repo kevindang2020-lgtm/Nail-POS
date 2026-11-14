@@ -10,7 +10,8 @@ import { GO_CHECKIN_DEVICE } from '../queue-lifecycles';
 import { businessDate, localDateTimeToEpochMs, zonedParts } from '@aipowersalon/date-time';
 import type { GoCheckInDeviceView } from '@aipowersalon/api-contracts/tenant';
 import type { AppointmentToday, KioskServiceOption, KioskTechnicianOption, WalkInCatalog, WalkInConfirmResult, WalkInPreview, WalkInRequestStatus } from '@aipowersalon/api-contracts/customer';
-import { WALKIN_REQUEST_ID, cleanLines, cleanNotes, priceWalkInSelection, publicWalkInCatalog, walkInPayloadHash } from './walkin-selection';
+import { WALKIN_BRANCH_KEYS, WALKIN_REQUEST_ID, cleanBranchPatch, cleanLines, cleanNotes, priceWalkInSelection, publicWalkInCatalog, walkInPayloadHash, withBranchWalkIn } from './walkin-selection';
+import type { WalkInBranchKey, WalkInBranchSettingsList } from '@aipowersalon/api-contracts/tenant';
 import { CHECK_IN_ELIGIBLE_STATUSES, withCode } from '@aipowersalon/api-contracts';
 import { CheckInService } from '../check-in/check-in.service';
 import { QueueService } from '../queue/queue.service';
@@ -211,7 +212,8 @@ export class GoCheckInService {
   }
 
   async getConfig(slug: string): Promise<KioskConfig> {
-    const { device, settings } = await this.resolveDeviceBySlug(slug);
+    const { device, settings: salonSettings } = await this.resolveDeviceBySlug(slug);
+    const settings = await this.settingsFor(device.tenantId, device.branchId, salonSettings);   // migration 993: the location's walk-in switches
     const salon = await this.repo.resolveSalonBranch(device.tenantId, device.branchId);
     const ids = selectableBranchIds(device);
     const named = ids.length > 1 ? await this.repo.listBranchNames(device.tenantId, ids) : [];
@@ -221,7 +223,7 @@ export class GoCheckInService {
   }
 
   async startSession(slug: string, requestedBranchId?: string | null): Promise<{ sessionId: string; sessionToken: string; config: KioskConfig }> {
-    const { device, settings } = await this.resolveDeviceBySlug(slug);
+    const { device, settings: salonSettings } = await this.resolveDeviceBySlug(slug);
     if (this.repo.recentKioskActivity && (await this.repo.recentKioskActivity(device.tenantId, KIOSK_WINDOW_MINUTES)).sessions >= MAX_KIOSK_SESSIONS_PER_WINDOW)
       throw withCode(new GoCheckInError('Too many check-ins started — please wait a moment or ask the front desk.', 429, 'rate_limited'), 'RATE_LIMITED');   // E10
     // Airtight allow-list: a requested branch MUST be in the device's selectable set (default ∪ allowed); otherwise the
@@ -229,6 +231,7 @@ export class GoCheckInService {
     const choice = resolveSessionBranch(device, requestedBranchId);
     if (!choice.ok) throw new GoCheckInError('That location isn’t available on this check-in device.', 403, 'CHECKIN_BRANCH_MISMATCH');   // Dual-Screen §104
     const branchId = choice.branchId;
+    const settings = await this.settingsFor(device.tenantId, branchId, salonSettings);   // migration 993
     const token = newToken();
     const session = await this.repo.createSession({ tenantId: device.tenantId, branchId, deviceId: device.id, sessionTokenHash: sha256Hex(token) });
     await this.repo.touchDevice(device.id, device.tenantId);
@@ -252,7 +255,7 @@ export class GoCheckInService {
    * lookups, new profiles) count one guest, not the whole day.
    */
   async startDisplaySession(display: { id: string; tenantId: string; branchId: string | null }): Promise<{ sessionId: string; sessionToken: string; config: KioskConfig }> {
-    const settings = await this.repo.getSettings(display.tenantId);
+    const settings = await this.settingsFor(display.tenantId, display.branchId);   // migration 993: this display's location
     if (!settings.enabled) throw withCode(new GoCheckInError('Check-in is currently turned off for this salon.', 403, 'disabled'), 'CHECKIN_DISABLED');
     if (!display.branchId) throw withCode(new GoCheckInError('This display is not assigned to a branch.', 409, 'no_branch'), 'DEVICE_NO_BRANCH');
     const token = newToken();
@@ -287,7 +290,7 @@ export class GoCheckInService {
       device = session.deviceId ? await this.repo.deviceById(session.tenantId, session.deviceId) : null;
       if (!device || device.status !== 'active') throw withCode(new GoCheckInError('This check-in device has been disabled.', 403, 'device_disabled'), 'DEVICE_DISABLED');
     }
-    const settings = await this.repo.getSettings(session.tenantId);
+    const settings = await this.settingsFor(session.tenantId, session.branchId);   // migration 993: the session's location
     if (!settings.enabled) throw withCode(new GoCheckInError('Check-in is currently turned off for this salon.', 403, 'disabled'), 'CHECKIN_DISABLED');
     await this.repo.touchSession(session.id);
     return { device, display, session, settings };
@@ -846,6 +849,29 @@ export class GoCheckInService {
 
   // ================= tenant POS settings =================
   async getSettings(tenantId: string) { return this.repo.getSettings(tenantId); }
+
+  /** Migration 993 (Kevin, Nov 13 2026): what one location's displays and kiosks use — the salon's switches with that
+   *  location's saved walk-in overrides on top. The master switch and every other switch stay salon-wide. */
+  private async settingsFor(tenantId: string, branchId: string | null, salon?: GoCheckInSettings): Promise<GoCheckInSettings> {
+    const base = salon ?? await this.repo.getSettings(tenantId);
+    if (!branchId || !this.repo.getBranchWalkIn) return base;
+    return withBranchWalkIn(base, await this.repo.getBranchWalkIn(tenantId, branchId));
+  }
+  /** GET /pos/settings/go-check-in/branches — the salon's six walk-in switches and every location's overrides + result. */
+  async listBranchWalkIn(tenantId: string): Promise<WalkInBranchSettingsList> {
+    const salon = await this.repo.getSettings(tenantId);
+    const pick = (s: GoCheckInSettings) => Object.fromEntries(WALKIN_BRANCH_KEYS.map((k) => [k, s[k]])) as Record<WalkInBranchKey, boolean>;
+    const rows = this.repo.listBranchWalkIn ? await this.repo.listBranchWalkIn(tenantId) : [];
+    return { salon: pick(salon), branches: rows.map((r) => ({ ...r, effective: pick(withBranchWalkIn(salon, r.override)) })) };
+  }
+  /** PUT /pos/settings/go-check-in/branches/:branchId — set or clear (null) any of the six for one location. */
+  async updateBranchWalkIn(tenantId: string, branchId: string, body: unknown, userId: string | null): Promise<WalkInBranchSettingsList> {
+    const patch = cleanBranchPatch(body);
+    if (!this.repo.upsertBranchWalkIn) throw withCode(new GoCheckInError('Location settings are unavailable right now.', 503, 'SERVICE_UNAVAILABLE'), 'SERVICE_UNAVAILABLE');
+    const saved = await this.repo.upsertBranchWalkIn(tenantId, branchId, patch, userId);
+    if (!saved) throw withCode(new GoCheckInError('That location was not found.', 404, 'BRANCH_NOT_FOUND'), 'BRANCH_NOT_FOUND');
+    return this.listBranchWalkIn(tenantId);
+  }
   async updateSettings(tenantId: string, patch: Partial<GoCheckInSettings>) {
     // Dual-Screen §118–§119: the display's languages, cleaned (default first) — an unusable list is refused, not guessed
     // Kevin (Oct 28 2026): the customer display is English only — a saved language list is always English

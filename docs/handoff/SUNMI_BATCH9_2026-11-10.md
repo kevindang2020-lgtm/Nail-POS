@@ -760,3 +760,43 @@ The 5 TODO rows are the K-12 console steps — docs/K12_RUNBOOK.md + tooling/k12
 - **Guest picks a technician on the CPad:** ON by default. `go-check-in.dto.ts` default is `technicianPreferenceEnabled: true`. Migration `992_checkin_technician_preference_on.sql` changes the column default and turns it on for existing salons. The owner can still switch it off. Evidence: `walkin-selection.pgtest.vitest.spec.ts` (settings default, OFF/ON request test).
 - **Services on the CPad:** the full menu. Every active, un-archived service in an active category shows, and the online/customer-app booking flag no longer hides a service from walk-ins. `walkin-selection.ts` `usable` drops the `customerVisible` filter. Evidence: both walk-in specs; Nail Art / Hand-painted Art now listed.
 - **Tips with 3+ technicians:** equal split by default, to the exact cent; the remainder goes deterministically by largest-remainder. Proportional is used only if the salon picks it, and a customer's explicit split still wins. Changed in the engine (`compensation.service.ts`), the policy service and the owner UI ("Equal (default)"). Evidence: `team-tips-splits.vitest.spec.ts` #18 and `compensation.service.vitest.spec.ts`.
+
+## Round 14 — closing the round-12/13 open items (Nov 13 2026, 23:03)
+- **Real two-station booking race on live Postgres — DONE.** A real PG16 cluster was started in the session and all
+  817 migrations applied. New `modules/booking/src/booking/booking-two-station-board.postgres-race.vitest.spec.ts` gives
+  each station its own pg pool and runs 25 rounds of each case:
+  - both stations book the same slot → one booked, one refused;
+  - a create races a drag onto the same slot → exactly one lands, and the loser leaves nothing behind;
+  - both stations drag the same card from the same version → one move sticks, the other gets VERSION_CONFLICT (v2).
+  The whole race lane (`tooling/ci/run-race-tests.mjs`, every module) ran green.
+  It also exposed a time-of-day bug in `reminder-dispatch.postgres-race` that only bites from about 23:20 to midnight
+  Eastern: the fixture started an appointment at 23:59 with no valid end. The fixture now steps past 23:59.
+  Running the lane again on the same database turned up two more fixture bugs, both fixed in the tests (no product change):
+  - `front-desk.postgres-race` inserted a voice key with the fixed hash `'h'`, and active key hashes must be unique
+    across the whole database, so every run after the first failed in setup. It now uses a per-run hash.
+  - The `mobile-checkout.postgres-race` card scan read the checkout version (the first 16 hex chars of a sha256) as a
+    card number whenever it happened to hold 13 or more digits in a row (about 1 run in 8). It now excuses only digits
+    that come from a stored version.
+  The full lane ran twice back-to-back on the same database: 430/430 passed, 0 skipped.
+- **AI scheduling badges on the new board — DONE.** The board package now takes an optional read-only `overlay` prop
+  (`BoardOverlay`: lock, worst open conflict, an "AI" badge that opens the suggestion, unused-gap strip) — the Classic
+  board's marks. The POS maps `GET /pos/ai-scheduling-optimizer/calendar` into it (`screens/booking/schedOverlay.ts`) and
+  reloads it on every board resync. A badge tap opens the suggestion only; it never opens or drags the card. Tests are
+  `overlay.test.tsx` and `schedOverlay.test.ts`.
+- **Walk-in settings per location — DONE.** Migration 993 adds `branch_walkin_settings` (each column NULL = same as the salon).
+  - It covers the six switches a walk-in guest meets: choose services, pick a technician, services required, prices,
+    durations, add-ons.
+  - The master switch and the other check-in switches stay salon-wide.
+  - Every display or kiosk session uses its location's merged settings.
+  - Routes: `GET /pos/settings/go-check-in/branches` (settings.view) and `PUT …/branches/:branchId` (settings.edit;
+    null clears an override; another salon's location → 404 BRANCH_NOT_FOUND).
+  - POS: the "Walk-in settings by location" panel under Customer Display settings. It only shows when the salon has
+    two or more locations.
+  - Tests: the walk-in pgtest (two locations, different CPad catalogs) and the card tests.
+- **Team Tips export + branch filter — DONE.**
+  - `branchId` on summary / transactions / distribution / technician earnings / accuracy / export.
+  - `GET /pos/payments/tips/branches`: a location-bound session gets only its own location and can't widen to another
+    (404); a salon-wide session may pick any live location.
+  - The Team Tips page shows the Location select when there are two or more locations, plus Export CSV
+    (pos.reports.export; the server builds every matching row of the page's scope).
+- Still open: testing on a real SUNMI FLEX 3 and CPad 14 (needs the devices).

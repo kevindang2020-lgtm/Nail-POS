@@ -113,6 +113,12 @@ export const TIPS_VI: Record<string, string> = {
   'tp.team.searchPh': 'Tìm thợ, số phiếu, mã tham chiếu…', // DRAFT — Kevin reviews
   'tp.team.searchPhCustomer': 'Tìm thợ, khách, số điện thoại, số phiếu, mã tham chiếu…', // DRAFT — Kevin reviews
   'tp.team.reset': 'Đặt lại', // DRAFT — Kevin reviews
+  'tp.team.branchLabel': 'Chi nhánh', // DRAFT — Kevin reviews
+  'tp.team.allBranches': 'Tất cả chi nhánh', // DRAFT — Kevin reviews
+  'tp.team.export': 'Xuất CSV', // DRAFT — Kevin reviews
+  'tp.team.exporting': 'Đang xuất…', // DRAFT — Kevin reviews
+  'tp.team.exported': 'Đã tải tệp xuất', // DRAFT — Kevin reviews
+  'tp.team.exportFailed': 'Không tạo được tệp xuất.', // DRAFT — Kevin reviews
   'tp.team.results': '{n} lượt tip', // DRAFT — Kevin reviews
   'tp.team.filtersLabel': 'Tìm kiếm và bộ lọc', // DRAFT — Kevin reviews
   'tp.team.leaderboard': 'Tip theo thợ', // DRAFT — Kevin reviews

@@ -98,3 +98,8 @@
   .ttp .ttp-kpis{grid-template-columns:minmax(0,1fr)}
   .ttp .ttp-kpi-v{font-size:24px}
 }
+
+/* export result next to the header actions (Nov 13 2026) */
+.ttp-note { font-size: 12px; font-weight: 600; align-self: center; }
+.ttp-note[data-tone='ok'] { color: #2E7D4F; }
+.ttp-note[data-tone='bad'] { color: #B4453C; }

@@ -151,6 +151,8 @@ const settings = {
 export const GO_ADMIN_SETTINGS_BODY: BodySchema = S.object({ enabled: flag, ...settings });
 /** a tenant may send `enabled` (the handler drops it — Super Admin owns it), so it is declared, not refused */
 export const GO_POS_SETTINGS_BODY: BodySchema = S.object({ enabled: flag, ...settings });
+/** migration 993: one location's walk-in overrides — each of the six is a boolean, or null to follow the salon again */
+export const GO_BRANCH_WALKIN_BODY: BodySchema = S.object({ serviceSelectionEnabled: flag, technicianPreferenceEnabled: flag, walkinRequireServices: flag, walkinShowPrices: flag, walkinShowDurations: flag, walkinAllowAddOns: flag });
 export const GO_DEVICE_CREATE_BODY: BodySchema = S.object({ deviceName: str(200), branchId: id, deviceType: str(32), baseUrl: str(500), allowedBranchIds: ids(50), welcomeMessage: str(500) });
 /** a device's status IS what the admin edits here (through the GO_CHECKIN_DEVICE machine) */
 export const GO_DEVICE_UPDATE_BODY: BodySchema = S.object({ status: str(16), branchId: id, allowedBranchIds: ids(50), welcomeMessage: str(500) });

@@ -15,6 +15,25 @@ import type {
   WalkInCatalog, WalkInCategoryOption, WalkInLineState, WalkInPreview, WalkInPreviewLine, WalkInSelectionLine, WalkInSelectionRules, WalkInServiceOption,
 } from '@aipowersalon/api-contracts/customer';
 import type { GoCheckInSettings } from './go-check-in.dto';
+import type { WalkInBranchKey, WalkInBranchOverride } from '@aipowersalon/api-contracts/tenant';
+
+/** The six switches a location may set for itself (migration 993); everything else stays salon-wide. */
+export const WALKIN_BRANCH_KEYS: readonly WalkInBranchKey[] = ['serviceSelectionEnabled', 'technicianPreferenceEnabled', 'walkinRequireServices', 'walkinShowPrices', 'walkinShowDurations', 'walkinAllowAddOns'];
+export const EMPTY_BRANCH_OVERRIDE: WalkInBranchOverride = { serviceSelectionEnabled: null, technicianPreferenceEnabled: null, walkinRequireServices: null, walkinShowPrices: null, walkinShowDurations: null, walkinAllowAddOns: null };
+/** What a location's displays use: the salon's switches, with each of the location's set (non-null) overrides on top. */
+export function withBranchWalkIn(salon: GoCheckInSettings, o: WalkInBranchOverride | null | undefined): GoCheckInSettings {
+  if (!o) return salon;
+  const out = { ...salon };
+  for (const k of WALKIN_BRANCH_KEYS) if (typeof o[k] === 'boolean') out[k] = o[k] as boolean;
+  return out;
+}
+/** A PUT body cleaned to the six keys; a key that is neither boolean nor null is dropped (never guessed). */
+export function cleanBranchPatch(body: unknown): Partial<WalkInBranchOverride> {
+  const out: Partial<WalkInBranchOverride> = {};
+  if (!body || typeof body !== 'object') return out;
+  for (const k of WALKIN_BRANCH_KEYS) { const v = (body as Record<string, unknown>)[k]; if (v === null || typeof v === 'boolean') out[k] = v; }
+  return out;
+}
 
 /** One catalog row as the repository reads it (services ⋈ service_categories of THIS tenant and branch). */
 export interface WalkInCatalogRow {

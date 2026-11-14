@@ -2,7 +2,7 @@ import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState, ty
 import type { BoardPermissions } from '../adapters/BookingDataAdapter';
 import { availableDurationAt, buildDayContext, slotFits, type Interval, type TechnicianDayContext } from '../domain/availability';
 import { useBoardText } from '../i18n/boardText';
-import type { Appointment, AvailabilityGap, BranchHours, ID, ScheduleSegment } from '../domain/scheduleTypes';
+import type { Appointment, AppointmentMarks, AvailabilityGap, BoardOverlay, BranchHours, ID, OverlayGap, ScheduleSegment } from '../domain/scheduleTypes';
 import { formatClock, minuteOfDay } from '../domain/time';
 import type { SelectedSlot } from '../state/boardState';
 import type { TechnicianSlice } from '../state/scheduleStore';
@@ -49,7 +49,12 @@ export interface ScheduleGridProps {
   onScroll: (scrollTop: number) => void;
   initialScrollTop: number;
   onSelectSlot: (slot: SelectedSlot | null) => void;
+  /** optional read-only host marks (AI Scheduling Optimizer) */
+  overlay?: BoardOverlay | null;
 }
+
+const NO_MARKS: Readonly<Record<ID, AppointmentMarks>> = {};
+const NO_GAPS: readonly OverlayGap[] = [];
 
 export function ScheduleGrid(p: ScheduleGridProps) {
   const { t } = useBoardText();
@@ -58,6 +63,12 @@ export function ScheduleGrid(p: ScheduleGridProps) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
+  // the host's optimizer gaps grouped per column (stable per overlay, so a memoised column only redraws when its own marks change)
+  const gapsByTech = useMemo(() => {
+    const m = new Map<ID, OverlayGap[]>();
+    for (const g of p.overlay?.gaps ?? []) { const l = m.get(g.technicianId); if (l) l.push(g); else m.set(g.technicianId, [g]); }
+    return m;
+  }, [p.overlay]);
   const totalMinutes = p.dayEnd - p.dayStart;
   const cells = totalMinutes / 15;
   const height = cells * p.cellHeight;
@@ -187,6 +198,8 @@ export function ScheduleGrid(p: ScheduleGridProps) {
               onOpenAppointment={p.onOpenAppointment}
               onCardPointerDown={onCardPointerDown}
               onSelectSlot={p.onSelectSlot}
+              marks={p.overlay?.appointments ?? NO_MARKS}
+              overlayGaps={gapsByTech.get(slice.technician.id) ?? NO_GAPS}
             />
           ))}
         </div>
@@ -216,6 +229,8 @@ interface ColumnProps {
   onOpenAppointment: (appointment: Appointment) => void;
   onCardPointerDown: (e: ReactPointerEvent, appointment: Appointment) => void;
   onSelectSlot: (slot: SelectedSlot | null) => void;
+  marks: Readonly<Record<ID, AppointmentMarks>>;
+  overlayGaps: readonly OverlayGap[];
   ref?: (el: HTMLDivElement | null) => void;
 }
 
@@ -288,8 +303,33 @@ const TechnicianColumn = memo(forwardRef<HTMLDivElement, ColumnProps>(function T
             draggable={p.canMove}
             onOpen={p.onOpenAppointment}
             onPointerDown={p.onCardPointerDown}
+            marks={p.marks[a.id]}
           />
         );
+      })}
+      {/* host marks beside the cards (same as the Classic board): the optimizer's open-conflict outline and its "AI"
+          suggestion badge — a separate button, so a tap opens the suggestion and never starts a drag or opens the card */}
+      {slice.appointments.filter(visibleAppointment).map((a) => {
+        const m = p.marks[a.id];
+        if (!m || (!m.conflict && !m.badge)) return null;
+        const sMin = Math.max(p.dayStart, toMin(a.startAt));
+        const eMin = Math.min(p.dayEnd, toMin(a.endAt));
+        if (eMin <= sMin) return null;
+        return (
+          <span key={`mk-${a.id}`} style={{ display: 'contents' }}>
+            {m.conflict && <span className={`bsb-card-conflict is-${m.conflict}`} data-testid={`bsb-ai-conflict-${a.id}`} data-severity={m.conflict} style={{ top: y(sMin), height: Math.max(h(sMin, eMin) - 2, 12) }} aria-hidden="true" />}
+            {m.badge && (
+              <button type="button" className="bsb-card-ai" data-testid={`bsb-ai-badge-${a.id}`} style={{ top: y(sMin) + 2 }}
+                title={m.badge.title} aria-label={m.badge.ariaLabel}
+                onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); m.badge!.onOpen(); }}>{m.badge.label}</button>
+            )}
+          </span>
+        );
+      })}
+      {p.overlayGaps.map((g) => {
+        const sMin = Math.max(p.dayStart, g.startMinute), eMin = Math.min(p.dayEnd, g.endMinute);
+        if (eMin <= sMin) return null;
+        return <div key={`og-${g.id}`} className="bsb-ai-gap" data-testid={`bsb-ai-gap-${g.id}`} title={g.title} style={{ top: y(sMin), height: Math.max(6, h(sMin, eMin)) }} />;
       })}
       {p.ghost && (
         <div className={`bsb-drop-ghost${p.ghost.valid ? '' : ' is-invalid'}`} style={{ top: y(p.ghost.start), height: h(p.ghost.start, p.ghost.end) }} data-testid="bsb-drop-ghost" data-valid={p.ghost.valid}>

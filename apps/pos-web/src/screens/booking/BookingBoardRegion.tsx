@@ -6,7 +6,9 @@
 // pages — and the day grid of THOSE columns only). Live updates: the page's realtime (SSE + 15 s change feed, scoped by
 // bookingRelevance) calls `realtime.bridge.resync(date)`; the board then reloads only its visible page.
 // A tap on an open time PREFILLS the existing Booking Assistant (the board never creates an appointment itself).
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { SchedCalendarIndicators } from '@aipowersalon/api-contracts/tenant';
+import { schedToBoardOverlay } from './schedOverlay';
 import { BookingScheduleBoard, HostScheduleBridge, MonotonicClock, ProductionBookingDataAdapter, minuteOfDay, minutesToHHmm,
   type BoardPermissions, type BoardTextKey, type BookingContext, type HostDayGridFilters, type HttpClient, type PersistedBoardState, type WireAppointmentRow, type WireCatalogService } from '@aipowersalon/booking-schedule-board';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -50,6 +52,10 @@ export interface BookingBoardRegionProps {
   /** open the page's full appointment view for a row of the visible page */
   onOpenAppointment: (row: WireAppointmentRow) => void;
   onVisibleChange: (v: { date: string; technicianIds: string[]; appointmentIds: string[] }) => void;
+  /** the AI Scheduling Optimizer's indicators for this date (null = no package / no permission / none) — drawn read-only,
+   *  the same lock / conflict / AI badge / unused gap marks as the Classic board */
+  sched?: SchedCalendarIndicators | null;
+  onOpenRec?: (recommendationId: string) => void;
 }
 
 export function BookingBoardRegion(p: BookingBoardRegionProps) {
@@ -63,12 +69,13 @@ export function BookingBoardRegion(p: BookingBoardRegionProps) {
   live.current = { timezone: p.timezone, services: p.services, filters: p.filters };
   const filterKey = JSON.stringify(p.filters);
   const names = useRef(new Map<string, string>());   // the loaded page's technician names (for the assistant's prefill note)
+  const [rowsVersion, setRowsVersion] = useState(0);  // bumps when a page loads, so the optimizer badges name the right customer
   const adapter = useMemo(() => new ProductionBookingDataAdapter({
     http, realtime: p.realtime.bridge, clock: p.realtime.clock, reasonText,
     timezone: () => live.current.timezone || 'UTC',
     loadServices: async (): Promise<WireCatalogService[]> => live.current.services.map((s) => ({ serviceId: s.serviceId, name: s.name, durationMinutes: s.durationMinutes, priceCents: s.priceCents })),
     filters: () => live.current.filters,
-    onRangeLoaded: ({ range }) => { for (const t of range.technicians) names.current.set(t.id, t.displayName); },
+    onRangeLoaded: ({ range }) => { for (const t of range.technicians) names.current.set(t.id, t.displayName); setRowsVersion((v) => v + 1); },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [p.realtime, filterKey]);
   // UX gating only — the server enforces every one of these (spec §33)
@@ -81,6 +88,11 @@ export function BookingBoardRegion(p: BookingBoardRegionProps) {
     canViewTechnicianDay: can('pos.booking.view'),
     canOverridePrice: false,   // the board never edits a price; the Booking Assistant keeps the authorised override
   };
+  const sched = p.sched ?? null, onOpenRec = p.onOpenRec ?? null;
+  const overlay = useMemo(() => schedToBoardOverlay(sched && sched.date === p.date ? sched : null,
+    { customerNameOf: (id) => adapter.rows.get(id)?.customerName ?? '' }, onOpenRec),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [sched, p.date, adapter, rowsVersion]);
   const initialState = useMemo(() => readSession<Partial<PersistedBoardState>>(BOARD_STATE_KEY, {}), []);
   const prefill = (ctx: BookingContext) => {
     const tz = live.current.timezone || 'UTC';
@@ -99,6 +111,7 @@ export function BookingBoardRegion(p: BookingBoardRegionProps) {
         onOpenBookingAssistant={prefill} onOpenNewBooking={prefill}
         onOpenAppointment={(a) => { const row = adapter.rows.get(a.id); if (row) p.onOpenAppointment(row); }}
         onVisibleChange={p.onVisibleChange}
+        overlay={overlay}
       />
     </section>
   );

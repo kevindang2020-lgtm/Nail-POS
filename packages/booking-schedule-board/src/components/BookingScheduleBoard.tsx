@@ -12,7 +12,7 @@ import type { BoardPermissions, BookingDataAdapter, CreateBlockedTimeInput } fro
 import { toBookingError, type BookingErrorCode } from '../domain/bookingErrors';
 import { BoardTextProvider, useBoardText, type BoardTranslate } from '../i18n/boardText';
 import { pageInfo, pageOfIndex } from '../domain/paging';
-import type { Appointment, AvailabilityGap, BookingContext, ID, ISODate, OpeningResult, Service, TechnicianMatch } from '../domain/scheduleTypes';
+import type { Appointment, AvailabilityGap, BoardOverlay, BookingContext, ID, ISODate, OpeningResult, Service, TechnicianMatch } from '../domain/scheduleTypes';
 import { dateOf, hhmmToMinutes, minuteOfDay, toISO, todayIn } from '../domain/time';
 import { useScheduleRange } from '../hooks/useScheduleRange';
 import type { RealtimeClient } from '../realtime/events';
@@ -80,6 +80,8 @@ export interface BookingScheduleBoardProps {
   focusTechnician?: { technicianId: ID; nonce: number } | null;
   /** What is on screen (date, visible technicians, their appointments) — the host scopes realtime refreshes with it. */
   onVisibleChange?: (v: { date: ISODate; technicianIds: ID[]; appointmentIds: ID[] }) => void;
+  /** Optional read-only marks from the host (the AI Scheduling Optimizer's lock / conflict / suggestion / unused gap). */
+  overlay?: BoardOverlay | null;
 }
 
 const DEFAULT_CELL = 18;
@@ -421,6 +423,7 @@ function BoardInner(p: BookingScheduleBoardProps) {
               onScroll={(top) => dispatch({ type: 'set-scroll', scrollTop: top })}
               initialScrollTop={state.scrollTop}
               onSelectSlot={(slot) => dispatch({ type: 'select-slot', slot })}
+              overlay={p.overlay ?? null}
             />
             <div className="bsb-bottom">
               <button type="button" className="bsb-btn" aria-label={t('bottom.prev')} onClick={() => dispatch({ type: 'prev-page' })} disabled={!page.hasPrevious}>‹</button>

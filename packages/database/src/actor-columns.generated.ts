@@ -55,6 +55,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   booking_verification_settings: 'ut',
   booking_verification_usage_daily: 'ut',
   booking_verified_phones: 'ut',
+  branch_walkin_settings: 'ut',
   branches: 'udt',
   bundles: 'ut',
   business_closures: 'c',

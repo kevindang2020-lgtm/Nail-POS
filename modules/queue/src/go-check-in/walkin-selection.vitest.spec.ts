@@ -1,7 +1,7 @@
 // walkin-selection.vitest.spec.ts — the pure 4A rules (no database): what a customer may see, how a pick is re-priced,
 // and the idempotency fingerprint. The real-schema proof is walkin-selection.pgtest.vitest.spec.ts.
 import { describe, it, expect } from 'vitest';
-import { cleanLines, cleanNotes, priceWalkInSelection, publicWalkInCatalog, walkInPayloadHash, walkInRevision, walkInRules, type WalkInCatalogRow } from './walkin-selection';
+import { EMPTY_BRANCH_OVERRIDE, cleanBranchPatch, cleanLines, cleanNotes, priceWalkInSelection, publicWalkInCatalog, walkInPayloadHash, walkInRevision, walkInRules, withBranchWalkIn, type WalkInCatalogRow } from './walkin-selection';
 import { DEFAULT_SETTINGS } from './go-check-in.dto';
 
 const row = (o: Partial<WalkInCatalogRow>): WalkInCatalogRow => ({
@@ -72,5 +72,19 @@ describe('request hygiene', () => {
   it('notes: trimmed, single-spaced, at most 200 characters, no control characters', () => {
     expect(cleanNotes('  short\n\tnails  ')).toBe('short nails');
     expect(cleanNotes('x'.repeat(500))).toHaveLength(200);
+  });
+});
+
+describe('per-location walk-in switches (migration 993)', () => {
+  it('a location\'s set switch wins, null follows the salon, other switches are never touched', () => {
+    const merged = withBranchWalkIn({ ...settings, walkinShowPrices: true, enabled: true }, { ...EMPTY_BRANCH_OVERRIDE, walkinShowPrices: false });
+    expect(merged.walkinShowPrices).toBe(false);
+    expect(merged.walkinShowDurations).toBe(settings.walkinShowDurations);
+    expect(merged.enabled).toBe(true);
+    expect(withBranchWalkIn(settings, null)).toBe(settings);
+  });
+  it('a PUT body keeps only the six keys with a boolean or null', () => {
+    expect(cleanBranchPatch({ walkinShowPrices: false, walkinAllowAddOns: null, enabled: false, walkinShowDurations: 'no' })).toEqual({ walkinShowPrices: false, walkinAllowAddOns: null });
+    expect(cleanBranchPatch(null)).toEqual({});
   });
 });

@@ -209,3 +209,7 @@ export interface TipsAccuracyResponse {
   totals: { collectedCents: number; allocatedCents: number; unallocatedCents: number; technicianSumCents: number; tippedTickets: number };
   period: { preset: string; from: string | null; to: string | null; tz: string; today: string }; dateBasis: string; asOf: string; readOnly: true;
 }
+
+/** GET /pos/payments/tips/branches — a location the Team Tips / Tips screens may filter to (Nov 13 2026). A session tied
+ *  to one location gets only that one; a salon-wide session gets every live location. */
+export interface TipsBranchOption { id: string; name: string }

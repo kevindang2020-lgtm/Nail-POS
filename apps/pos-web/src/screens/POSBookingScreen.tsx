@@ -1018,6 +1018,7 @@ export function POSBookingScreen() {
   const [focusTech, setFocusTech] = useState<{ technicianId: string; nonce: number } | null>(null);
   useEffect(() => { if (newBoard) writeSession(BOARD_VIEW_KEY, calendarView); }, [newBoard, calendarView]);
   const [sched, setSched] = useState<SchedCalendarIndicators | null>(null);
+  const [schedNonce, setSchedNonce] = useState(0);   // the new board's optimizer overlay reloads on every board resync
 
   // ── 200-technician mandate (Oct 23 2026): the board pages its technician columns ON THE SERVER (12 a page → 200 = 17
   // pages) and asks the day grid for THOSE technicians only; the appointment list below is paged too. Nothing here holds
@@ -1139,7 +1140,7 @@ export function POSBookingScreen() {
   const refetch = (scope: 'full' | 'partial' = 'full') => {
     if (calendarView === 'week' && scope === 'full') void loadWeek(1);
     // the new board reloads ONLY its visible page when something on it may have changed (a 'partial' change is off-screen)
-    if (newBoardRef.current && scope === 'full') boardRealtime.current?.bridge.resync(calDate || grid?.date || s?.dateRange?.from || null);
+    if (newBoardRef.current && scope === 'full') { boardRealtime.current?.bridge.resync(calDate || grid?.date || s?.dateRange?.from || null); setSchedNonce((n) => n + 1); }
     return load(filtersNow(), scope);
   };
   // what is on screen right now — the date, the 12 visible technicians and the appointments drawn in their columns
@@ -1204,15 +1205,18 @@ export function POSBookingScreen() {
   // §22/§61: a queue change that names no appointment moves the waitlist, never a column; anything else is scoped by
   // its technician and date (bookingRelevance) — an off-screen technician or another day never reloads the grid
   useRealtime('booking', onSync, { relevance: (d) => (weekOpen ? 'full' : bookingEventScope(d.event, d.payload, boardView.current)) });
+  // the new board has no classic grid: it asks for the board's date, and again whenever the board resyncs
+  const schedDate = newBoard ? (calDate || s?.dateRange?.from || null) : (grid?.date ?? null);
   useEffect(() => {
-    const d = grid?.date;
+    const d = schedDate;
     if (!canSched || !d) { setSched(null); return; }
     let live = true;
     posAiSchedulingOptimizerApi.calendar(d)
       .then((x) => { if (live) setSched(isSchedIndicators(x) && x.date === d ? x : null); })
       .catch(() => { if (live) setSched(null); });   // no package / no permission → no overlay, never an error on the board
     return () => { live = false; };
-  }, [grid, canSched]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newBoard ? schedNonce : grid, schedDate, canSched]);
   const schedOpenConflicts = (sched?.conflicts ?? []).filter((c) => !c.resolved).length;
   const act = async (aid: string, fn: () => Promise<any>, kind: string, closeDrawer?: boolean) => {
     setNote(null); setBusyId(aid + kind);
@@ -1765,6 +1769,8 @@ export function POSBookingScreen() {
           focusTechnician={focusTech}
           onPrefill={prefillFromBoard}
           onOpenAppointment={(row) => openIPad(appointmentRequest(row as unknown as Parameters<typeof appointmentRequest>[0], refetch))}
+          sched={sched}
+          onOpenRec={canSched ? (id) => nav(`/tenant/ai/scheduling-optimizer?rec=${encodeURIComponent(id)}`) : undefined}
           onVisibleChange={(v) => { boardVisible.current = { date: v.date, visibleTechnicianIds: v.technicianIds, visibleAppointmentIds: v.appointmentIds }; if (newBoardRef.current) boardView.current = boardVisible.current; }}
         />
       ) : (

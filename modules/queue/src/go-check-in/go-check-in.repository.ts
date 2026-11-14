@@ -6,6 +6,8 @@ import {
 import { isAddOnCategory } from '@aipowersalon/api-contracts';
 import type { KioskTechFacts } from './go-check-in-rules';
 import type { WalkInCatalogRow } from './walkin-selection';
+import { EMPTY_BRANCH_OVERRIDE } from './walkin-selection';
+import type { WalkInBranchOverride } from '@aipowersalon/api-contracts/tenant';
 import type { WalkInRequestState } from '@aipowersalon/api-contracts/customer';
 
 export interface DeviceRow extends GoCheckInDevice { deviceTokenHash: string | null; }
@@ -58,6 +60,12 @@ export interface GoCheckInDataPort {
   // settings
   getSettings(tenantId: string): Promise<GoCheckInSettings>;
   upsertSettings(tenantId: string, patch: Partial<GoCheckInSettings>): Promise<GoCheckInSettings>;
+  /** migration 993: one location's walk-in overrides (null = none saved) */
+  getBranchWalkIn?(tenantId: string, branchId: string): Promise<WalkInBranchOverride | null>;
+  /** every active location of the salon with its overrides (none saved → all null) */
+  listBranchWalkIn?(tenantId: string): Promise<{ branchId: string; branchName: string; override: WalkInBranchOverride }[]>;
+  /** apply a cleaned patch to one location; false when the branch is not this salon's */
+  upsertBranchWalkIn?(tenantId: string, branchId: string, patch: Partial<WalkInBranchOverride>, userId: string | null): Promise<WalkInBranchOverride | null>;
   // logs
   insertLog(i: InsertLogInput): Promise<void>;
   listLogs(tenantId: string, limit: number): Promise<LogRow[]>;
@@ -161,6 +169,16 @@ export class InMemoryGoCheckInRepository implements GoCheckInDataPort {
   async bumpSessionCounter(tenantId: string, id: string, kind: 'lookups' | 'creates') { if (this.sessions.get(id)?.tenantId !== tenantId) return Number.MAX_SAFE_INTEGER; const c = this.sessionCounts.get(id) ?? { lookups: 0, creates: 0 }; c[kind] += 1; this.sessionCounts.set(id, c); return c[kind]; }
   async setSessionStatus(id: string, status: SessionRow['status']) { const s = this.sessions.get(id); if (s) s.status = status; }
   async getSettings(tenantId: string) { return this.settings.get(tenantId) ?? { ...DEFAULT_SETTINGS }; }
+  private branchWalkIn = new Map<string, WalkInBranchOverride>();
+  async getBranchWalkIn(tenantId: string, branchId: string) { return this.branchWalkIn.get(`${tenantId}:${branchId}`) ?? null; }
+  async listBranchWalkIn(tenantId: string) {
+    return [...this.branchNames.entries()].map(([branchId, branchName]) => ({ branchId, branchName, override: this.branchWalkIn.get(`${tenantId}:${branchId}`) ?? { ...EMPTY_BRANCH_OVERRIDE } }));
+  }
+  async upsertBranchWalkIn(tenantId: string, branchId: string, patch: Partial<WalkInBranchOverride>) {
+    if (!this.branchNames.has(branchId)) return null;
+    const next = { ...(this.branchWalkIn.get(`${tenantId}:${branchId}`) ?? EMPTY_BRANCH_OVERRIDE), ...patch };
+    this.branchWalkIn.set(`${tenantId}:${branchId}`, next); return next;
+  }
   async upsertSettings(tenantId: string, patch: Partial<GoCheckInSettings>) { const cur = await this.getSettings(tenantId); const next = { ...cur, ...patch }; this.settings.set(tenantId, next); return next; }
 
   async insertLog(i: InsertLogInput) { this.logs.push({ id: this.id('log'), tenantId: i.tenantId, branchId: i.branchId ?? null, deviceId: i.deviceId ?? null, sessionId: i.sessionId ?? null, eventType: i.eventType, safeMessage: i.safeMessage ?? null, metadata: i.metadata ?? {}, createdAt: new Date().toISOString() }); }

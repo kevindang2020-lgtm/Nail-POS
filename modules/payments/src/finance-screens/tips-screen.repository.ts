@@ -372,6 +372,14 @@ export class TipsScreenRepository {
   }
 
   /** The technicians who have tip allocations (the filter list). */
+  /** Team Tips branch filter (Kevin, Nov 13 2026): the locations this session may look at — a session tied to one location
+   *  sees only that one; a salon-wide session (no branch) may pick any live location of the salon. */
+  async branchOptions(ctx: FinanceCtx): Promise<{ id: string; name: string }[]> {
+    const one = ctx.branchId && isUuid(ctx.branchId) ? sql<boolean>`b.id = ${ctx.branchId}::uuid` : sql<boolean>`true`;
+    const rows = (await sql<{ id: string; name: string | null }>`select b.id, b.name from branches b where b.tenant_id = ${ctx.tenantId} and b.deleted_at is null and ${one} order by b.name, b.id`.execute(this.db)).rows;
+    return rows.map((r) => ({ id: String(r.id), name: String(r.name ?? '') }));
+  }
+
   async technicians(ctx: FinanceCtx): Promise<{ id: string; name: string }[]> {
     const rows = (await sql<any>`select distinct tc.id, tc.full_name from technicians tc where tc.tenant_id = ${ctx.tenantId} and tc.archived_at is null
       and (exists (select 1 from ticket_tip_allocations x where x.tenant_id = tc.tenant_id and x.technician_id = tc.id) or exists (select 1 from tickets t where t.tenant_id = tc.tenant_id and t.primary_technician_id = tc.id and t.status = 'paid'))

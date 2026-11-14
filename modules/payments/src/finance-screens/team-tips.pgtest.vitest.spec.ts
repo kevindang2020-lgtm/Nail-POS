@@ -197,3 +197,28 @@ describe('Team Tips — read-only Tip Accuracy check', () => {
     expect(dupA).toBeTruthy(); expect(single && pair && chosen).toBeTruthy();
   });
 });
+
+describe('Team Tips — branch filter (Kevin, Nov 13 2026)', () => {
+  it('a salon-wide session may narrow to one location; a location-bound session only sees its own; another salon\'s location is refused', async () => {
+    const maui = await ticket({ tip: 777, tech: MAI, num: '3001', branch: B2 }); await pay(maui, 'card', 4777, 777, 'approved', 'FXM01', 60 * 24, T, B2); await alloc(maui, MAI, 777, 'legacy', T, B2);
+    const ctl = new TipsScreenController(r);
+    const salonWide = { ctx: { ...owner, branchId: '' } }, mainOnly = { ctx: owner };
+    expect((await ctl.branches(salonWide)).map((b) => b.name)).toEqual(['Main', 'Maui']);
+    expect((await ctl.branches(mainOnly)).map((b) => b.name)).toEqual(['Main']);
+    const range = { preset: 'custom', from: ymdAgo(10), to: ymdAgo(0), dateField: 'collected' };
+    const all = await ctl.transactions(salonWide, { ...range, pageSize: '100' }) as any;
+    const onlyMaui = await ctl.transactions(salonWide, { ...range, pageSize: '100', branchId: B2 }) as any;
+    const onlyMain = await ctl.transactions(salonWide, { ...range, pageSize: '100', branchId: B }) as any;
+    expect(onlyMaui.items.map((x: any) => x.ticketNumber)).toEqual(['3001']);
+    expect(onlyMain.items.some((x: any) => x.ticketNumber === '3001')).toBe(false);
+    expect(onlyMaui.total + onlyMain.total).toBe(all.total);
+    const sumMaui = await ctl.summary(salonWide, { ...range, branchId: B2 }) as any;
+    expect(sumMaui.kpis.totalTipsCents).toBe(777);
+    const csv = String(await ctl.exportCsv({ ctx: { ...owner, branchId: '', permissions: [...owner.permissions, 'pos.reports.export'] } }, { ...range, branchId: B2 }));
+    expect(csv).toContain('3001'); expect(csv).not.toContain('2001');
+    // a Main-only session cannot widen itself to Maui, and nobody can name another salon's location
+    await expect(ctl.transactions(mainOnly, { ...range, branchId: B2 })).rejects.toMatchObject({ status: 404 });
+    await expect(ctl.summary(salonWide, { ...range, branchId: BX })).rejects.toMatchObject({ status: 404 });
+    await expect(ctl.summary(salonWide, { ...range, branchId: 'not-a-uuid' })).rejects.toMatchObject({ status: 404 });
+  });
+});

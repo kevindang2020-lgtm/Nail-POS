@@ -270,3 +270,11 @@
   .bsb-root { --bsb-col-min: 110px; }
   .bsb-toolbar { flex-wrap: wrap; }
 }
+
+/* host marks — the AI Scheduling Optimizer (same marks as the Classic board) */
+.bsb-card .bsb-card-ailock { font-size: 9px; flex: 0 0 auto; }
+.bsb-card-conflict { position: absolute; left: 3px; right: 3px; border: 2px solid #D69A2D; border-radius: 7px; pointer-events: none; z-index: 4; }
+.bsb-card-conflict.is-critical { border-color: #B4451E; }
+.bsb-card-conflict.is-info { border-color: #9DB4D6; }
+.bsb-card-ai { position: absolute; right: 5px; z-index: 5; font: inherit; font-size: 9.5px; font-weight: 800; line-height: 1; padding: 2px 5px; border-radius: 999px; border: 1px solid #E0A84A; background: #FFF4DE; color: #7A5E22; cursor: pointer; min-width: 24px; min-height: 18px; }
+.bsb-ai-gap { position: absolute; left: 0; width: 4px; background: #E0A84A; border-radius: 2px; z-index: 2; pointer-events: auto; }

@@ -12556,6 +12556,9 @@
   ],
   "cust-displays": [
    "active-period",
+   "branch-walkin-pick",
+   "branch-walkin-save",
+   "branch-walkin-settings",
    "cal-left",
    "cal-right",
    "cdx-check",

@@ -1,10 +1,10 @@
 // go-check-in.admin.controller.ts — Super Admin device management + logs (per tenant).
 // go-check-in.settings.controller.ts — tenant POS settings for Go Check-In.
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
-import { GO_ADMIN_SETTINGS_BODY, GO_DEVICE_CREATE_BODY, GO_DEVICE_UPDATE_BODY, GO_POS_SETTINGS_BODY } from '../request-schemas';
-import type { GoCheckInDevicesState } from '@aipowersalon/api-contracts/tenant';
+import { GO_ADMIN_SETTINGS_BODY, GO_DEVICE_CREATE_BODY, GO_DEVICE_UPDATE_BODY, GO_POS_SETTINGS_BODY, GO_BRANCH_WALKIN_BODY } from '../request-schemas';
+import type { GoCheckInDevicesState, WalkInBranchPatch, WalkInBranchSettingsList } from '@aipowersalon/api-contracts/tenant';
 import { SuperAdminGuard, TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, HttpException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Body, Param, Query, Req, HttpException, ParseUUIDPipe } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
 import { GoCheckInService, GoCheckInError } from './go-check-in.service';
 import { ListQueries } from '@aipowersalon/database';
@@ -54,5 +54,12 @@ export class GoCheckInSettingsController {
   @Patch('go-check-in') @RequirePermission('settings.edit') patch(@Req() r: any, @Body(ValidatedBody(GO_POS_SETTINGS_BODY, { strict: true })) b: any) {
     const { enabled, ...toggles } = b || {};
     return run(() => this.svc.updateSettings(r?.ctx?.tenantId, toggles));
+  }
+  // migration 993 (Kevin, Nov 13 2026): walk-in switches per location — each location may follow the salon or set its own
+  @Get('go-check-in/branches') @RequirePermission('settings.view') branchWalkIn(@Req() r: any): Promise<WalkInBranchSettingsList> {
+    return run(() => this.svc.listBranchWalkIn(r?.ctx?.tenantId));
+  }
+  @Put('go-check-in/branches/:branchId') @RequirePermission('settings.edit') updateBranchWalkIn(@Req() r: any, @Param('branchId', ParseUUIDPipe) branchId: string, @Body(ValidatedBody(GO_BRANCH_WALKIN_BODY, { strict: true })) b: WalkInBranchPatch): Promise<WalkInBranchSettingsList> {
+    return run(() => this.svc.updateBranchWalkIn(r?.ctx?.tenantId, branchId, b, r?.ctx?.userId ?? null));
   }
 }

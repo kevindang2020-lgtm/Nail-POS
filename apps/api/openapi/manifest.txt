@@ -962,6 +962,7 @@ GET /pos/payments/split-payments/summary  realm=staff  auth=session  domain=paym
 GET /pos/payments/split-payments/{ticketId}/detail  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/accuracy  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/adjustments  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/payments/tips/branches  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/distribution  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/export  realm=staff  auth=session  domain=payments  perm=pos.reports.export  resource=BRANCH/permission  async=pos.tips.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payments/tips/summary  realm=staff  auth=session  domain=payments  perm=pos.reports.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -1143,6 +1144,7 @@ GET /pos/settings/customer-phone  realm=staff  auth=session  domain=identity  pe
 GET /pos/settings/customer-phone/branches/{branchId}  realm=staff  auth=session  domain=identity  perm=settings.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/gift-card-settings  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/go-check-in  realm=staff  auth=session  domain=booking  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/settings/go-check-in/branches  realm=staff  auth=session  domain=booking  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/go-live-readiness  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/loyalty-memberships  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/notifications-reminders  realm=staff  auth=session  domain=tenants  perm=settings.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -4083,6 +4085,7 @@ PUT /pos/referral-program/settings  realm=staff  auth=session  domain=loyalty  p
 PUT /pos/reports/delivery/subscription  realm=staff  auth=session  domain=analytics  perm=pos.reports.export  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/retention/settings  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/retention/sms/pricing  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/settings/go-check-in/branches/{branchId}  realm=staff  auth=session  domain=booking  perm=settings.edit  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/team-bulk-invite/settings  realm=staff  auth=session  domain=workforce  perm=settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
