@@ -123,13 +123,13 @@ export function engineInputFromLines(
   const distinctTechs = new Set(mapped.flatMap((l) => l.technicians.map((t) => t.technicianId)));
   // Tip method policy (spec §10–§12). An explicit tipMethod — including a customer-directed allocation — ALWAYS wins:
   // checkout's override first, then an explicit allocation already recorded for the ticket (manual / customer-directed).
-  // Otherwise: exactly two technicians → 50/50 equal (§10). Three or more → the salon's configured policy: proportional
-  // by earnings by default (safe, unchanged), or equal ONLY when the salon has explicitly opted in (§11). One tech is
+  // Otherwise: exactly two technicians → 50/50 equal (§10). Three or more → EQUAL by default (Kevin, Nov 13 2026: "same
+  // three way split", exact cents); proportional-by-earnings only when the salon explicitly chose it (§11). One tech is
   // trivially 100%. The allocation math + reconciliation are identical across methods (largest-remainder).
   const directed = policy?.tip?.directed?.length ? policy.tip.directed : (meta.directedTips?.length ? meta.directedTips : undefined);
   const tipMethod = policy?.tip?.method || (directed ? 'customer_directed' : undefined) || meta.tipMethod || (
     distinctTechs.size === 2 ? 'equal'
-      : distinctTechs.size > 2 && meta.manyTechTipMethod === 'equal' ? 'equal'
+      : distinctTechs.size > 2 && meta.manyTechTipMethod !== 'proportional' ? 'equal'
         : 'by_commission_pool'
   );
 

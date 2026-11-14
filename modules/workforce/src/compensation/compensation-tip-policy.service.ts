@@ -1,6 +1,7 @@
 // compensation-tip-policy.service.ts — salon-level 3+-technician tip-split policy (spec §11). Stored in the generic
-// tenant_settings JSONB store under category 'compensation'. Default is 'proportional' (safe, unchanged behaviour);
-// 'equal' is only ever applied when the salon explicitly opts in. Read on the compute path by loadTicketMeta.
+// tenant_settings JSONB store under category 'compensation'. Default is 'equal' (Kevin, Nov 13 2026: "same three way
+// split", exact cents); 'proportional' (by service earnings) applies only when the salon explicitly chooses it.
+// Read on the compute path by loadTicketMeta.
 import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
@@ -23,12 +24,12 @@ export class CompensationTipPolicyService {
   }
 
   async get(ctx: TipPolicyCtx): Promise<{ manyTechTipMethod: ManyTechTipMethod }> {
-    try { const r = await this.row(ctx); return { manyTechTipMethod: r?.json?.manyTechTipMethod === 'equal' ? 'equal' : 'proportional' }; }
-    catch { return { manyTechTipMethod: 'proportional' }; }
+    try { const r = await this.row(ctx); return { manyTechTipMethod: r?.json?.manyTechTipMethod === 'proportional' ? 'proportional' : 'equal' }; }
+    catch { return { manyTechTipMethod: 'equal' }; }
   }
 
   async set(ctx: TipPolicyCtx, method: unknown): Promise<{ manyTechTipMethod: ManyTechTipMethod }> {
-    const m: ManyTechTipMethod = method === 'equal' ? 'equal' : 'proportional';
+    const m: ManyTechTipMethod = method === 'proportional' ? 'proportional' : 'equal';
     if (this.db) {
       // NOT best-effort any more. This block used to sit inside `try { … } catch { /* best-effort */ }`, so a
       // failed write was swallowed and the method still returned the NEW value as if it had been saved. The owner

@@ -43,7 +43,9 @@ export function walkInRules(s: GoCheckInSettings): WalkInSelectionRules {
 }
 
 /** A row a customer may pick: an active, not archived, customer-visible service in an active category. */
-const usable = (r: WalkInCatalogRow) => r.serviceStatus === 'active' && !r.archived && r.customerVisible && r.categoryStatus === 'active';
+// Kevin, Nov 13 2026: the CPad shows the FULL service menu — every active, un-archived service of this branch in an active
+// category (the per-service online / customer-app booking flags do not hide a service from walk-ins).
+const usable = (r: WalkInCatalogRow) => r.serviceStatus === 'active' && !r.archived && r.categoryStatus === 'active';
 const cents = (n: unknown) => (Number.isFinite(Number(n)) ? Math.max(0, Math.round(Number(n))) : 0);
 
 /** The authoritative facts the revision covers (order-stable). */

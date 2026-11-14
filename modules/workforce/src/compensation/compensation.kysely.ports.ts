@@ -97,7 +97,7 @@ export class KyselyCompensationPorts implements CompensationPorts {
       .where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId).execute().catch(() => []);
     const directedTips = directedRows.length ? directedRows.map((r) => ({ technicianId: r.technician_id, tipCents: Number(r.tip_cents || 0) })) : undefined;
     // Salon-level compensation settings (spec §11 tip policy + §16 retail commission): tenant_settings category
-    // 'compensation'. Best-effort; any miss falls through to the safe defaults in the engine (proportional tips, no retail).
+    // 'compensation'. Best-effort; any miss falls through to the defaults in the engine (equal tips for 3+, no retail).
     let manyTechTipMethod: string | undefined;
     let retailCommission: { method: string; value: number } | undefined;
     try {

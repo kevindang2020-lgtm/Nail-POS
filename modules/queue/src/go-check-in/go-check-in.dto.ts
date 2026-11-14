@@ -53,7 +53,8 @@ export const DEFAULT_SETTINGS: GoCheckInSettings = {
   enabled: false, appointmentCheckinEnabled: true, walkinCheckinEnabled: true, newCustomerEnabled: true,
   // SUNMI guide 4A.9: "Allow technician preference — OFF until eligibility/assignment rules are verified" (migration 990
   // changed the column default too; a salon that saved ON keeps ON)
-  serviceSelectionEnabled: true, technicianPreferenceEnabled: false, tenantPhoneLookupEnabled: true,
+  serviceSelectionEnabled: true, technicianPreferenceEnabled: true,   // Kevin Nov 13 2026: guests may pick a technician (ON)
+  tenantPhoneLookupEnabled: true,
   centralLookupEnabled: true, customerLinkingEnabled: true, showWaitEstimate: true, autoSendToQueue: true,
   requireFrontDeskApproval: false, confirmationTimeoutSeconds: 12,
   displayLanguages: ['en'],   // Dual-Screen §118–§119: English until the owner adds Vietnamese

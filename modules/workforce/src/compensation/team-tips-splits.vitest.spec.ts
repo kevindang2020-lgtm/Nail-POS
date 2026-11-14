@@ -40,9 +40,12 @@ describe('Team Tips — exact-cent tip splits on the existing engine', () => {
     const { by } = tipsOf([line('L1', 'anna', 4500), line('L2', 'bao', 3000)], meta(1000, 0, { directedTips: [{ technicianId: 'anna', tipCents: 700 }, { technicianId: 'bao', tipCents: 300 }] }));
     expect(by).toEqual({ anna: 700, bao: 300 });
   });
-  it('#18: three technicians follow the salon\'s configured rule (proportional by default, equal only when opted in); explicit wins', () => {
+  it('#18: three technicians split EQUALLY by default, exact cents (Kevin Nov 13 2026); proportional only when the salon chose it; explicit wins', () => {
     const three = [line('L1', 'anna', 6000), line('L2', 'bao', 3000), line('L3', 'chi', 1000)];
-    const prop = tipsOf(three, meta(1001)).by;
+    const dflt = tipsOf(three, meta(1001)).by;
+    expect([dflt.anna, dflt.bao, dflt.chi].sort((a, b) => b - a)).toEqual([334, 334, 333]);
+    expect(tipsOf(three, meta(1001)).by).toEqual(dflt);   // deterministic remainder
+    const prop = tipsOf(three, meta(1001, 0, { manyTechTipMethod: 'proportional' })).by;
     expect(prop.anna + prop.bao + prop.chi).toBe(1001);
     expect(prop.anna).toBeGreaterThan(prop.bao); expect(prop.bao).toBeGreaterThan(prop.chi);   // by service earnings, not a silent equal split
     const eq = tipsOf(three, meta(1001, 0, { manyTechTipMethod: 'equal' })).by;

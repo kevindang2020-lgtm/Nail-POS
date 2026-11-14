@@ -51,7 +51,7 @@ beforeAll(async () => {
   await svcRow(S_CLASSIC, T, B, C_MANI, 'Classic Manicure', 30, 2500, 2);
   await svcRow(S_SPA, T, B, C_PEDI, 'Spa Pedicure', 50, 6000, 1);
   await svcRow(S_BROW, T, B, C_WAX, 'Brow Wax', 15, 1500, 1);                                   // inactive category → hidden
-  await svcRow(S_ART_HIDDEN, T, B, C_ART, 'Hand-painted Art', 20, 2000, 1, 'customer_app_booking_enabled=false');   // hidden from customers
+  await svcRow(S_ART_HIDDEN, T, B, C_ART, 'Hand-painted Art', 20, 2000, 1, 'customer_app_booking_enabled=false');   // online-booking flag off — still on the CPad (Kevin Nov 13 2026: full services)
   await svcRow(S_FRENCH, T, B, C_ADD, 'French Tips', 10, 800, 1);                               // an add-on
   await svcRow(S_PARAFFIN, T, B, C_ADD, 'Paraffin Dip', 0, 1000, 2);                            // an add-on with no duration set
   await svcRow(S_ARCHIVED, T, B, C_MANI, 'Old Manicure', 30, 2000, 3, 'archived_at=now()');
@@ -69,22 +69,22 @@ describe('migration 990 defaults (4A.9)', () => {
     const T3 = 'e9930000-0000-4000-8000-000000000003';
     await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code) values ($1,'C','C','e993c','E993C')`, [T3]);
     await q(`insert into tenant_checkin_settings (tenant_id) values ($1)`, [T3]);
-    expect(await repo.getSettings(T3)).toMatchObject({ serviceSelectionEnabled: true, walkinRequireServices: true, walkinShowPrices: true, walkinShowDurations: true, walkinAllowAddOns: true, technicianPreferenceEnabled: false });
+    expect(await repo.getSettings(T3)).toMatchObject({ serviceSelectionEnabled: true, walkinRequireServices: true, walkinShowPrices: true, walkinShowDurations: true, walkinAllowAddOns: true, technicianPreferenceEnabled: true });   // Kevin Nov 13: guests may pick a technician by default
   });
 });
 
 describe('W01 category coverage — the branch\'s live, customer-visible catalog only', () => {
-  it('active categories with a visible service, in the salon\'s order; hidden / disabled / archived / other branch / other salon absent; public fields only', async () => {
+  it('active categories with an active service, in the salon\'s order (full menu — the online-booking flag does not hide a service); disabled / archived / other branch / other salon absent; public fields only', async () => {
     const s = await session();
     const cat = await svc.walkInCatalog(s.sessionId, s.sessionToken);
-    expect(cat.categories.map((c) => [c.name, c.serviceCount])).toEqual([['Manicure', 2], ['Pedicure', 1]]);   // no Waxing (inactive), Nail Art (hidden only), Add-ons (not a tile), Empty
+    expect(cat.categories.map((c) => [c.name, c.serviceCount])).toEqual([['Manicure', 2], ['Pedicure', 1], ['Nail Art', 1]]);   // no Waxing (inactive), Add-ons (not a tile), Empty
     expect(cat.categories[0]).toMatchObject({ id: C_MANI, description: 'Hands' });
-    expect(cat.services.map((x) => [x.name, x.priceCents, x.durationMinutes])).toEqual([['Gel Manicure', 4500, 45], ['Classic Manicure', 2500, 30], ['Spa Pedicure', 6000, 50]]);
+    expect(cat.services.map((x) => [x.name, x.priceCents, x.durationMinutes])).toEqual([['Gel Manicure', 4500, 45], ['Classic Manicure', 2500, 30], ['Spa Pedicure', 6000, 50], ['Hand-painted Art', 2000, 20]]);
     expect(cat.services[0]).toMatchObject({ description: 'Long-lasting gel colour', priceIsFrom: false, addOnIds: [S_FRENCH, S_PARAFFIN] });
     expect(cat.addOns).toEqual([{ id: S_FRENCH, name: 'French Tips', priceCents: 800, durationMinutes: 10 }, { id: S_PARAFFIN, name: 'Paraffin Dip', priceCents: 1000, durationMinutes: null }]);
     const wire = JSON.stringify(cat);
-    for (const leak of ['commission', 'percent', '9900', 'Salon B', S_BROW, S_ART_HIDDEN, S_ARCHIVED, S_INACTIVE, S_OTHERB, S_T2]) expect(wire).not.toContain(leak);
-    expect(cat.rules).toEqual({ requireServices: true, showPrices: true, showDurations: true, allowAddOns: true, allowTechnicianPreference: false, notesMaxLength: 200 });
+    for (const leak of ['commission', 'percent', '9900', 'Salon B', S_BROW, S_ARCHIVED, S_INACTIVE, S_OTHERB, S_T2]) expect(wire).not.toContain(leak);
+    expect(cat.rules).toEqual({ requireServices: true, showPrices: true, showDurations: true, allowAddOns: true, allowTechnicianPreference: true, notesMaxLength: 200 });
   });
   it('the owner\'s switches shape it: prices / durations hidden, add-ons off — and each change is a new revision', async () => {
     const s = await session();
@@ -245,11 +245,11 @@ describe('W05 price updates · W06 availability change', () => {
     const reqd = typeof item.requested_services === 'string' ? JSON.parse(item.requested_services) : item.requested_services;
     expect(reqd[0].priceCents ?? reqd[0].price_cents).toBe(2900);
   });
-  it('a disabled, hidden or deleted service cannot be confirmed with its stale id — nothing written', async () => {
+  it('a disabled or deleted service cannot be confirmed with its stale id — nothing written', async () => {
     const s = await session();
     const before = await svc.walkInCatalog(s.sessionId, s.sessionToken);
     const qBefore = await count('pos_queue_items', 'tenant_id = $1', [T]);
-    for (const [i, change] of [`update services set status = 'inactive' where id = '${S_GEL}'`, `update services set status = 'active', customer_app_booking_enabled = false where id = '${S_GEL}'`, `update services set customer_app_booking_enabled = true, archived_at = now() where id = '${S_GEL}'`].entries()) {
+    for (const [i, change] of [`update services set status = 'inactive' where id = '${S_GEL}'`, `update services set status = 'active', archived_at = now() where id = '${S_GEL}'`].entries()) {
       await q(change);
       const cat = await svc.walkInCatalog(s.sessionId, s.sessionToken);
       expect(cat.services.some((x) => x.id === S_GEL)).toBe(false);
@@ -293,7 +293,8 @@ describe('W10 multiple tenants — a CPad of salon B cannot read or submit salon
 });
 
 describe('technician preference is a request, only when the salon allows it', () => {
-  it('OFF (default): a sent technician is ignored; ON: an ineligible technician is refused', async () => {
+  it('ON is the default; OFF: a sent technician is ignored; ON: an ineligible technician is refused', async () => {
+    await repo.upsertSettings(T, { technicianPreferenceEnabled: false });
     const s = await session();
     const cat = await svc.walkInCatalog(s.sessionId, s.sessionToken);
     const phone = nextPhone();

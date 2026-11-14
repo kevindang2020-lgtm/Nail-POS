@@ -51,8 +51,9 @@ function TipSplitPolicyCard() {
   };
 
   const options: { m: TipSplitMethod; label: string; desc: string }[] = [
-    { m: 'proportional', label: 'Proportional (default)', desc: 'By each technician’s share of the service revenue on the ticket.' },
-    { m: 'equal', label: 'Equal', desc: 'Split evenly among all technicians on the ticket.' },
+    // Kevin, Nov 13 2026: equal ("same three way split", exact cents) is the default; proportional is the salon's choice.
+    { m: 'equal', label: 'Equal (default)', desc: 'Split evenly among all technicians on the ticket, to the cent.' },
+    { m: 'proportional', label: 'Proportional', desc: 'By each technician’s share of the service revenue on the ticket.' },
   ];
 
   return (

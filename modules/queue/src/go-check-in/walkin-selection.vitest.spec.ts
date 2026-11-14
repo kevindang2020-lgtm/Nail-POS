@@ -13,22 +13,23 @@ const rows = [
   row({ serviceId: 'gel', serviceName: 'Gel', priceCents: 4500, durationMinutes: 45, categoryId: 'm', categoryName: 'Manicure', categorySort: 1 }),
   row({ serviceId: 'spa', serviceName: 'Spa Pedi', priceCents: 6000, durationMinutes: 50, categoryId: 'p', categoryName: 'Pedicure', categorySort: 2 }),
   row({ serviceId: 'tip', serviceName: 'French', priceCents: 800, durationMinutes: 10, categoryId: 'a', categoryName: 'Add-ons', categorySort: 3 }),
-  row({ serviceId: 'hid', serviceName: 'Hidden', customerVisible: false, categoryId: 'n', categoryName: 'Nail Art', categorySort: 4 }),
+  row({ serviceId: 'hid', serviceName: 'Art', customerVisible: false, categoryId: 'n', categoryName: 'Nail Art', categorySort: 4 }),   // online-booking flag off — still shown (full services)
+  row({ serviceId: 'off', serviceName: 'Retired', serviceStatus: 'inactive', categoryId: 'w', categoryName: 'Waxing', categorySort: 5 }),
 ];
 
 describe('publicWalkInCatalog', () => {
   it('tiles = categories with a visible main service, in order; add-ons ride with every service; no empty tile', () => {
     const c = publicWalkInCatalog(rows, settings);
-    expect(c.categories.map((x) => x.name)).toEqual(['Manicure', 'Pedicure']);
-    expect(c.services.map((x) => [x.id, x.addOnIds])).toEqual([['gel', ['tip']], ['spa', ['tip']]]);
-    expect(walkInRules(settings)).toMatchObject({ requireServices: true, allowTechnicianPreference: false });
+    expect(c.categories.map((x) => x.name)).toEqual(['Manicure', 'Pedicure', 'Nail Art']);
+    expect(c.services.map((x) => [x.id, x.addOnIds])).toEqual([['gel', ['tip']], ['spa', ['tip']], ['hid', ['tip']]]);
+    expect(walkInRules(settings)).toMatchObject({ requireServices: true, allowTechnicianPreference: true });
   });
-  it('the revision moves with any customer-facing fact and with the switches — not with a hidden row', () => {
+  it('the revision moves with any customer-facing fact and with the switches — not with an inactive row', () => {
     const r = walkInRevision(rows, walkInRules(settings));
     expect(walkInRevision(rows.map((x) => (x.serviceId === 'gel' ? { ...x, priceCents: 4600 } : x)), walkInRules(settings))).not.toBe(r);
     expect(walkInRevision(rows.map((x) => (x.serviceId === 'gel' ? { ...x, serviceName: 'Gel Polish' } : x)), walkInRules(settings))).not.toBe(r);
     expect(walkInRevision(rows, walkInRules({ ...settings, walkinShowPrices: false }))).not.toBe(r);
-    expect(walkInRevision(rows.map((x) => (x.serviceId === 'hid' ? { ...x, priceCents: 1 } : x)), walkInRules(settings))).toBe(r);
+    expect(walkInRevision(rows.map((x) => (x.serviceId === 'off' ? { ...x, priceCents: 1 } : x)), walkInRules(settings))).toBe(r);
   });
 });
 
@@ -38,7 +39,7 @@ describe('priceWalkInSelection', () => {
     const p = priceWalkInSelection(cat, [{ serviceId: 'gel', addOnIds: ['tip'], shownPriceCents: 4500, shownName: 'Gel' }, { serviceId: 'spa', shownPriceCents: 5000 }], cat.revision);
     expect(p).toMatchObject({ estimatedTotalCents: 4500 + 800 + 6000, estimatedMinutes: 105, confirmable: false, warnings: ['SERVICE_CHANGED'] });
     expect(p.lines.map((l) => l.state)).toEqual(['ok', 'changed']);
-    const u = priceWalkInSelection(cat, [{ serviceId: 'hid' }, { serviceId: 'gel', addOnIds: ['spa'] }], cat.revision);
+    const u = priceWalkInSelection(cat, [{ serviceId: 'off' }, { serviceId: 'gel', addOnIds: ['spa'] }], cat.revision);
     expect(u.lines[0].state).toBe('unavailable');
     expect(u.lines[1].addOns[0].state).toBe('unavailable');
     expect(u.confirmable).toBe(false);

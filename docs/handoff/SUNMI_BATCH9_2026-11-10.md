@@ -754,3 +754,9 @@ The 5 TODO rows are the K-12 console steps — docs/K12_RUNBOOK.md + tooling/k12
   technician detail, read-only accuracy check, exact-cent splits pinned by tests.
 - Not provable here: real SUNMI FLEX 3 / CPad 14 hardware, true parallel booking on networked Postgres, live SSE fan-out.
 - Print Schedule from the Standalone spec was NOT built (owner no-print rule + the 200-tech plan supersede it).
+
+## Round 13 — Kevin's decisions (Nov 13 2026, 22:00)
+- **Print Schedule:** stays off. No print control on the booking board (guard `booking-no-print.test.ts`, check:no-print).
+- **Guest picks a technician on the CPad:** ON by default. `go-check-in.dto.ts` default is `technicianPreferenceEnabled: true`. Migration `992_checkin_technician_preference_on.sql` changes the column default and turns it on for existing salons. The owner can still switch it off. Evidence: `walkin-selection.pgtest.vitest.spec.ts` (settings default, OFF/ON request test).
+- **Services on the CPad:** the full menu. Every active, un-archived service in an active category shows, and the online/customer-app booking flag no longer hides a service from walk-ins. `walkin-selection.ts` `usable` drops the `customerVisible` filter. Evidence: both walk-in specs; Nail Art / Hand-painted Art now listed.
+- **Tips with 3+ technicians:** equal split by default, to the exact cent; the remainder goes deterministically by largest-remainder. Proportional is used only if the salon picks it, and a customer's explicit split still wins. Changed in the engine (`compensation.service.ts`), the policy service and the owner UI ("Equal (default)"). Evidence: `team-tips-splits.vitest.spec.ts` #18 and `compensation.service.vitest.spec.ts`.

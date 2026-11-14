@@ -103,24 +103,24 @@ describe('CommissionPayrollScreen', () => {
 
   it('loads the tip-split policy and switches it (PUT sent, Saved shown)', async () => {
     render(<CommissionPayrollScreen />);
-    await waitFor(() => expect(screen.getByLabelText('Proportional (default)')).toHaveAttribute('aria-pressed', 'true'));
-    expect(screen.getByLabelText('Equal')).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => expect(screen.getByLabelText('Proportional')).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByLabelText('Equal (default)')).toHaveAttribute('aria-pressed', 'false');
 
-    fireEvent.click(screen.getByLabelText('Equal'));
+    fireEvent.click(screen.getByLabelText('Equal (default)'));
     await waitFor(() => expect(ownerCompensationApi.setTipPolicy).toHaveBeenCalledWith('equal'));
-    await waitFor(() => expect(screen.getByLabelText('Equal')).toHaveAttribute('aria-pressed', 'true'));
+    await waitFor(() => expect(screen.getByLabelText('Equal (default)')).toHaveAttribute('aria-pressed', 'true'));
     expect(screen.getByText('Saved')).toBeInTheDocument();
   });
 
   it('reverts the tip-split selection when the save fails', async () => {
     (ownerCompensationApi.setTipPolicy as any).mockRejectedValue(new Error('Could not save the policy.'));
     render(<CommissionPayrollScreen />);
-    await waitFor(() => expect(screen.getByLabelText('Proportional (default)')).toHaveAttribute('aria-pressed', 'true'));
+    await waitFor(() => expect(screen.getByLabelText('Proportional')).toHaveAttribute('aria-pressed', 'true'));
 
-    fireEvent.click(screen.getByLabelText('Equal'));
+    fireEvent.click(screen.getByLabelText('Equal (default)'));
     await waitFor(() => expect(ownerCompensationApi.setTipPolicy).toHaveBeenCalled());
     // the save failed → the optimistic switch snaps back to the previous policy
-    await waitFor(() => expect(screen.getByLabelText('Equal')).toHaveAttribute('aria-pressed', 'false'));
-    expect(screen.getByLabelText('Proportional (default)')).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(screen.getByLabelText('Equal (default)')).toHaveAttribute('aria-pressed', 'false'));
+    expect(screen.getByLabelText('Proportional')).toHaveAttribute('aria-pressed', 'true');
   });
 });

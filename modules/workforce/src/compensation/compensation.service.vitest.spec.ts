@@ -110,8 +110,12 @@ describe('3+ technician tip policy (spec §11)', () => {
   ];
   const tipOf = (r: any, id: string) => r.perTechnician.find((t: any) => t.technicianId === id)!.cardTipCents;
 
-  it('defaults to proportional (by earnings) for three technicians — NOT equal', () => {
+  it('defaults to an EQUAL three-way split (Kevin Nov 13 2026) — not proportional', () => {
     const r = computeTicketCompensation(engineInputFromLines(ctx, 'tk', threeTechLines, { discountCents: 0, cardTipCents: 900, cashTipCents: 0 }));
+    expect([tipOf(r, 'A'), tipOf(r, 'B'), tipOf(r, 'C')]).toEqual([300, 300, 300]);
+  });
+  it('splits by earnings only when the salon explicitly chooses proportional', () => {
+    const r = computeTicketCompensation(engineInputFromLines(ctx, 'tk', threeTechLines, { discountCents: 0, cardTipCents: 900, cashTipCents: 0, manyTechTipMethod: 'proportional' }));
     expect([tipOf(r, 'A'), tipOf(r, 'B'), tipOf(r, 'C')]).toEqual([420, 180, 300]);   // 900 × 70:30:50
   });
   it('splits equally for three technicians when the salon opts into equal', () => {
